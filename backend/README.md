@@ -1,98 +1,454 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
+# Warehouse Backend
 
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
+Express + TypeScript backend for the Mother & Baby warehouse management system.
 
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
-  <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
-  [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
+This backend was migrated from the original NestJS/Prisma scaffold to a plain Express architecture using MySQL directly through `mysql2/promise`.
 
-## Description
+## Current Status
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+The project now has a production-oriented backend foundation and several core warehouse transaction flows implemented.
 
-## Project setup
+Overall status:
 
-```bash
-$ npm install
-```
+- Express structure: stable.
+- TypeScript strict mode: enabled.
+- Validation: enabled with Zod.
+- Auth middleware: JWT + active-user check.
+- Socket.IO auth: implemented.
+- Read/list endpoints: scaffolded for all major domain modules.
+- Critical inventory transactions: partially implemented.
+- Integration tests with a real MySQL test database: still missing.
 
-## Compile and run the project
+## Stack
 
-```bash
-# development
-$ npm run start
+- Express
+- TypeScript
+- MySQL 8+ / InnoDB
+- `mysql2/promise`
+- Socket.IO
+- JWT via `jsonwebtoken`
+- Zod validation
+- Jest + Supertest
+- ESLint + Prettier
 
-# watch mode
-$ npm run start:dev
+## Environment
 
-# production mode
-$ npm run start:prod
-```
-
-## Run tests
+Create `.env` from `.env.example` and update values for your machine.
 
 ```bash
-# unit tests
-$ npm run test
-
-# e2e tests
-$ npm run test:e2e
-
-# test coverage
-$ npm run test:cov
+cp .env.example .env
 ```
 
-## Deployment
+Required variables:
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+```env
+PORT=3000
+CORS_ORIGIN=*
+DATABASE_URL=mysql://root:password@localhost:3306/warehouse_management
+DB_CONNECTION_LIMIT=10
+JWT_SECRET=change_this_to_a_long_random_secret
+```
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+## Scripts
 
 ```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
+npm install
+npm run start:dev
+npm run build
+npm run lint
+npm run test:e2e
 ```
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+Useful verification commands:
 
-## Resources
+```bash
+npm run lint
+npx tsc -p tsconfig.build.json --noEmit
+npx jest --config ./test/jest-e2e.json --runInBand
+```
 
-Check out a few resources that may come in handy when working with NestJS:
+## Source Layout
 
-- Visit the [NestJS Documentation](https://docs.nestjs.com) to learn more about the framework.
-- For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
-- To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
-- Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
-- Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
-- To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).
-- Looking for a job, or have a job to offer? Check out our official [Jobs board](https://jobs.nestjs.com).
+```text
+src/
+  app.ts
+  main.ts
+  common/
+    audit/
+    code/
+    middleware/
+    types/
+    validation/
+  config/
+  database/
+  modules/
+  socket/
+```
 
-## Support
+Feature modules follow this structure:
 
-Nest is an MIT-licensed open source project. It can grow thanks to the sponsors and support by the amazing backers. If you'd like to join them, please [read more here](https://docs.nestjs.com/support).
+- `*.routes.ts` defines endpoints.
+- `*.controller.ts` maps HTTP request/response.
+- `*.validation.ts` validates request input.
+- `*.service.ts` contains business rules and error mapping.
+- `*.repository.ts` contains database queries and transactions.
+- `*.model.ts` contains request/row/domain types.
+- `*.module.ts` exports the router mounted by `app.ts`.
 
-## Stay in touch
+## Modules
 
-- Author - [Kamil Myśliwiec](https://twitter.com/kammysliwiec)
-- Website - [https://nestjs.com](https://nestjs.com/)
-- Twitter - [@nestframework](https://twitter.com/nestframework)
+Implemented domain modules:
 
-## License
+- `auth`
+- `authorization`
+- `warehouses`
+- `locations`
+- `catalog`
+- `suppliers`
+- `batches`
+- `stock`
+- `inventory-transactions`
+- `goods-receipts`
+- `goods-issues`
+- `stock-transfers`
+- `stock-counts`
+- `stock-adjustments`
+- `alerts`
+- `notifications`
+- `audit-logs`
+- `attachments`
+- `settings`
+- `reports`
+- `health`
 
-Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+Most modules currently expose a base `GET /module` list endpoint with simple filters. The modules that already contain real transaction behavior are listed below.
+
+## Core Infrastructure Implemented
+
+### Config
+
+Centralized config is in `src/config/config.ts`.
+
+Current config values:
+
+- `PORT`
+- `CORS_ORIGIN`
+- `DATABASE_URL`
+- `DB_CONNECTION_LIMIT`
+- `JWT_SECRET`
+
+### Database
+
+Database pool is in `src/database/db.ts`.
+
+The backend expects the MySQL schema from:
+
+```text
+warehouse_management_mysql.sql
+```
+
+### Validation
+
+Request validation uses Zod through:
+
+```text
+src/common/validation/validate.ts
+```
+
+### Auth
+
+Auth module includes:
+
+- `verifyToken`
+- `requirePermission(permission)`
+- JWT verification
+- active-user lookup in database
+- role permission loading
+
+Socket.IO also uses the same token verification path.
+
+### Code Generation
+
+Unique transaction codes use:
+
+```text
+src/common/code/code-generator.ts
+```
+
+This avoids timestamp-only transaction codes.
+
+### Audit Log
+
+Audit insert helper is in:
+
+```text
+src/common/audit/audit.repository.ts
+```
+
+It is used inside transaction flows so business changes and audit logs commit or rollback together.
+
+## Transaction Flows Implemented
+
+### 1. Confirm Goods Issue
+
+Endpoint:
+
+```http
+POST /goods-issues/:id/confirm
+Authorization: Bearer <token>
+```
+
+Body:
+
+```json
+{
+  "strategy": "FEFO"
+}
+```
+
+Supported strategies:
+
+- `FEFO`
+- `FIFO`
+
+Implemented behavior:
+
+- Requires `goods_issues:confirm` permission.
+- Locks `goods_issues` row with `FOR UPDATE`.
+- Allows confirm only from `DRAFT` or `PENDING`.
+- Idempotent if already `CONFIRMED`.
+- Locks issue items.
+- Aggregates demand by product variant.
+- Allocates stock using FEFO/FIFO.
+- Locks candidate stock rows with `FOR UPDATE`.
+- Prevents expired, blocked, depleted batches.
+- Enforces batch for lot-tracked products.
+- Enforces expiry date for expiry-tracked products under FEFO.
+- Deducts stock atomically using `quantity - reserved_quantity >= requested`.
+- Writes `inventory_transactions` with type `ISSUE`.
+- Replaces issue items with actual allocated pick lines.
+- Updates issue status to `CONFIRMED`.
+- Writes audit log in the same transaction.
+
+### 2. Confirm Goods Receipt
+
+Endpoint:
+
+```http
+POST /goods-receipts/:id/confirm
+Authorization: Bearer <token>
+```
+
+Implemented behavior:
+
+- Requires `goods_receipts:confirm` permission.
+- Locks receipt and receipt items.
+- Allows confirm only from `DRAFT` or `PENDING`.
+- Idempotent if already `CONFIRMED`.
+- Enforces batch for lot-tracked products.
+- Enforces expiry for expiry-tracked products.
+- Validates item location belongs to receipt warehouse.
+- Upserts stock into `stock_locations`.
+- Writes `inventory_transactions` with type `RECEIPT`.
+- Updates receipt status to `CONFIRMED`.
+- Writes audit log in the same transaction.
+
+### 3. Confirm Stock Transfer
+
+Endpoint:
+
+```http
+POST /stock-transfers/:id/confirm
+Authorization: Bearer <token>
+```
+
+Implemented behavior:
+
+- Requires `stock_transfers:confirm` permission.
+- Locks transfer and transfer items.
+- Allows confirm only from `DRAFT` or `PENDING`.
+- Idempotent if already `CONFIRMED`.
+- Validates source location belongs to source warehouse.
+- Validates destination location belongs to destination warehouse.
+- Deducts source stock atomically.
+- Upserts destination stock.
+- Writes paired inventory transactions:
+  - `TRANSFER_OUT`
+  - `TRANSFER_IN`
+- Updates transfer status to `CONFIRMED`.
+- Writes audit log in the same transaction.
+
+### 4. Approve Stock Adjustment
+
+Endpoint:
+
+```http
+POST /stock-adjustments/:id/approve
+Authorization: Bearer <token>
+```
+
+Implemented behavior:
+
+- Requires `stock_adjustments:approve` permission.
+- Locks adjustment and adjustment items.
+- Allows approve only from `PENDING`.
+- Idempotent if already `APPROVED`.
+- Prevents self-approval.
+- Validates item location belongs to adjustment warehouse.
+- Applies IN/OUT adjustment to stock.
+- Prevents negative stock.
+- Updates adjustment item `quantity_before` and `quantity_after`.
+- Writes inventory transactions:
+  - `COUNT_ADJUSTMENT_IN`
+  - `COUNT_ADJUSTMENT_OUT`
+  - `MANUAL_ADJUSTMENT_IN`
+  - `MANUAL_ADJUSTMENT_OUT`
+- Updates adjustment status to `APPROVED`.
+- Writes audit log in the same transaction.
+
+### 5. FEFO/FIFO Allocation Preview
+
+Endpoint:
+
+```http
+GET /stock/allocation?warehouseId=1&productVariantId=10&quantity=5&strategy=FEFO
+```
+
+Implemented behavior:
+
+- Returns preview of which stock locations/batches would be picked.
+- Does not mutate stock.
+- Used as the basis for confirm goods issue allocation.
+
+## What Is Still Missing
+
+The backend is not yet a complete warehouse management system. Important missing work remains.
+
+### Transaction Flows Still Missing
+
+- Complete stock count.
+- Generate stock adjustments from stock count variance.
+- Reject stock adjustment.
+- Cancel documents safely.
+- Return-in / return-out flows.
+- Reversal transaction flow for correcting mistakes.
+
+### Auth Flows Missing
+
+- Login.
+- Refresh token.
+- Logout / revoke session.
+- Password reset.
+- Failed login lockout behavior.
+
+The schema has tables for sessions and reset tokens, but the API flows are not implemented yet.
+
+### Notifications Missing
+
+The `notifications` and `alerts` modules currently expose list-style scaffold APIs. Missing work:
+
+- Create notification on important events.
+- Mark notification as read.
+- Resolve alerts.
+- Socket.IO push events to online users.
+- Low stock / near expiry alert generation.
+
+### Audit Log Coverage Incomplete
+
+Audit logs are currently written by the implemented transaction flows. Other write operations still need audit integration once implemented.
+
+### Reports Need Expansion
+
+The database has reporting views:
+
+- `vw_current_stock`
+- `vw_product_total_stock`
+- `vw_near_expiry_stock`
+
+Current report endpoints are basic. More useful reporting endpoints should be added for:
+
+- low stock
+- stock by warehouse
+- stock by category
+- movement history
+- expiry risk
+- adjustment history
+
+### Testing Missing
+
+Current tests verify only that the app boots and the root endpoint responds.
+
+Missing test coverage:
+
+- Unit tests for FEFO/FIFO allocation.
+- Integration tests for goods issue confirm.
+- Integration tests for goods receipt confirm.
+- Integration tests for stock transfer confirm.
+- Integration tests for adjustment approve.
+- Auth and permission tests.
+- Concurrency tests for atomic stock updates.
+
+A real MySQL test database with seed data is required to properly test transaction behavior.
+
+## Current Verification Status
+
+The project currently passes:
+
+```bash
+npm run lint
+npx tsc -p tsconfig.build.json --noEmit
+npx jest --config ./test/jest-e2e.json --runInBand
+```
+
+This means code style, TypeScript strict compile, and a basic Express e2e smoke test are passing.
+
+It does not yet prove every warehouse transaction is correct under real MySQL data and concurrency.
+
+## Recommended Roadmap
+
+### Phase 1: Stabilize Core Transactions
+
+- Add MySQL integration test database.
+- Seed warehouse, locations, users, products, batches, stock.
+- Test confirm receipt, issue, transfer, adjustment approve.
+- Test insufficient stock and concurrent update cases.
+
+### Phase 2: Complete Warehouse Workflows
+
+- Complete stock count.
+- Generate adjustments from stock count variance.
+- Reject/cancel workflows.
+- Reversal transactions.
+- Return flows.
+
+### Phase 3: Auth and Operations
+
+- Login / refresh / logout.
+- User sessions.
+- Password reset.
+- Better permission management APIs.
+
+### Phase 4: Notifications and Reporting
+
+- Alert generation.
+- Notification creation and read status.
+- Socket.IO push notifications.
+- Dashboard/reporting endpoints.
+
+### Phase 5: Hardening
+
+- Request id / correlation id middleware.
+- Structured logging.
+- Rate limiting.
+- API pagination standard.
+- OpenAPI documentation.
+- CI pipeline.
+
+## Important Design Notes
+
+- `inventory_transactions` and `audit_logs` should be treated as append-only.
+- Stock mutation and inventory transaction insert must happen in the same DB transaction.
+- Any stock deduction must use row locks and/or atomic update checks.
+- FEFO should be used for expiry-tracked goods.
+- FIFO can be used for non-expiry goods where business rules allow it.
+- Products, variants, batches, and locations with transaction history should be soft-deleted, not hard-deleted.

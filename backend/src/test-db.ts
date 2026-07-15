@@ -1,15 +1,15 @@
-import { PrismaClient } from '@prisma/client';
+import { closeDatabasePool, db } from './database/db';
 
-const prisma = new PrismaClient();
-
-async function main() {
+async function main(): Promise<void> {
   try {
-    const count = await prisma.vi_tri_kho.count();
-    console.log('Locations count:', count);
+    const [rows] = await db.query(
+      'SELECT COUNT(*) AS location_count FROM warehouse_locations',
+    );
+    console.log(rows);
   } catch (error) {
     console.error('Database connection failed:', error);
   } finally {
-    await prisma.$disconnect();
+    await closeDatabasePool();
   }
 }
 

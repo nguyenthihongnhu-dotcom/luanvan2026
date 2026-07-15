@@ -1,0 +1,381 @@
+import type {
+  PoolConnection,
+  ResultSetHeader,
+  RowDataPacket,
+} from 'mysql2/promise';
+import { insertAuditLog } from '../../common/audit/audit.repository';
+import { buildUniqueCode } from '../../common/code/code-generator';
+import { db } from '../../database/db';
+import type {
+  ApproveStockAdjustmentInput,
+  ApproveStockAdjustmentResult,
+  QueryParams,
+  StockAdjustmentItemRow,
+  StockAdjustmentRow,
+  StockAdjustmentsFilters,
+  StockAdjustmentsRow,
+} from './stock-adjustments.model';
+
+const tableName = 'stock_adjustments';
+
+type StockLocationRow = RowDataPacket & {
+  id: number;
+  quantity: number;
+};
+
+export async function findStockAdjustments(
+  filters: StockAdjustmentsFilters,
+): Promise<StockAdjustmentsRow[]> {
+  const where: string[] = [];
+  const params: QueryParams = {};
+
+  if (filters.id) {
+    where.push('id = :id');
+    params.id = filters.id;
+  }
+
+  if (filters.search) {
+    where.push('adjustment_code LIKE :search');
+    params.search = `%${filters.search}%`;
+  }
+
+  if (filters.status) {
+    where.push('status = :status');
+    params.status = filters.status;
+  }
+
+  const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+
+  const [rows] = await db.query<StockAdjustmentsRow[]>({
+    sql: `SELECT * FROM ${tableName} ${whereSql} LIMIT 100`,
+    values: params,
+  });
+
+  return rows;
+}
+
+async function lockAdjustment(
+  connection: PoolConnection,
+  adjustmentId: number,
+): Promise<StockAdjustmentRow | undefined> {
+  const [rows] = await connection.query<StockAdjustmentRow[]>(
+    `
+      SELECT id, adjustment_code, warehouse_id, adjustment_type, status, created_by
+      FROM stock_adjustments
+      WHERE id = ?
+      FOR UPDATE
+    `,
+    [adjustmentId],
+  );
+
+  return rows[0];
+}
+
+async function lockAdjustmentItems(
+  connection: PoolConnection,
+  adjustmentId: number,
+): Promise<StockAdjustmentItemRow[]> {
+  const [rows] = await connection.query<StockAdjustmentItemRow[]>(
+    `
+      SELECT
+        id,
+        stock_adjustment_id,
+        product_variant_id,
+        batch_id,
+        location_id,
+        adjustment_direction,
+        quantity,
+        reason_code,
+        note
+      FROM stock_adjustment_items
+      WHERE stock_adjustment_id = ?
+      ORDER BY id
+      FOR UPDATE
+    `,
+    [adjustmentId],
+  );
+
+  return rows;
+}
+
+async function lockStockLocation(
+  connection: PoolConnection,
+  productVariantId: number,
+  locationId: number,
+  batchId: number | null,
+): Promise<StockLocationRow | undefined> {
+  const [rows] = await connection.query<StockLocationRow[]>(
+    `
+      SELECT id, quantity
+      FROM stock_locations
+      WHERE product_variant_id = ?
+        AND location_id = ?
+        AND (batch_id <=> ?)
+      FOR UPDATE
+    `,
+    [productVariantId, locationId, batchId],
+  );
+
+  return rows[0];
+}
+
+async function assertLocationInWarehouse(
+  connection: PoolConnection,
+  locationId: number,
+  warehouseId: number,
+): Promise<void> {
+  const [rows] = await connection.query<RowDataPacket[]>(
+    `
+      SELECT wl.id
+      FROM warehouse_locations wl
+      JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+      JOIN warehouse_zones wz ON wz.id = ws.zone_id
+      WHERE wl.id = ?
+        AND wz.warehouse_id = ?
+      LIMIT 1
+    `,
+    [locationId, warehouseId],
+  );
+
+  if (rows.length === 0) {
+    throw new Error('LOCATION_WAREHOUSE_MISMATCH');
+  }
+}
+
+async function ensureStockLocationForIncrease(
+  connection: PoolConnection,
+  item: StockAdjustmentItemRow,
+): Promise<{ id: number; before: number }> {
+  const existing = await lockStockLocation(
+    connection,
+    item.product_variant_id,
+    item.location_id,
+    item.batch_id,
+  );
+
+  if (existing) {
+    return { id: existing.id, before: Number(existing.quantity) };
+  }
+
+  const [insertResult] = await connection.query<ResultSetHeader>(
+    `
+      INSERT INTO stock_locations (
+        product_variant_id,
+        location_id,
+        batch_id,
+        quantity
+      )
+      VALUES (?, ?, ?, 0)
+    `,
+    [item.product_variant_id, item.location_id, item.batch_id],
+  );
+
+  return { id: insertResult.insertId, before: 0 };
+}
+
+export async function approveStockAdjustmentTransaction(
+  input: ApproveStockAdjustmentInput,
+): Promise<ApproveStockAdjustmentResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const adjustment = await lockAdjustment(connection, input.adjustmentId);
+
+    if (!adjustment) {
+      throw new Error('STOCK_ADJUSTMENT_NOT_FOUND');
+    }
+
+    if (adjustment.status === 'APPROVED') {
+      const [transactionRows] = await connection.query<RowDataPacket[]>(
+        `
+          SELECT id
+          FROM inventory_transactions
+          WHERE reference_type = 'STOCK_ADJUSTMENT'
+            AND reference_id = ?
+        `,
+        [adjustment.id],
+      );
+      await connection.commit();
+
+      return {
+        adjustmentId: adjustment.id,
+        adjustmentCode: adjustment.adjustment_code,
+        status: 'APPROVED',
+        transactionCount: transactionRows.length,
+      };
+    }
+
+    if (adjustment.status !== 'PENDING') {
+      throw new Error('STOCK_ADJUSTMENT_NOT_APPROVABLE');
+    }
+
+    if (adjustment.created_by === input.approvedBy) {
+      throw new Error('SELF_APPROVAL_NOT_ALLOWED');
+    }
+
+    const items = await lockAdjustmentItems(connection, adjustment.id);
+
+    if (items.length === 0) {
+      throw new Error('STOCK_ADJUSTMENT_HAS_NO_ITEMS');
+    }
+
+    let transactionCount = 0;
+
+    for (const item of items) {
+      await assertLocationInWarehouse(
+        connection,
+        item.location_id,
+        adjustment.warehouse_id,
+      );
+
+      let stockLocationId: number;
+      let before: number;
+
+      if (item.adjustment_direction === 'IN') {
+        const stockLocation = await ensureStockLocationForIncrease(
+          connection,
+          item,
+        );
+        stockLocationId = stockLocation.id;
+        before = stockLocation.before;
+      } else {
+        const stockLocation = await lockStockLocation(
+          connection,
+          item.product_variant_id,
+          item.location_id,
+          item.batch_id,
+        );
+
+        if (!stockLocation) {
+          throw new Error('STOCK_LOCATION_NOT_FOUND');
+        }
+
+        stockLocationId = stockLocation.id;
+        before = Number(stockLocation.quantity);
+      }
+
+      const quantity = Number(item.quantity);
+      const after =
+        item.adjustment_direction === 'IN'
+          ? before + quantity
+          : before - quantity;
+
+      if (after < 0) {
+        throw new Error('INSUFFICIENT_STOCK');
+      }
+
+      const transactionType =
+        adjustment.adjustment_type === 'COUNT'
+          ? item.adjustment_direction === 'IN'
+            ? 'COUNT_ADJUSTMENT_IN'
+            : 'COUNT_ADJUSTMENT_OUT'
+          : item.adjustment_direction === 'IN'
+            ? 'MANUAL_ADJUSTMENT_IN'
+            : 'MANUAL_ADJUSTMENT_OUT';
+
+      const [updateResult] = await connection.query<ResultSetHeader>(
+        `
+          UPDATE stock_locations
+          SET quantity = ?, version = version + 1
+          WHERE id = ?
+            AND ? >= 0
+        `,
+        [after, stockLocationId, after],
+      );
+
+      if (updateResult.affectedRows !== 1) {
+        throw new Error('CONCURRENT_STOCK_UPDATE');
+      }
+
+      await connection.query(
+        `
+          UPDATE stock_adjustment_items
+          SET quantity_before = ?, quantity_after = ?
+          WHERE id = ?
+        `,
+        [before, after, item.id],
+      );
+
+      await connection.query(
+        `
+          INSERT INTO inventory_transactions (
+            transaction_code,
+            transaction_type,
+            warehouse_id,
+            product_variant_id,
+            batch_id,
+            source_location_id,
+            destination_location_id,
+            quantity,
+            quantity_before,
+            quantity_after,
+            reference_type,
+            reference_id,
+            reason_code,
+            note,
+            performed_by,
+            approved_by
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'STOCK_ADJUSTMENT', ?, ?, ?, ?, ?)
+        `,
+        [
+          buildUniqueCode('ADJUST', adjustment.adjustment_code),
+          transactionType,
+          adjustment.warehouse_id,
+          item.product_variant_id,
+          item.batch_id,
+          item.adjustment_direction === 'OUT' ? item.location_id : null,
+          item.adjustment_direction === 'IN' ? item.location_id : null,
+          item.quantity,
+          before,
+          after,
+          adjustment.id,
+          item.reason_code,
+          item.note,
+          input.approvedBy,
+          input.approvedBy,
+        ],
+      );
+
+      transactionCount += 1;
+    }
+
+    await insertAuditLog(connection, {
+      userId: input.approvedBy,
+      action: 'APPROVE',
+      module: 'stock_adjustments',
+      entityType: 'STOCK_ADJUSTMENT',
+      entityId: adjustment.id,
+      oldValues: { status: adjustment.status },
+      newValues: { status: 'APPROVED', transactionCount },
+    });
+
+    await connection.query(
+      `
+        UPDATE stock_adjustments
+        SET
+          status = 'APPROVED',
+          approved_by = ?,
+          approved_at = CURRENT_TIMESTAMP(3)
+        WHERE id = ?
+      `,
+      [input.approvedBy, adjustment.id],
+    );
+
+    await connection.commit();
+
+    return {
+      adjustmentId: adjustment.id,
+      adjustmentCode: adjustment.adjustment_code,
+      status: 'APPROVED',
+      transactionCount,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}

@@ -1,9 +1,27 @@
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
+import { createServer } from 'node:http';
+import { createApp } from './app';
+import { config } from './config/config';
+import { closeDatabasePool } from './database/db';
+import { initializeSocket } from './socket/socket';
 
-async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
-  app.enableCors(); // Bật CORS để cho phép frontend kết nối
-  await app.listen(process.env.PORT ?? 3000);
+const app = createApp();
+const server = createServer(app);
+const io = initializeSocket(server);
+
+server.listen(config.port, () => {
+  console.log(`Warehouse API listening on port ${config.port}`);
+});
+
+function shutdown(signal: NodeJS.Signals): void {
+  console.log(`Received ${signal}, shutting down`);
+
+  void io.close();
+  server.close(() => {
+    void closeDatabasePool().finally(() => {
+      process.exit(0);
+    });
+  });
 }
-bootstrap();
+
+process.on('SIGINT', shutdown);
+process.on('SIGTERM', shutdown);
