@@ -1,45 +1,50 @@
-# Warehouse Backend
+﻿# Backend Documentation - Bambi WMS
 
-Express + TypeScript backend for the Mother & Baby warehouse management system.
+Backend là API server cho hệ thống quản lý kho. Code dùng Express + TypeScript, kết nối MySQL bằng `mysql2/promise`.
 
-This backend was migrated from the original NestJS/Prisma scaffold to a plain Express architecture using MySQL directly through `mysql2/promise`.
+Tài liệu này dành cho người mới đọc code. Nếu bạn là intern, hãy đọc theo thứ tự từ trên xuống trước khi sửa module.
 
-## Current Status
+## 1. Backend Làm Gì?
 
-The project now has a production-oriented backend foundation and several core warehouse transaction flows implemented.
+Backend chịu trách nhiệm:
 
-Overall status:
+- Nhận request HTTP từ frontend.
+- Xác thực user bằng JWT.
+- Kiểm tra quyền thao tác.
+- Validate dữ liệu request bằng Zod.
+- Đọc/ghi dữ liệu MySQL.
+- Thực hiện nghiệp vụ kho như nhập hàng, xuất hàng, chuyển kho, điều chỉnh tồn.
+- Ghi audit log cho các thao tác quan trọng.
+- Cung cấp Socket.IO foundation cho notification realtime.
 
-- Express structure: stable.
-- TypeScript strict mode: enabled.
-- Validation: enabled with Zod.
-- Auth middleware: JWT + active-user check.
-- Socket.IO auth: implemented.
-- Read/list endpoints: scaffolded for all major domain modules.
-- Critical inventory transactions: partially implemented.
-- Integration tests with a real MySQL test database: still missing.
+## 2. Công Nghệ Chính
 
-## Stack
+- Express: HTTP server.
+- TypeScript: type safety.
+- MySQL 8+: database.
+- mysql2/promise: query database.
+- Zod: validate request body/query/params.
+- jsonwebtoken: verify JWT.
+- Socket.IO: realtime layer.
+- Jest + Supertest: test.
+- ESLint + Prettier: code quality.
 
-- Express
-- TypeScript
-- MySQL 8+ / InnoDB
-- `mysql2/promise`
-- Socket.IO
-- JWT via `jsonwebtoken`
-- Zod validation
-- Jest + Supertest
-- ESLint + Prettier
+## 3. Cách Chạy Backend
 
-## Environment
+Cài dependency:
 
-Create `.env` from `.env.example` and update values for your machine.
+```bash
+cd backend
+npm install
+```
+
+Tạo file env:
 
 ```bash
 cp .env.example .env
 ```
 
-Required variables:
+Ví dụ `.env`:
 
 ```env
 PORT=3000
@@ -47,266 +52,248 @@ CORS_ORIGIN=*
 DATABASE_URL=mysql://root:password@localhost:3306/warehouse_management
 DB_CONNECTION_LIMIT=10
 JWT_SECRET=change_this_to_a_long_random_secret
+ACCESS_TOKEN_TTL_SECONDS=900
+REFRESH_TOKEN_TTL_DAYS=30
+PASSWORD_RESET_TTL_MINUTES=15
 ```
 
-## Scripts
+Chạy dev server:
 
 ```bash
-npm install
 npm run start:dev
-npm run build
-npm run lint
-npm run test:e2e
 ```
 
-Useful verification commands:
-
-```bash
-npm run lint
-npx tsc -p tsconfig.build.json --noEmit
-npx jest --config ./test/jest-e2e.json --runInBand
-```
-
-## Source Layout
+API root:
 
 ```text
-src/
-  app.ts
-  main.ts
-  common/
-    audit/
-    code/
-    middleware/
-    types/
-    validation/
-  config/
-  database/
-  modules/
-  socket/
+GET http://localhost:3000/
 ```
 
-Feature modules follow this structure:
+Health check:
 
-- `*.routes.ts` defines endpoints.
-- `*.controller.ts` maps HTTP request/response.
-- `*.validation.ts` validates request input.
-- `*.service.ts` contains business rules and error mapping.
-- `*.repository.ts` contains database queries and transactions.
-- `*.model.ts` contains request/row/domain types.
-- `*.module.ts` exports the router mounted by `app.ts`.
+```text
+GET http://localhost:3000/health
+```
 
-## Modules
+## 4. Database
 
-Implemented domain modules:
-
-- `auth`
-- `authorization`
-- `warehouses`
-- `locations`
-- `catalog`
-- `suppliers`
-- `batches`
-- `stock`
-- `inventory-transactions`
-- `goods-receipts`
-- `goods-issues`
-- `stock-transfers`
-- `stock-counts`
-- `stock-adjustments`
-- `alerts`
-- `notifications`
-- `audit-logs`
-- `attachments`
-- `settings`
-- `reports`
-- `health`
-
-Most modules currently expose a base `GET /module` list endpoint with simple filters. The modules that already contain real transaction behavior are listed below.
-
-## Core Infrastructure Implemented
-
-### Config
-
-Centralized config is in `src/config/config.ts`.
-
-Current config values:
-
-- `PORT`
-- `CORS_ORIGIN`
-- `DATABASE_URL`
-- `DB_CONNECTION_LIMIT`
-- `JWT_SECRET`
-
-### Database
-
-Database pool is in `src/database/db.ts`.
-
-The backend expects the MySQL schema from:
+Backend expect MySQL schema từ file:
 
 ```text
 warehouse_management_mysql.sql
 ```
 
-### Validation
-
-Request validation uses Zod through:
+Thiết kế database mô tả thêm ở:
 
 ```text
-src/common/validation/validate.ts
+warehouse_database_design.md
 ```
 
-### Auth
+Khi làm việc với database:
 
-Auth module includes:
+- Không tự ý đổi schema nếu chưa kiểm tra module đang phụ thuộc field đó.
+- Các thao tác tồn kho phải dùng transaction DB.
+- Những bảng lịch sử như `inventory_transactions` và `audit_logs` nên xem như append-only.
+- Không hard delete dữ liệu đã có lịch sử giao dịch nếu business chưa cho phép.
 
-- `verifyToken`
-- `requirePermission(permission)`
-- JWT verification
-- active-user lookup in database
-- role permission loading
-
-Socket.IO also uses the same token verification path.
-
-### Code Generation
-
-Unique transaction codes use:
+## 5. Cấu Trúc Source
 
 ```text
-src/common/code/code-generator.ts
+src/
+  main.ts                 # Tạo HTTP server, gắn Socket.IO, listen port
+  app.ts                  # Tạo Express app, mount modules, middleware chung
+
+  config/
+    config.ts             # Đọc env và validate config cơ bản
+
+  database/
+    db.ts                 # MySQL connection pool
+
+  common/
+    http.ts               # Error handler, not found handler, HTTP helpers
+    validation/validate.ts# Zod validation middleware/helper
+    middleware/           # Middleware dùng chung
+    audit/                # Audit repository dùng chung
+    code/                 # Sinh mã chứng từ/giao dịch
+    types/                # Type mở rộng Express
+
+  modules/
+    auth/
+    authorization/
+    warehouses/
+    locations/
+    catalog/
+    suppliers/
+    batches/
+    stock/
+    goods-receipts/
+    goods-issues/
+    stock-transfers/
+    stock-counts/
+    stock-adjustments/
+    alerts/
+    notifications/
+    reports/
+    settings/
+    ...
+
+  socket/
+    socket.ts             # Socket.IO setup
 ```
 
-This avoids timestamp-only transaction codes.
+## 6. Module Pattern
 
-### Audit Log
-
-Audit insert helper is in:
+Mỗi module thường có các file sau:
 
 ```text
-src/common/audit/audit.repository.ts
+<module>.module.ts       # Export router chính của module
+<module>.routes.ts       # Khai báo endpoint và middleware
+<module>.controller.ts   # Nhận request, gọi service, trả response
+<module>.service.ts      # Business logic
+<module>.repository.ts   # Query database
+<module>.validation.ts   # Zod schemas
+<module>.model.ts        # TypeScript types/model interfaces
 ```
 
-It is used inside transaction flows so business changes and audit logs commit or rollback together.
+Ví dụ module `goods-receipts`:
 
-## Transaction Flows Implemented
-
-### 1. Confirm Goods Issue
-
-Endpoint:
-
-```http
-POST /goods-issues/:id/confirm
-Authorization: Bearer <token>
+```text
+modules/goods-receipts/
+  goods-receipts.module.ts
+  goods-receipts.routes.ts
+  goods-receipts.controller.ts
+  goods-receipts.service.ts
+  goods-receipts.repository.ts
+  goods-receipts.validation.ts
+  goods-receipts.model.ts
 ```
 
-Body:
+## 7. Luồng Request Đi Qua Backend
 
-```json
-{
-  "strategy": "FEFO"
-}
+Một request thường đi như sau:
+
+```text
+HTTP request
+  -> app.ts mounted route
+  -> routes.ts
+  -> auth/permission middleware nếu endpoint cần bảo vệ
+  -> validation.ts validate input
+  -> controller.ts
+  -> service.ts
+  -> repository.ts
+  -> MySQL
+  -> response JSON
 ```
 
-Supported strategies:
+Ý nghĩa từng layer:
 
-- `FEFO`
-- `FIFO`
+- Route: endpoint nào, method nào, middleware nào.
+- Controller: chuyển HTTP request thành service call.
+- Service: xử lý nghiệp vụ, kiểm tra rule, quyết định flow.
+- Repository: chỉ lo SQL/query/transaction.
+- Model: định nghĩa shape dữ liệu.
+- Validation: chặn input sai trước khi vào business logic.
 
-Implemented behavior:
+Không nên để SQL trong controller. Không nên để business rule trong repository nếu rule đó không phải constraint/query.
 
-- Requires `goods_issues:confirm` permission.
-- Locks `goods_issues` row with `FOR UPDATE`.
-- Allows confirm only from `DRAFT` or `PENDING`.
-- Idempotent if already `CONFIRMED`.
-- Locks issue items.
-- Aggregates demand by product variant.
-- Allocates stock using FEFO/FIFO.
-- Locks candidate stock rows with `FOR UPDATE`.
-- Prevents expired, blocked, depleted batches.
-- Enforces batch for lot-tracked products.
-- Enforces expiry date for expiry-tracked products under FEFO.
-- Deducts stock atomically using `quantity - reserved_quantity >= requested`.
-- Writes `inventory_transactions` with type `ISSUE`.
-- Replaces issue items with actual allocated pick lines.
-- Updates issue status to `CONFIRMED`.
-- Writes audit log in the same transaction.
+## 8. Auth Và Permission
 
-### 2. Confirm Goods Receipt
+Auth nằm ở module:
+
+```text
+src/modules/auth
+```
+
+Authorization/role/permission nằm ở:
+
+```text
+src/modules/authorization
+```
+
+Các endpoint quan trọng có thể dùng middleware:
+
+```ts
+requirePermission('goods_receipts:confirm')
+```
+
+Hiện backend có JWT verification và active-user check. Một số auth flow như login/refresh/logout đầy đủ vẫn cần hoàn thiện theo roadmap.
+
+## 9. Validation
+
+Validation dùng Zod.
+
+File validation nằm trong mỗi module:
+
+```text
+<module>.validation.ts
+```
+
+Nguyên tắc:
+
+- Validate `params`, `query`, `body` trước khi vào controller/service.
+- Không tin dữ liệu từ client.
+- Nếu thêm endpoint mới, phải thêm schema validation tương ứng.
+
+## 10. Database Transaction Và Tồn Kho
+
+Các flow ảnh hưởng tồn kho phải rất cẩn thận:
+
+- Nhập kho: tăng tồn.
+- Xuất kho: giảm tồn.
+- Chuyển kho: giảm nguồn, tăng đích.
+- Điều chỉnh kho: tăng/giảm theo phiếu điều chỉnh.
+
+Rule quan trọng:
+
+1. Lock row cần sửa bằng transaction/`FOR UPDATE` khi cần.
+2. Không để tồn kho âm.
+3. Ghi `inventory_transactions` cùng transaction với thay đổi tồn.
+4. Ghi audit log cùng transaction nếu flow quan trọng.
+5. Nếu lỗi ở giữa, rollback toàn bộ.
+
+## 11. Các Flow Nghiệp Vụ Đã Có
+
+### Confirm Goods Receipt
 
 Endpoint:
 
 ```http
 POST /goods-receipts/:id/confirm
-Authorization: Bearer <token>
 ```
 
-Implemented behavior:
+Mục tiêu: xác nhận phiếu nhập, tăng tồn kho, ghi transaction `RECEIPT`.
 
-- Requires `goods_receipts:confirm` permission.
-- Locks receipt and receipt items.
-- Allows confirm only from `DRAFT` or `PENDING`.
-- Idempotent if already `CONFIRMED`.
-- Enforces batch for lot-tracked products.
-- Enforces expiry for expiry-tracked products.
-- Validates item location belongs to receipt warehouse.
-- Upserts stock into `stock_locations`.
-- Writes `inventory_transactions` with type `RECEIPT`.
-- Updates receipt status to `CONFIRMED`.
-- Writes audit log in the same transaction.
+### Confirm Goods Issue
 
-### 3. Confirm Stock Transfer
+Endpoint:
+
+```http
+POST /goods-issues/:id/confirm
+```
+
+Mục tiêu: xác nhận phiếu xuất, chọn stock theo FEFO/FIFO, giảm tồn kho, ghi transaction `ISSUE`.
+
+### Confirm Stock Transfer
 
 Endpoint:
 
 ```http
 POST /stock-transfers/:id/confirm
-Authorization: Bearer <token>
 ```
 
-Implemented behavior:
+Mục tiêu: chuyển tồn từ vị trí/kho nguồn sang vị trí/kho đích.
 
-- Requires `stock_transfers:confirm` permission.
-- Locks transfer and transfer items.
-- Allows confirm only from `DRAFT` or `PENDING`.
-- Idempotent if already `CONFIRMED`.
-- Validates source location belongs to source warehouse.
-- Validates destination location belongs to destination warehouse.
-- Deducts source stock atomically.
-- Upserts destination stock.
-- Writes paired inventory transactions:
-  - `TRANSFER_OUT`
-  - `TRANSFER_IN`
-- Updates transfer status to `CONFIRMED`.
-- Writes audit log in the same transaction.
-
-### 4. Approve Stock Adjustment
+### Approve Stock Adjustment
 
 Endpoint:
 
 ```http
 POST /stock-adjustments/:id/approve
-Authorization: Bearer <token>
 ```
 
-Implemented behavior:
+Mục tiêu: duyệt phiếu điều chỉnh và cập nhật tồn kho.
 
-- Requires `stock_adjustments:approve` permission.
-- Locks adjustment and adjustment items.
-- Allows approve only from `PENDING`.
-- Idempotent if already `APPROVED`.
-- Prevents self-approval.
-- Validates item location belongs to adjustment warehouse.
-- Applies IN/OUT adjustment to stock.
-- Prevents negative stock.
-- Updates adjustment item `quantity_before` and `quantity_after`.
-- Writes inventory transactions:
-  - `COUNT_ADJUSTMENT_IN`
-  - `COUNT_ADJUSTMENT_OUT`
-  - `MANUAL_ADJUSTMENT_IN`
-  - `MANUAL_ADJUSTMENT_OUT`
-- Updates adjustment status to `APPROVED`.
-- Writes audit log in the same transaction.
-
-### 5. FEFO/FIFO Allocation Preview
+### Allocation Preview
 
 Endpoint:
 
@@ -314,141 +301,103 @@ Endpoint:
 GET /stock/allocation?warehouseId=1&productVariantId=10&quantity=5&strategy=FEFO
 ```
 
-Implemented behavior:
+Mục tiêu: xem trước hệ thống sẽ lấy batch/vị trí nào khi xuất hàng, không thay đổi dữ liệu.
 
-- Returns preview of which stock locations/batches would be picked.
-- Does not mutate stock.
-- Used as the basis for confirm goods issue allocation.
+## 12. Cách Thêm Endpoint Mới
 
-## What Is Still Missing
+Ví dụ muốn thêm endpoint `GET /suppliers/:id`:
 
-The backend is not yet a complete warehouse management system. Important missing work remains.
+1. Mở module `src/modules/suppliers`.
+2. Thêm schema params trong `suppliers.validation.ts`.
+3. Thêm method query trong `suppliers.repository.ts`.
+4. Thêm business method trong `suppliers.service.ts`.
+5. Thêm handler trong `suppliers.controller.ts`.
+6. Gắn route trong `suppliers.routes.ts`.
+7. Nếu endpoint cần auth, thêm middleware auth/permission.
+8. Chạy lint/build/test.
 
-### Transaction Flows Still Missing
+Không tạo endpoint trực tiếp trong `app.ts`, trừ khi đó là endpoint global như `/health` hoặc `/`.
 
-- Complete stock count.
-- Generate stock adjustments from stock count variance.
-- Reject stock adjustment.
-- Cancel documents safely.
-- Return-in / return-out flows.
-- Reversal transaction flow for correcting mistakes.
-
-### Auth Flows Missing
-
-- Login.
-- Refresh token.
-- Logout / revoke session.
-- Password reset.
-- Failed login lockout behavior.
-
-The schema has tables for sessions and reset tokens, but the API flows are not implemented yet.
-
-### Notifications Missing
-
-The `notifications` and `alerts` modules currently expose list-style scaffold APIs. Missing work:
-
-- Create notification on important events.
-- Mark notification as read.
-- Resolve alerts.
-- Socket.IO push events to online users.
-- Low stock / near expiry alert generation.
-
-### Audit Log Coverage Incomplete
-
-Audit logs are currently written by the implemented transaction flows. Other write operations still need audit integration once implemented.
-
-### Reports Need Expansion
-
-The database has reporting views:
-
-- `vw_current_stock`
-- `vw_product_total_stock`
-- `vw_near_expiry_stock`
-
-Current report endpoints are basic. More useful reporting endpoints should be added for:
-
-- low stock
-- stock by warehouse
-- stock by category
-- movement history
-- expiry risk
-- adjustment history
-
-### Testing Missing
-
-Current tests verify only that the app boots and the root endpoint responds.
-
-Missing test coverage:
-
-- Unit tests for FEFO/FIFO allocation.
-- Integration tests for goods issue confirm.
-- Integration tests for goods receipt confirm.
-- Integration tests for stock transfer confirm.
-- Integration tests for adjustment approve.
-- Auth and permission tests.
-- Concurrency tests for atomic stock updates.
-
-A real MySQL test database with seed data is required to properly test transaction behavior.
-
-## Current Verification Status
-
-The project currently passes:
+## 13. Scripts Quan Trọng
 
 ```bash
-npm run lint
-npx tsc -p tsconfig.build.json --noEmit
-npx jest --config ./test/jest-e2e.json --runInBand
+npm run start:dev     # Chạy dev server
+npm run build         # Compile TypeScript ra dist
+npm run lint          # Kiểm tra lint
+npm run lint:fix      # Auto fix lint nếu an toàn
+npm run test          # Unit tests
+npm run test:e2e      # E2E tests
 ```
 
-This means code style, TypeScript strict compile, and a basic Express e2e smoke test are passing.
+## 14. Quy Ước Code Backend
 
-It does not yet prove every warehouse transaction is correct under real MySQL data and concurrency.
+- Controller không chứa SQL.
+- Repository không trả Express response.
+- Service không phụ thuộc `req`/`res`.
+- Validation phải nằm trước service.
+- Error nên đi qua error handler chung.
+- Không swallow error bằng `catch` rỗng.
+- Không dùng `any` nếu có thể định nghĩa type.
+- Không hardcode secret/config. Dùng `.env` và `config.ts`.
 
-## Recommended Roadmap
+## 15. Lỗi Thường Gặp
 
-### Phase 1: Stabilize Core Transactions
+### Missing required environment variable
 
-- Add MySQL integration test database.
-- Seed warehouse, locations, users, products, batches, stock.
-- Test confirm receipt, issue, transfer, adjustment approve.
-- Test insufficient stock and concurrent update cases.
+Bạn chưa tạo `.env` hoặc thiếu key bắt buộc.
 
-### Phase 2: Complete Warehouse Workflows
+Cách sửa:
 
-- Complete stock count.
-- Generate adjustments from stock count variance.
-- Reject/cancel workflows.
-- Reversal transactions.
-- Return flows.
+```bash
+cp .env.example .env
+```
 
-### Phase 3: Auth and Operations
+Sau đó cập nhật giá trị trong `.env`.
 
-- Login / refresh / logout.
-- User sessions.
+### Cannot connect MySQL
+
+Kiểm tra:
+
+- MySQL đang chạy chưa.
+- Database name trong `DATABASE_URL` đúng chưa.
+- User/password đúng chưa.
+- Đã import `warehouse_management_mysql.sql` chưa.
+
+### 401 Unauthorized
+
+Endpoint cần token JWT. Gửi header:
+
+```http
+Authorization: Bearer <token>
+```
+
+### 403 Forbidden
+
+User có token nhưng thiếu permission cần thiết.
+
+## 16. Roadmap Backend
+
+Những phần cần hoàn thiện tiếp:
+
+- Login/refresh/logout thật.
+- Session management.
 - Password reset.
-- Better permission management APIs.
+- Integration tests với MySQL thật.
+- Hoàn thiện stock count workflow.
+- Reject/cancel/reversal transaction flows.
+- Notification + alert generation.
+- Report endpoints thực tế hơn.
+- OpenAPI/Swagger docs.
+- Structured logging và request id.
 
-### Phase 4: Notifications and Reporting
+## 17. Checklist Cho Intern Khi Sửa Backend
 
-- Alert generation.
-- Notification creation and read status.
-- Socket.IO push notifications.
-- Dashboard/reporting endpoints.
+Trước khi báo xong:
 
-### Phase 5: Hardening
-
-- Request id / correlation id middleware.
-- Structured logging.
-- Rate limiting.
-- API pagination standard.
-- OpenAPI documentation.
-- CI pipeline.
-
-## Important Design Notes
-
-- `inventory_transactions` and `audit_logs` should be treated as append-only.
-- Stock mutation and inventory transaction insert must happen in the same DB transaction.
-- Any stock deduction must use row locks and/or atomic update checks.
-- FEFO should be used for expiry-tracked goods.
-- FIFO can be used for non-expiry goods where business rules allow it.
-- Products, variants, batches, and locations with transaction history should be soft-deleted, not hard-deleted.
+- Đã sửa đúng module chưa?
+- Có validation cho input mới chưa?
+- Có test hoặc ít nhất đã chạy build/lint chưa?
+- Có làm ảnh hưởng tồn kho không? Nếu có, đã dùng transaction chưa?
+- Có cần permission không?
+- Có cần audit log không?
+- Có cập nhật docs nếu thay đổi flow lớn không?
