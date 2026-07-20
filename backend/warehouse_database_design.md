@@ -1,17 +1,16 @@
-# Thiết kế cơ sở dữ liệu MySQL — Hệ thống quản lý kho Mẹ & Bé
+# Thiết kế cơ sở dữ liệu MySQL - Hệ thống quản lý kho Mẹ & Bé
 
 ## 1. Nguyên tắc thiết kế
 
 - MySQL 8+ và InnoDB.
-- Tồn kho không lưu trong bảng sản phẩm.
+- Tồn kho không lưu trực tiếp trong bảng sản phẩm.
 - Tồn hiện tại được quản lý bởi `stock_locations`.
-- Mọi biến động phải tạo `inventory_transactions`.
-- Phiếu nhập, xuất, điều chuyển và điều chỉnh chỉ làm thay đổi tồn khi được xác nhận.
-- `inventory_transactions` và `audit_logs` phải được xem là append-only.
-- Sản phẩm và vị trí đã phát sinh giao dịch chỉ soft delete.
+- Mọi biến động tồn kho phải tạo bản ghi `inventory_transactions`.
+- Phiếu nhập, xuất, điều chuyển và điều chỉnh chỉ làm thay đổi tồn khi được xác nhận/duyệt.
+- `inventory_transactions` và `audit_logs` được xem như append-only.
+- Sản phẩm và vị trí đã phát sinh giao dịch chỉ nên soft delete.
 - Hàng có hạn sử dụng được quản lý theo `product_batches`.
-- Mỗi tồn kho được xác định bởi bộ khóa:
-  `product_variant_id + location_id + batch_id`.
+- Mỗi tồn kho được xác định bởi bộ khóa `product_variant_id + location_id + batch_id`.
 
 ## 2. Nhóm bảng
 
@@ -104,7 +103,7 @@ erDiagram
 
 ### Tránh duplicate khi `batch_id` là NULL
 
-MySQL cho phép nhiều giá trị `NULL` trong unique index. Vì vậy schema dùng generated column:
+MySQL cho phép nhiều giá trị `NULL` trong unique index. Schema dùng generated column:
 
 ```sql
 batch_key BIGINT UNSIGNED
@@ -114,16 +113,12 @@ GENERATED ALWAYS AS (IFNULL(batch_id, 0)) STORED
 Sau đó unique:
 
 ```sql
-UNIQUE (
-  product_variant_id,
-  location_id,
-  batch_key
-)
+UNIQUE (product_variant_id, location_id, batch_key)
 ```
 
 ### Concurrency
 
-Khi xuất hoặc điều chuyển, Backend phải thực hiện trong transaction:
+Khi xuất hoặc điều chuyển, backend phải thực hiện trong transaction:
 
 ```sql
 SELECT *
@@ -147,7 +142,7 @@ Nếu affected rows bằng `0`, trả lỗi `INSUFFICIENT_STOCK` hoặc `CONCURR
 
 ### Append-only
 
-Không cấp API sửa hoặc xóa:
+Không cấp API sửa hoặc xóa trực tiếp:
 
 - `inventory_transactions`
 - `audit_logs`
@@ -164,23 +159,26 @@ Schema có sẵn:
 
 ## 6. File SQL
 
-Chạy schema theo thứ tự bằng MySQL 8+:
+Import theo thứ tự:
 
 ```bash
-mysql -u root -p < warehouse_management_mysql.sql
+mysql -u root -p warehouse_management < backend/warehouse_management_mysql.sql
+mysql -u root -p warehouse_management < backend/warehouse_sample_data.sql
 ```
 
-## 7. Phần phải xử lý ở Backend
+`warehouse_management_mysql.sql` là schema chính. `warehouse_sample_data.sql` là seed demo cho frontend và integration test.
 
-Database chỉ giữ cấu trúc và constraint cơ bản. NestJS Service vẫn phải kiểm soát:
+## 7. Phần backend kiểm soát
+
+Database giữ cấu trúc và constraint cơ bản. Service layer kiểm soát:
 
 - Trạng thái phiếu.
-- Quyền xác nhận.
+- Quyền xác nhận/duyệt.
 - Không tự duyệt adjustment.
-- Batch bắt buộc.
-- Expiry bắt buộc.
-- FEFO.
+- Batch bắt buộc với SKU tracking lô.
+- Expiry bắt buộc với SKU tracking hạn sử dụng.
+- FEFO/FIFO allocation.
 - Vị trí thuộc đúng kho.
-- Phiếu đã confirmed không sửa.
-- Inventory transaction và cập nhật tồn phải cùng transaction.
-- Sinh mã phiếu duy nhất.
+- Phiếu đã confirmed không sửa trực tiếp.
+- Inventory transaction và cập nhật tồn nằm trong cùng transaction.
+- Sinh mã phiếu/giao dịch duy nhất.

@@ -1,12 +1,58 @@
 import type { Request, Response } from 'express';
 
+const jsonResponse = {
+  '200': {
+    description: 'Successful response',
+    content: {
+      'application/json': {
+        schema: { $ref: '#/components/schemas/ApiSuccess' },
+      },
+    },
+  },
+};
+
+const protectedPost = (summary: string) => ({
+  post: {
+    summary,
+    security: [{ bearerAuth: [] }],
+    responses: jsonResponse,
+  },
+});
+
+const listGet = (summary: string, secured = false) => ({
+  get: {
+    summary,
+    ...(secured ? { security: [{ bearerAuth: [] }] } : {}),
+    parameters: [
+      { name: 'id', in: 'query', schema: { type: 'integer' } },
+      { name: 'search', in: 'query', schema: { type: 'string' } },
+      { name: 'warehouseId', in: 'query', schema: { type: 'integer' } },
+      { name: 'productVariantId', in: 'query', schema: { type: 'integer' } },
+    ],
+    responses: jsonResponse,
+  },
+});
+
 const openApiDocument = {
   openapi: '3.0.3',
   info: {
     title: 'Bambi WMS API',
     version: '1.0.0',
+    description:
+      'HTTP API cho hệ thống quản lý kho Mẹ & Bé. Backend dùng Express, TypeScript và MySQL.',
   },
   servers: [{ url: 'http://localhost:3000' }],
+  tags: [
+    { name: 'Health' },
+    { name: 'Auth' },
+    { name: 'Authorization' },
+    { name: 'Warehouse' },
+    { name: 'Catalog' },
+    { name: 'Inventory' },
+    { name: 'Documents' },
+    { name: 'Reports' },
+    { name: 'System' },
+  ],
   components: {
     securitySchemes: {
       bearerAuth: {
@@ -15,103 +61,222 @@ const openApiDocument = {
         bearerFormat: 'JWT',
       },
     },
+    schemas: {
+      ApiSuccess: {
+        type: 'object',
+        properties: {
+          data: {
+            description: 'Response payload. Shape depends on endpoint.',
+          },
+        },
+      },
+      ApiError: {
+        type: 'object',
+        properties: {
+          error: {
+            type: 'object',
+            properties: {
+              code: { type: 'string' },
+              message: { type: 'string' },
+              requestId: { type: 'string' },
+            },
+          },
+        },
+      },
+      LoginRequest: {
+        type: 'object',
+        required: ['email', 'password'],
+        properties: {
+          email: { type: 'string', format: 'email' },
+          password: { type: 'string', minLength: 6 },
+        },
+      },
+      TokenRefreshRequest: {
+        type: 'object',
+        required: ['refreshToken'],
+        properties: { refreshToken: { type: 'string' } },
+      },
+      LogoutRequest: {
+        type: 'object',
+        required: ['refreshToken'],
+        properties: { refreshToken: { type: 'string' } },
+      },
+    },
+    responses: {
+      Unauthorized: {
+        description: 'Missing, invalid or expired token',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ApiError' },
+          },
+        },
+      },
+      Forbidden: {
+        description: 'Authenticated user does not have required permission',
+        content: {
+          'application/json': {
+            schema: { $ref: '#/components/schemas/ApiError' },
+          },
+        },
+      },
+    },
   },
   paths: {
-    '/health': { get: { summary: 'Health check' } },
-    '/auth/login': { post: { summary: 'Login' } },
-    '/auth/refresh': { post: { summary: 'Refresh token' } },
-    '/auth/logout': { post: { summary: 'Logout' } },
-    '/stock/current': { get: { summary: 'Current stock' } },
-    '/stock/near-expiry': { get: { summary: 'Near expiry stock' } },
-    '/stock/allocation': { get: { summary: 'Allocation preview' } },
-    '/goods-receipts/{id}/confirm': {
-      post: {
-        summary: 'Confirm goods receipt',
-        security: [{ bearerAuth: [] }],
+    '/': {
+      get: { tags: ['Health'], summary: 'API root', responses: jsonResponse },
+    },
+    '/health': {
+      get: {
+        tags: ['Health'],
+        summary: 'Health check',
+        responses: jsonResponse,
       },
     },
-    '/goods-receipts/{id}/reverse': {
-      post: {
-        summary: 'Reverse goods receipt',
-        security: [{ bearerAuth: [] }],
+    '/openapi.json': {
+      get: {
+        tags: ['System'],
+        summary: 'OpenAPI document',
+        responses: jsonResponse,
       },
     },
-    '/goods-issues/{id}/confirm': {
-      post: { summary: 'Confirm goods issue', security: [{ bearerAuth: [] }] },
-    },
-    '/goods-issues/{id}/reverse': {
-      post: { summary: 'Reverse goods issue', security: [{ bearerAuth: [] }] },
-    },
-    '/stock-transfers/{id}/confirm': {
+    '/docs': { get: { tags: ['System'], summary: 'Swagger UI' } },
+
+    '/auth/login': {
       post: {
-        summary: 'Confirm stock transfer',
-        security: [{ bearerAuth: [] }],
+        tags: ['Auth'],
+        summary: 'Login and issue access/refresh tokens',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/LoginRequest' },
+            },
+          },
+        },
+        responses: jsonResponse,
       },
     },
-    '/stock-transfers/{id}/reverse': {
+    '/auth/refresh': {
       post: {
-        summary: 'Reverse stock transfer',
-        security: [{ bearerAuth: [] }],
+        tags: ['Auth'],
+        summary: 'Rotate refresh token and issue a new access token',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/TokenRefreshRequest' },
+            },
+          },
+        },
+        responses: jsonResponse,
       },
     },
+    '/auth/logout': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Revoke refresh session',
+        requestBody: {
+          required: true,
+          content: {
+            'application/json': {
+              schema: { $ref: '#/components/schemas/LogoutRequest' },
+            },
+          },
+        },
+        responses: jsonResponse,
+      },
+    },
+    '/auth/password-reset/request': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Request password reset token',
+        responses: jsonResponse,
+      },
+    },
+    '/auth/password-reset/reset': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Reset password with token',
+        responses: jsonResponse,
+      },
+    },
+
+    '/authorization': listGet('List roles and permissions', true),
+    '/warehouses': listGet('List warehouses'),
+    '/locations': listGet('List warehouse structure and locations'),
+    '/catalog': listGet(
+      'List categories, brands, units, products and variants',
+    ),
+    '/suppliers': listGet('List suppliers'),
+    '/batches': listGet('List product batches'),
+    '/stock/current': listGet('Current stock by location and batch'),
+    '/stock/near-expiry': listGet('Near-expiry stock'),
+    '/stock/allocation': listGet('Preview FEFO/FIFO allocation'),
+    '/inventory-transactions': listGet(
+      'List immutable inventory transaction log',
+    ),
+
+    '/goods-receipts': listGet('List goods receipts'),
+    '/goods-receipts/{id}/confirm': protectedPost(
+      'Confirm goods receipt and increase stock',
+    ),
+    '/goods-receipts/{id}/reverse': protectedPost(
+      'Reverse confirmed goods receipt',
+    ),
+    '/goods-issues': listGet('List goods issues'),
+    '/goods-issues/{id}/confirm': protectedPost(
+      'Confirm goods issue and decrease stock',
+    ),
+    '/goods-issues/{id}/reverse': protectedPost(
+      'Reverse confirmed goods issue',
+    ),
+    '/stock-transfers': listGet('List stock transfers'),
+    '/stock-transfers/{id}/confirm': protectedPost('Confirm stock transfer'),
+    '/stock-transfers/{id}/reverse': protectedPost(
+      'Reverse confirmed stock transfer',
+    ),
     '/stock-counts': {
-      get: { summary: 'List stock counts' },
-      post: { summary: 'Create stock count', security: [{ bearerAuth: [] }] },
+      ...listGet('List stock counts'),
+      post: {
+        tags: ['Inventory'],
+        summary: 'Create stock count',
+        security: [{ bearerAuth: [] }],
+        responses: jsonResponse,
+      },
     },
-    '/stock-counts/{id}/items': { get: { summary: 'List stock count items' } },
-    '/stock-counts/{id}/start': {
-      post: { summary: 'Start stock count', security: [{ bearerAuth: [] }] },
-    },
+    '/stock-counts/{id}/items': listGet('List stock count items'),
+    '/stock-counts/{id}/start': protectedPost('Start stock count'),
     '/stock-counts/{id}/items/{itemId}/count': {
       patch: {
+        tags: ['Inventory'],
         summary: 'Record counted quantity',
         security: [{ bearerAuth: [] }],
+        responses: jsonResponse,
       },
     },
-    '/stock-counts/{id}/submit': {
-      post: { summary: 'Submit stock count', security: [{ bearerAuth: [] }] },
-    },
-    '/stock-counts/{id}/approve': {
-      post: { summary: 'Approve stock count', security: [{ bearerAuth: [] }] },
-    },
-    '/stock-adjustments/{id}/approve': {
-      post: {
-        summary: 'Approve stock adjustment',
-        security: [{ bearerAuth: [] }],
-      },
-    },
-    '/stock-adjustments/{id}/reject': {
-      post: {
-        summary: 'Reject stock adjustment',
-        security: [{ bearerAuth: [] }],
-      },
-    },
-    '/stock-adjustments/{id}/cancel': {
-      post: {
-        summary: 'Cancel stock adjustment',
-        security: [{ bearerAuth: [] }],
-      },
-    },
-    '/alerts/generate': {
-      post: {
-        summary: 'Generate inventory alerts',
-        security: [{ bearerAuth: [] }],
-      },
-    },
-    '/notifications/generate': {
-      post: {
-        summary: 'Generate notifications from alerts',
-        security: [{ bearerAuth: [] }],
-      },
-    },
-    '/reports/product-stock': { get: { summary: 'Product stock report' } },
-    '/reports/near-expiry': { get: { summary: 'Near expiry report' } },
-    '/reports/inventory-movements': {
-      get: { summary: 'Inventory movement summary' },
-    },
-    '/reports/inventory-transactions': {
-      get: { summary: 'Inventory transaction report' },
-    },
+    '/stock-counts/{id}/submit': protectedPost('Submit stock count'),
+    '/stock-counts/{id}/approve': protectedPost('Approve stock count'),
+    '/stock-adjustments': listGet('List stock adjustments'),
+    '/stock-adjustments/{id}/approve': protectedPost(
+      'Approve stock adjustment',
+    ),
+    '/stock-adjustments/{id}/reject': protectedPost('Reject stock adjustment'),
+    '/stock-adjustments/{id}/cancel': protectedPost('Cancel stock adjustment'),
+
+    '/alerts': listGet('List alerts'),
+    '/alerts/generate': protectedPost('Generate inventory alerts'),
+    '/notifications': listGet('List notifications', true),
+    '/notifications/generate': protectedPost(
+      'Generate notifications from alerts',
+    ),
+    '/audit-logs': listGet('List audit logs', true),
+    '/attachments': listGet('List attachments'),
+    '/settings': listGet('List application settings'),
+    '/reports': listGet('Default report catalog'),
+    '/reports/product-stock': listGet('Product stock report'),
+    '/reports/near-expiry': listGet('Near-expiry report'),
+    '/reports/inventory-movements': listGet('Inventory movement summary'),
+    '/reports/inventory-transactions': listGet('Inventory transaction report'),
   },
 };
 
@@ -121,7 +286,7 @@ export function getOpenApiJson(_req: Request, res: Response): void {
 
 export function getSwaggerUi(_req: Request, res: Response): void {
   res.type('html').send(`<!doctype html>
-<html lang="en">
+<html lang="vi">
 <head>
   <meta charset="utf-8" />
   <title>Bambi WMS API Docs</title>

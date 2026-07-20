@@ -133,7 +133,7 @@ VALUES
 ((SELECT id FROM product_variants WHERE sku='SUA-FRISO-3'), (SELECT id FROM suppliers WHERE code='NCC-FRISO'), 'LOT-FRISO3-202605', '2026-05-01', '2027-11-30', '2026-07-02', 'ACTIVE', 'Sữa Friso số 3'),
 ((SELECT id FROM product_variants WHERE sku='SUA-FRISO-4'), (SELECT id FROM suppliers WHERE code='NCC-FRISO'), 'LOT-FRISO4-202605', '2026-05-01', '2027-12-31', '2026-07-02', 'ACTIVE', 'Sữa Friso số 4'),
 ((SELECT id FROM product_variants WHERE sku='TI-GIAM-CHICCO'), (SELECT id FROM suppliers WHERE code='NCC-BABYCARE'), 'LOT-CHICCO-202606', '2026-06-10', NULL, '2026-07-03', 'ACTIVE', 'Ti giả Chicco'),
-((SELECT id FROM product_variants WHERE sku='BOT-HEINZ-GC'), (SELECT id FROM suppliers WHERE code='NCC-BABYCARE'), 'LOT-HEINZ-202601', '2026-01-10', '2026-09-20', '2026-07-04', 'NEAR_EXPIRY', 'Bột ăn dặm gần hạn'),
+((SELECT id FROM product_variants WHERE sku='BOT-HEINZ-GC'), (SELECT id FROM suppliers WHERE code='NCC-BABYCARE'), 'LOT-HEINZ-202601', '2026-01-10', '2026-09-15', '2026-07-04', 'NEAR_EXPIRY', 'Bột ăn dặm gần hạn'),
 ((SELECT id FROM product_variants WHERE sku='BINH-PIGEON-240'), (SELECT id FROM suppliers WHERE code='NCC-BABYCARE'), 'LOT-PIGEON-202606', '2026-06-15', NULL, '2026-07-04', 'ACTIVE', 'Bình sữa Pigeon'),
 ((SELECT id FROM product_variants WHERE sku='BIM-MOONY-M'), (SELECT id FROM suppliers WHERE code='NCC-BABYCARE'), 'LOT-MOONY-M-202607', '2026-07-01', NULL, '2026-07-05', 'ACTIVE', 'Tã Moony size M')
 ON DUPLICATE KEY UPDATE status = VALUES(status), expiry_date = VALUES(expiry_date), notes = VALUES(notes);

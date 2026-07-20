@@ -1,4 +1,4 @@
-﻿# Backend Documentation - Bambi WMS
+# Backend Documentation - Bambi WMS
 
 Backend là API server cho hệ thống quản lý kho. Code dùng Express + TypeScript, kết nối MySQL bằng `mysql2/promise`.
 
@@ -216,7 +216,7 @@ Các endpoint quan trọng có thể dùng middleware:
 requirePermission('goods_receipts:confirm')
 ```
 
-Hiện backend có JWT verification và active-user check. Một số auth flow như login/refresh/logout đầy đủ vẫn cần hoàn thiện theo roadmap.
+Backend có login, refresh token rotation, logout/revoke session, password reset flow, JWT verification và active-user check.
 
 ## 9. Validation
 
@@ -375,20 +375,26 @@ Authorization: Bearer <token>
 
 User có token nhưng thiếu permission cần thiết.
 
-## 16. Roadmap Backend
+## 16. Trạng Thái Backend
 
-Những phần cần hoàn thiện tiếp:
+Backend core đã hoàn thiện cho phạm vi đồ án và demo với MySQL thật:
 
-- Login/refresh/logout thật.
-- Session management.
-- Password reset.
-- Integration tests với MySQL thật.
-- Hoàn thiện stock count workflow.
-- Reject/cancel/reversal transaction flows.
-- Notification + alert generation.
-- Report endpoints thực tế hơn.
-- OpenAPI/Swagger docs.
-- Structured logging và request id.
+- Auth thật: login, refresh token rotation, logout, session, password reset.
+- Role/permission và middleware kiểm quyền.
+- Cấu trúc kho: warehouse, zone, shelf, location.
+- Danh mục hàng hóa: category, brand, unit, product, variant.
+- Supplier, batch, stock location và immutable inventory transaction log.
+- Nhập kho, xuất kho, chuyển kho, kiểm kê, điều chỉnh tồn.
+- Confirm/reverse/reject/cancel theo từng nghiệp vụ phù hợp.
+- Alert, notification, report, audit log, settings, attachment metadata.
+- OpenAPI JSON và Swagger UI tại `/openapi.json` và `/docs`.
+- Unit, e2e và integration test nền tảng.
+
+Giới hạn còn lại nằm ở mức production hardening, không phải thiếu core nghiệp vụ:
+
+- OpenAPI mới mô tả endpoint chính và response wrapper, chưa chi tiết toàn bộ DTO field.
+- Test coverage mới khóa các luồng nền tảng; chưa bao phủ toàn bộ edge case nghiệp vụ tồn kho.
+- Socket.IO mới là nền realtime foundation, chưa đẩy notification realtime end-to-end cho mọi event.
 
 ## 17. Checklist Cho Intern Khi Sửa Backend
 

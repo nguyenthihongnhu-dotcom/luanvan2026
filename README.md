@@ -1,4 +1,4 @@
-﻿# Bambi WMS - Warehouse Management System
+# Bambi WMS - Warehouse Management System
 
 Bambi WMS là đồ án hệ thống quản lý kho cho cửa hàng Mẹ & Bé. Repo này có 2 phần chính:
 
@@ -25,7 +25,7 @@ Backend Express API
 MySQL database
 ```
 
-Frontend hiện có một phần dữ liệu mock để phục vụ giao diện. Backend đã có cấu trúc API và nhiều module nghiệp vụ kho, nhưng chưa phải mọi màn hình frontend đều đã nối API thật.
+Frontend dùng API backend cho các màn core và vẫn giữ fallback cục bộ ở một số nơi để demo không bị trắng màn khi API tắt. Backend hiện đã có các module nghiệp vụ kho chính, chạy với MySQL thật và có seed data mẫu để demo.
 
 ## 2. Yêu Cầu Môi Trường
 
@@ -158,4 +158,4 @@ Backend đã có nền tảng production-oriented cho API, auth middleware, vali
 
 Frontend đã được refactor theo hướng feature-first, có app providers, shared services, auth context, dashboard layout và các màn hình quản lý cơ bản.
 
-Một số phần vẫn là mock hoặc scaffold. Khi nối API thật, ưu tiên đưa logic gọi API vào `services`, không nhét trực tiếp vào page/component.
+Backend core đã triển khai đầy đủ cho phạm vi đồ án: auth/session, phân quyền, cấu trúc kho, hàng hóa, lô hàng, tồn kho, nhập/xuất/chuyển kho, kiểm kê, điều chỉnh, cảnh báo, thông báo, báo cáo, audit log và OpenAPI. Frontend vẫn có fallback local ở một số màn để hỗ trợ demo khi backend/MySQL chưa chạy.
