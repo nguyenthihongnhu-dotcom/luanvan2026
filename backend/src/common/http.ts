@@ -49,12 +49,14 @@ export function errorHandler(
     return;
   }
 
-  console.error(JSON.stringify({
-    level: 'error',
-    event: 'unhandled_error',
-    requestId: req.requestId,
-    error: error instanceof Error ? error.message : String(error),
-  }));
+  console.error(
+    JSON.stringify({
+      level: 'error',
+      event: 'unhandled_error',
+      requestId: req.requestId,
+      error: error instanceof Error ? error.message : String(error),
+    }),
+  );
 
   res.status(500).json({
     error: {

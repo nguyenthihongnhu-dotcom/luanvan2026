@@ -394,7 +394,11 @@ export async function recordStockCountItemTransaction(
       throw new Error('STOCK_COUNT_NOT_COUNTABLE');
     }
 
-    const item = await lockCountItem(connection, input.stockCountId, input.itemId);
+    const item = await lockCountItem(
+      connection,
+      input.stockCountId,
+      input.itemId,
+    );
 
     if (!item) {
       throw new Error('STOCK_COUNT_ITEM_NOT_FOUND');

@@ -6,11 +6,15 @@ import {
   refreshController,
   requestPasswordResetController,
   resetPasswordController,
+  registerController,
+  listUsersController,
 } from './auth.controller';
 
 export const authRouter = Router();
 
+authRouter.get('/users', asyncHandler(listUsersController));
 authRouter.post('/login', asyncHandler(loginController));
+authRouter.post('/register', asyncHandler(registerController));
 authRouter.post('/refresh', asyncHandler(refreshController));
 authRouter.post('/logout', asyncHandler(logoutController));
 authRouter.post(

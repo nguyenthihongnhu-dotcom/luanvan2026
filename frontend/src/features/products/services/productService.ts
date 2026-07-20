@@ -62,6 +62,35 @@ export async function listProducts(): Promise<ProductItem[]> {
     });
 }
 
+
+export async function createProduct(input: ProductItem): Promise<void> {
+    await httpClient.post('/catalog/products', {
+        sku: input.sku,
+        name: input.name,
+        category: input.category,
+        stock: input.stock,
+        minStock: input.minStock,
+        expiryDate: input.expiryDate || undefined,
+    });
+}
+
+export async function updateProduct(id: number, input: ProductItem): Promise<void> {
+    await httpClient.put(`/catalog/products/${id}`, {
+        sku: input.sku,
+        name: input.name,
+        category: input.category,
+        stock: input.stock,
+        minStock: input.minStock,
+        expiryDate: input.expiryDate || undefined,
+    });
+}
+
+export async function deleteProduct(id: number): Promise<void> {
+    await httpClient.delete(`/catalog/products/${id}`);
+}
 export const productService = {
     listProducts,
+    createProduct,
+    updateProduct,
+    deleteProduct,
 };

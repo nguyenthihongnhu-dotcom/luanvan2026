@@ -1,4 +1,4 @@
-﻿import type { AlertsFilters, AlertsRow } from './alerts.model';
+import type { AlertsFilters, AlertsRow } from './alerts.model';
 import {
   findAlerts as findAlertsRepository,
   generateInventoryAlerts as generateInventoryAlertsRepository,

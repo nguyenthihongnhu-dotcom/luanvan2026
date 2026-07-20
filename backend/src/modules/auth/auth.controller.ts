@@ -5,6 +5,8 @@ import {
   refresh,
   requestPasswordReset,
   resetPassword,
+  register,
+  listUsers,
 } from './auth.service';
 import {
   parseLoginInput,
@@ -12,6 +14,7 @@ import {
   parseRefreshInput,
   parseRequestPasswordResetInput,
   parseResetPasswordInput,
+  parseRegisterInput,
 } from './auth.validation';
 
 function getRequestMetadata(req: Request): {
@@ -67,4 +70,20 @@ export async function resetPasswordController(
   const input = parseResetPasswordInput(req.body);
 
   res.json({ data: await resetPassword(input) });
+}
+
+export async function registerController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const input = parseRegisterInput(req.body);
+
+  res.status(201).json({ data: await register(input) });
+}
+
+export async function listUsersController(
+  _req: Request,
+  res: Response,
+): Promise<void> {
+  res.json({ data: await listUsers() });
 }

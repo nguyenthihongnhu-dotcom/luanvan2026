@@ -1,7 +1,11 @@
-import type { ResultSetHeader } from 'mysql2';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../database/db';
 import type {
   CreateLocationInput,
+  CreateShelfInput,
+  CreateZoneInput,
+  CreateZoneResult,
+  CreateShelfResult,
   CreateLocationResult,
   LocationFilters,
   LocationRow,
@@ -145,4 +149,173 @@ export async function softDeleteLocationByLayer(
   });
 
   return { affectedRows: result.affectedRows };
+}
+
+export async function insertShelf(
+  input: CreateShelfInput,
+): Promise<CreateShelfResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [zoneRows] = await connection.query<
+      Array<RowDataPacket & { id: number }>
+    >(
+      `
+        SELECT wz.id
+        FROM warehouse_zones wz
+        JOIN warehouses w ON w.id = wz.warehouse_id
+        WHERE wz.code = ?
+          AND wz.deleted_at IS NULL
+          AND w.id = COALESCE(?, w.id)
+        ORDER BY w.id
+        LIMIT 1
+      `,
+      [input.zoneCode, input.warehouseId ?? null],
+    );
+    const zoneId = zoneRows[0]?.id;
+
+    if (!zoneId) {
+      throw new Error('ZONE_NOT_FOUND');
+    }
+
+    const [maxRows] = await connection.query<
+      Array<
+        RowDataPacket & { max_code: string | null; max_sort: number | null }
+      >
+    >(
+      `SELECT MAX(code) AS max_code, MAX(sort_order) AS max_sort FROM warehouse_shelves WHERE zone_id = ? AND deleted_at IS NULL`,
+      [zoneId],
+    );
+    const nextNumber = input.code
+      ? Number(input.code.replace(/\D/g, '')) || 1
+      : (Number(String(maxRows[0]?.max_code ?? '0').replace(/\D/g, '')) || 0) +
+        1;
+    const shelfCode = input.code ?? String(nextNumber).padStart(2, '0');
+    const shelfName = input.name ?? `Kệ ${shelfCode}`;
+
+    const [shelfResult] = await connection.query<ResultSetHeader>(
+      `INSERT INTO warehouse_shelves (zone_id, code, name, status, sort_order) VALUES (?, ?, ?, 'ACTIVE', ?)`,
+      [zoneId, shelfCode, shelfName, (maxRows[0]?.max_sort ?? 0) + 1],
+    );
+
+    const [layerRows] = await connection.query<
+      Array<RowDataPacket & { max_layer: number | null }>
+    >(
+      `
+        SELECT MAX(wl.layer_no) AS max_layer
+        FROM warehouse_locations wl
+        JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+        WHERE ws.zone_id = ?
+          AND wl.deleted_at IS NULL
+      `,
+      [zoneId],
+    );
+    const layerCount = input.layerCount ?? layerRows[0]?.max_layer ?? 3;
+
+    for (let layerNo = 1; layerNo <= layerCount; layerNo += 1) {
+      const layerCode = String(layerNo).padStart(2, '0');
+      await connection.query(
+        `INSERT INTO warehouse_locations (shelf_id, code, layer_no, name, location_type, status)
+         VALUES (?, ?, ?, ?, 'STANDARD', 'ACTIVE')`,
+        [
+          shelfResult.insertId,
+          `${input.zoneCode}-${shelfCode}-${layerCode}`,
+          layerNo,
+          `${shelfName} tầng ${layerCode}`,
+        ],
+      );
+    }
+
+    await connection.commit();
+    return {
+      id: shelfResult.insertId,
+      code: shelfCode,
+      createdLocationCount: layerCount,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+export async function insertZone(
+  input: CreateZoneInput,
+): Promise<CreateZoneResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [warehouseRows] = await connection.query<
+      Array<RowDataPacket & { id: number }>
+    >(
+      `SELECT id FROM warehouses WHERE id = COALESCE(?, id) AND deleted_at IS NULL ORDER BY id LIMIT 1`,
+      [input.warehouseId ?? null],
+    );
+    const warehouseId = warehouseRows[0]?.id;
+
+    if (!warehouseId) {
+      throw new Error('WAREHOUSE_NOT_FOUND');
+    }
+
+    const [sortRows] = await connection.query<
+      Array<RowDataPacket & { max_sort: number | null }>
+    >(
+      `SELECT MAX(sort_order) AS max_sort FROM warehouse_zones WHERE warehouse_id = ? AND deleted_at IS NULL`,
+      [warehouseId],
+    );
+
+    const [zoneResult] = await connection.query<ResultSetHeader>(
+      `INSERT INTO warehouse_zones (warehouse_id, code, name, status, sort_order) VALUES (?, ?, ?, 'ACTIVE', ?)`,
+      [
+        warehouseId,
+        input.code,
+        input.name ?? `Khu ${input.code}`,
+        (sortRows[0]?.max_sort ?? 0) + 1,
+      ],
+    );
+
+    const shelfCount = input.shelfCount ?? 1;
+    const layerCount = input.layerCount ?? 3;
+    let createdLocationCount = 0;
+
+    for (let shelfNo = 1; shelfNo <= shelfCount; shelfNo += 1) {
+      const shelfCode = String(shelfNo).padStart(2, '0');
+      const [shelfResult] = await connection.query<ResultSetHeader>(
+        `INSERT INTO warehouse_shelves (zone_id, code, name, status, sort_order) VALUES (?, ?, ?, 'ACTIVE', ?)`,
+        [zoneResult.insertId, shelfCode, `Kệ ${shelfCode}`, shelfNo],
+      );
+
+      for (let layerNo = 1; layerNo <= layerCount; layerNo += 1) {
+        const layerCode = String(layerNo).padStart(2, '0');
+        await connection.query(
+          `INSERT INTO warehouse_locations (shelf_id, code, layer_no, name, location_type, status)
+           VALUES (?, ?, ?, ?, 'STANDARD', 'ACTIVE')`,
+          [
+            shelfResult.insertId,
+            `${input.code}-${shelfCode}-${layerCode}`,
+            layerNo,
+            `Kệ ${shelfCode} tầng ${layerCode}`,
+          ],
+        );
+        createdLocationCount += 1;
+      }
+    }
+
+    await connection.commit();
+    return {
+      id: zoneResult.insertId,
+      code: input.code,
+      createdShelfCount: shelfCount,
+      createdLocationCount,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }

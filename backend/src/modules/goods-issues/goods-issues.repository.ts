@@ -19,6 +19,7 @@ import type {
   GoodsIssuesFilters,
   GoodsIssuesRow,
   QueryParams,
+  CreateGoodsIssueInput,
 } from './goods-issues.model';
 
 const tableName = 'goods_issues';
@@ -513,4 +514,28 @@ export async function reverseGoodsIssueTransaction(
   } finally {
     connection.release();
   }
+}
+export async function insertGoodsIssue(
+  input: CreateGoodsIssueInput,
+): Promise<{ id: number }> {
+  const [warehouseRows] = await db.query<Array<RowDataPacket & { id: number }>>(
+    'SELECT id FROM warehouses WHERE id = ? OR code = ? LIMIT 1',
+    [input.warehouseId ?? 0, 'KHO-HCM-01'],
+  );
+  const [userRows] = await db.query<Array<RowDataPacket & { id: number }>>(
+    'SELECT id FROM users WHERE id = ? OR employee_code = ? LIMIT 1',
+    [input.createdBy ?? 0, 'NV-KHO-01'],
+  );
+  const [result] = await db.query<ResultSetHeader>(
+    `INSERT INTO goods_issues (issue_code, warehouse_id, status, reference_no, note, created_by)
+     VALUES (?, ?, 'DRAFT', ?, ?, ?)`,
+    [
+      input.issueCode,
+      warehouseRows[0]?.id,
+      input.referenceNo ?? null,
+      input.note ?? null,
+      userRows[0]?.id,
+    ],
+  );
+  return { id: result.insertId };
 }

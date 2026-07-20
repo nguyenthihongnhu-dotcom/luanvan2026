@@ -1,7 +1,27 @@
 import type { Express } from 'express';
 import request from 'supertest';
+import type { Response as SupertestResponse } from 'supertest';
 import { createApp } from '../src/app';
 import { closeDatabasePool, db } from '../src/database/db';
+
+type ApiResponse<T> = { data: T };
+type LoginResponse = {
+  accessToken: string;
+  refreshToken: string;
+  user: {
+    role: string;
+    permissions: string[];
+  };
+};
+type StockRow = { sku: string };
+type InventoryTransactionRow = { transaction_type: string };
+
+type DataList<T> = T[];
+
+function getResponseData<T>(response: SupertestResponse): T {
+  const body = response.body as unknown as ApiResponse<T>;
+  return body.data;
+}
 
 describe('Backend integration with MySQL seed data', () => {
   let app: Express;
@@ -28,23 +48,21 @@ describe('Backend integration with MySQL seed data', () => {
       .post('/auth/login')
       .send({ email: 'admin@bambi.test', password: '123456' })
       .expect(200);
+    const data = getResponseData<LoginResponse>(response);
 
-    expect(response.body.data.accessToken).toEqual(expect.any(String));
-    expect(response.body.data.refreshToken).toEqual(expect.any(String));
-    expect(response.body.data.user.role).toBe('ADMIN');
-    expect(response.body.data.user.permissions).toContain(
-      'goods_receipts:confirm',
-    );
+    expect(data.accessToken).toEqual(expect.any(String));
+    expect(data.refreshToken).toEqual(expect.any(String));
+    expect(data.user.role).toBe('ADMIN');
+    expect(data.user.permissions).toContain('goods_receipts:confirm');
   });
 
   it('serves seeded current stock data', async () => {
     const response = await request(app).get('/stock/current').expect(200);
+    const data = getResponseData<DataList<StockRow>>(response);
 
-    expect(response.body.data.length).toBeGreaterThan(0);
-    expect(response.body.data).toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ sku: 'BIM-HUG-M' }),
-      ]),
+    expect(data.length).toBeGreaterThan(0);
+    expect(data).toEqual(
+      expect.arrayContaining([expect.objectContaining({ sku: 'BIM-HUG-M' })]),
     );
   });
 
@@ -52,9 +70,10 @@ describe('Backend integration with MySQL seed data', () => {
     const response = await request(app)
       .get('/inventory-transactions')
       .expect(200);
+    const data = getResponseData<DataList<InventoryTransactionRow>>(response);
 
-    expect(response.body.data.length).toBeGreaterThan(0);
-    expect(response.body.data).toEqual(
+    expect(data.length).toBeGreaterThan(0);
+    expect(data).toEqual(
       expect.arrayContaining([
         expect.objectContaining({ transaction_type: 'RECEIPT' }),
       ]),
@@ -68,8 +87,10 @@ describe('Backend integration with MySQL seed data', () => {
     const nearExpiry = await request(app)
       .get('/reports/near-expiry')
       .expect(200);
+    const productStockData = getResponseData<DataList<unknown>>(productStock);
+    const nearExpiryData = getResponseData<DataList<unknown>>(nearExpiry);
 
-    expect(productStock.body.data.length).toBeGreaterThan(0);
-    expect(nearExpiry.body.data.length).toBeGreaterThan(0);
+    expect(productStockData.length).toBeGreaterThan(0);
+    expect(nearExpiryData.length).toBeGreaterThan(0);
   });
 });

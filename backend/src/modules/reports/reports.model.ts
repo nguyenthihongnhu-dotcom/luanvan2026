@@ -1,4 +1,4 @@
-﻿import type { RowDataPacket } from 'mysql2';
+import type { RowDataPacket } from 'mysql2';
 
 export type QueryParams = Record<string, string | number | null>;
 

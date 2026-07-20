@@ -1,4 +1,8 @@
-﻿import type { PoolConnection, ResultSetHeader, RowDataPacket } from 'mysql2/promise';
+import type {
+  PoolConnection,
+  ResultSetHeader,
+  RowDataPacket,
+} from 'mysql2/promise';
 import { buildUniqueCode } from '../code/code-generator';
 
 type InventoryTransactionRow = RowDataPacket & {
@@ -26,7 +30,15 @@ export type ReverseInventoryReferenceInput = {
 };
 
 function reversalLocationId(transaction: InventoryTransactionRow): number {
-  if (['RECEIPT', 'TRANSFER_IN', 'COUNT_ADJUSTMENT_IN', 'MANUAL_ADJUSTMENT_IN', 'RETURN_IN'].includes(transaction.transaction_type)) {
+  if (
+    [
+      'RECEIPT',
+      'TRANSFER_IN',
+      'COUNT_ADJUSTMENT_IN',
+      'MANUAL_ADJUSTMENT_IN',
+      'RETURN_IN',
+    ].includes(transaction.transaction_type)
+  ) {
     if (!transaction.destination_location_id) {
       throw new Error('REVERSAL_LOCATION_NOT_FOUND');
     }
@@ -34,7 +46,15 @@ function reversalLocationId(transaction: InventoryTransactionRow): number {
     return transaction.destination_location_id;
   }
 
-  if (['ISSUE', 'TRANSFER_OUT', 'COUNT_ADJUSTMENT_OUT', 'MANUAL_ADJUSTMENT_OUT', 'RETURN_OUT'].includes(transaction.transaction_type)) {
+  if (
+    [
+      'ISSUE',
+      'TRANSFER_OUT',
+      'COUNT_ADJUSTMENT_OUT',
+      'MANUAL_ADJUSTMENT_OUT',
+      'RETURN_OUT',
+    ].includes(transaction.transaction_type)
+  ) {
     if (!transaction.source_location_id) {
       throw new Error('REVERSAL_LOCATION_NOT_FOUND');
     }
@@ -46,7 +66,13 @@ function reversalLocationId(transaction: InventoryTransactionRow): number {
 }
 
 function reversalAddsStock(transactionType: string): boolean {
-  return ['ISSUE', 'TRANSFER_OUT', 'COUNT_ADJUSTMENT_OUT', 'MANUAL_ADJUSTMENT_OUT', 'RETURN_OUT'].includes(transactionType);
+  return [
+    'ISSUE',
+    'TRANSFER_OUT',
+    'COUNT_ADJUSTMENT_OUT',
+    'MANUAL_ADJUSTMENT_OUT',
+    'RETURN_OUT',
+  ].includes(transactionType);
 }
 
 async function lockOriginalTransactions(

@@ -1,4 +1,4 @@
-﻿import type {
+import type {
   NotificationsFilters,
   NotificationsRow,
 } from './notifications.model';
@@ -13,6 +13,8 @@ export async function listNotifications(
   return findNotificationsRepository(filters);
 }
 
-export async function generateNotifications(): Promise<{ createdCount: number }> {
+export async function generateNotifications(): Promise<{
+  createdCount: number;
+}> {
   return generateNotificationsFromAlerts();
 }

@@ -49,8 +49,16 @@ const confirmErrorMap: Record<string, HttpError> = {
     'Only CONFIRMED stock transfers can be reversed',
     'STOCK_TRANSFER_NOT_REVERSIBLE',
   ),
-  REFERENCE_ALREADY_REVERSED: new HttpError(409, 'Reference already reversed', 'REFERENCE_ALREADY_REVERSED'),
-  REVERSAL_INSUFFICIENT_STOCK: new HttpError(409, 'Insufficient destination stock to reverse transfer', 'REVERSAL_INSUFFICIENT_STOCK'),
+  REFERENCE_ALREADY_REVERSED: new HttpError(
+    409,
+    'Reference already reversed',
+    'REFERENCE_ALREADY_REVERSED',
+  ),
+  REVERSAL_INSUFFICIENT_STOCK: new HttpError(
+    409,
+    'Insufficient destination stock to reverse transfer',
+    'REVERSAL_INSUFFICIENT_STOCK',
+  ),
 };
 
 export async function listStockTransfers(

@@ -1,12 +1,16 @@
 import type { Request, Response } from 'express';
 import {
   createLocation,
+  createShelf,
+  createZone,
   listLocations,
   removeLocationLayer,
   removeShelfLocations,
 } from './locations.service';
 import {
   parseCreateLocation,
+  parseCreateShelf,
+  parseCreateZone,
   parseLayerDeleteQuery,
   parseLocationFilters,
   parseShelfId,
@@ -47,4 +51,23 @@ export async function removeLocationLayerController(
   const { shelfId, layerNo } = parseLayerDeleteQuery(req.query);
 
   res.json({ data: await removeLocationLayer(shelfId, layerNo) });
+}
+
+export async function addShelfController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const input = parseCreateShelf(req.body);
+  const result = await createShelf(input);
+
+  res.status(201).json({ data: result });
+}
+export async function addZoneController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const input = parseCreateZone(req.body);
+  const result = await createZone(input);
+
+  res.status(201).json({ data: result });
 }

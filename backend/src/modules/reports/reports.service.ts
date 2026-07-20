@@ -1,4 +1,4 @@
-﻿import type { ReportsFilters, ReportsRow } from './reports.model';
+import type { ReportsFilters, ReportsRow } from './reports.model';
 import {
   findInventoryMovementReport,
   findInventoryTransactionReport,

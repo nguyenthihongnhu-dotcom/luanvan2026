@@ -3,6 +3,7 @@ import { validateInput } from '../../common/validation/validate';
 import type {
   RejectStockAdjustmentInput,
   StockAdjustmentsFilters,
+  CreateStockAdjustmentInput,
 } from './stock-adjustments.model';
 
 const rejectStockAdjustmentSchema = z.object({
@@ -35,4 +36,17 @@ export function parseRejectStockAdjustment(
     rejectedBy,
     ...validateInput(rejectStockAdjustmentSchema, input),
   };
+}
+const createStockAdjustmentSchema = z.object({
+  adjustmentCode: z.string().trim().min(1).max(80),
+  warehouseId: z.coerce.number().int().positive().optional(),
+  reasonCode: z.string().trim().min(1).max(100).optional(),
+  note: z.string().trim().max(500).optional(),
+  createdBy: z.coerce.number().int().positive().optional(),
+});
+
+export function parseCreateStockAdjustment(
+  input: unknown,
+): CreateStockAdjustmentInput {
+  return validateInput(createStockAdjustmentSchema, input);
 }

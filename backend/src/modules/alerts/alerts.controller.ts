@@ -1,4 +1,4 @@
-﻿import type { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { generateAlerts, listAlerts } from './alerts.service';
 import { parseAlertsFilters } from './alerts.validation';
 

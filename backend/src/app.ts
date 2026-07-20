@@ -1,6 +1,9 @@
 import express from 'express';
 import { errorHandler, notFoundHandler } from './common/http';
-import { requestContext, requestLogger } from './common/middleware/request-context.middleware';
+import {
+  requestContext,
+  requestLogger,
+} from './common/middleware/request-context.middleware';
 import { config } from './config/config';
 import { alertsModule } from './modules/alerts/alerts.module';
 import { authModule } from './modules/auth/auth.module';

@@ -16,6 +16,9 @@ import type {
   RequestPasswordResetResult,
   ResetPasswordInput,
   ResetPasswordResult,
+  RegisterInput,
+  RegisterResult,
+  UserListRow,
   TokenPair,
 } from './auth.model';
 import {
@@ -27,6 +30,8 @@ import {
   markLoginFailure,
   markLoginSuccess,
   resetPasswordWithTokenHash,
+  createUser,
+  listUsers as listUsersRepository,
   rotateRefreshSession,
   revokeSessionByRefreshHash,
 } from './auth.repository';
@@ -286,4 +291,24 @@ export async function resetPassword(
   }
 
   return { reset: true };
+}
+
+export async function register(input: RegisterInput): Promise<RegisterResult> {
+  const passwordHash = await bcrypt.hash(input.password, 10);
+  const employeeCode = input.employeeCode ?? `USR-${Date.now()}`;
+
+  await createUser({
+    roleCode: input.roleCode ?? 'STAFF',
+    employeeCode,
+    fullName: input.fullName,
+    email: input.email,
+    phone: input.phone,
+    passwordHash,
+  });
+
+  return login({ email: input.email, password: input.password });
+}
+
+export async function listUsers(): Promise<UserListRow[]> {
+  return listUsersRepository();
 }

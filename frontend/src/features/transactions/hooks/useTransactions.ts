@@ -42,37 +42,22 @@ const initialFormState = {
     nguoiPheDuyet: ""
 };
 
-const fallbackTransactions: Transaction[] = [
-    {
-        id: 1,
-        soPhieu: "PN-2023-001",
-        loai: "NHAP",
-        ngay: "2023-10-25",
-        status: "Da nhap hang",
-        nguoiTao: "Admin",
-        maNCC: "NCC-001",
-        items: [
-            { sku: "SUA-FRISO-3", name: "Sữa Frisolac Gold Số 3", category: "Sữa công thức", shelf: "Kệ 01 - Tầng 03 (A-01-03)" },
-            { sku: "BIM-HUG-M", name: "Tã quần Huggies Size M", category: "Bỉm tã", shelf: "Kệ 01 - Tầng 01 (A-01-01)" }
-        ]
-    },
-    { id: 2, soPhieu: "PX-2023-042", loai: "XUAT", ngay: "2023-10-26", status: "Đăng xuất kho", nguoiTao: "NhânViênA" },
-    { id: 3, soPhieu: "DC-2023-005", loai: "DIEU_CHINH", ngay: "2023-10-27", status: "Chờ duyệt", nguoiTao: "QuảnLýKho" },
-];
-
 export function useTransactions() {
     const [showModal, setShowModal] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
     const [typeFilter, setTypeFilter] = useState("All");
     const [showDetailModal, setShowDetailModal] = useState(false);
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
-    const [items, setItems] = useState<TransactionItem[]>([
-        { sku: "", name: "", category: "", shelf: "" }
-    ]);
+    const [items, setItems] = useState<TransactionItem[]>([{ sku: "", name: "", category: "", shelf: "" }]);
     const { formData, setFormData, handleInputChange, resetForm } = useForm(initialFormState);
-    const [data, setData] = useState<Transaction[]>(fallbackTransactions);
+    const [data, setData] = useState<Transaction[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const reloadTransactions = async () => {
+        const result = await transactionService.listTransactions();
+        setData(result);
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -80,43 +65,34 @@ export function useTransactions() {
         async function loadTransactions() {
             setIsLoading(true);
             setError(null);
-
             try {
                 const result = await transactionService.listTransactions();
-                if (isMounted && result.length > 0) {
-                    setData(result);
-                }
+                if (isMounted) setData(result);
             } catch (err) {
                 console.error("Failed to load transactions from backend:", err);
-                if (isMounted) {
-                    setError("Không tải được giao dịch từ backend, đang hiển thị dữ liệu mẫu.");
-                }
+                if (isMounted) setError("Không tải được giao dịch từ backend.");
             } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
+                if (isMounted) setIsLoading(false);
             }
         }
 
         void loadTransactions();
-
-        return () => {
-            isMounted = false;
-        };
+        return () => { isMounted = false; };
     }, []);
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
-        const transactionData = {
+        const transactionData: Transaction = {
+            id: editingTransaction?.id ?? 0,
             ...formData,
             items: formData.loai === "NHAP" ? items : undefined
         };
 
-        if (editingTransaction) {
-            setData(data.map(t => t.id === editingTransaction.id ? { ...t, ...transactionData } : t));
+        if (!editingTransaction) {
+            await transactionService.createTransaction(transactionData);
+            await reloadTransactions();
         } else {
-            const newId = data.length > 0 ? Math.max(...data.map(t => t.id)) + 1 : 1;
-            setData([...data, { id: newId, ...transactionData }]);
+            setData(data.map((transaction) => transaction.id === editingTransaction.id ? { ...transaction, ...transactionData } : transaction));
         }
 
         setShowModal(false);
@@ -137,48 +113,9 @@ export function useTransactions() {
         setShowDetailModal(true);
     };
 
-    const handleAddItemRow = () => {
-        setItems([...items, { sku: "", name: "", category: "", shelf: "" }]);
-    };
+    const handleAddItemRow = () => setItems([...items, { sku: "", name: "", category: "", shelf: "" }]);
+    const handleRemoveItemRow = (index: number) => setItems(items.length === 1 ? [{ sku: "", name: "", category: "", shelf: "" }] : items.filter((_, itemIndex) => itemIndex !== index));
+    const handleItemChange = (index: number, field: keyof TransactionItem, value: string) => setItems(items.map((item, itemIndex) => itemIndex === index ? { ...item, [field]: value } : item));
 
-    const handleRemoveItemRow = (index: number) => {
-        if (items.length === 1) {
-            setItems([{ sku: "", name: "", category: "", shelf: "" }]);
-        } else {
-            setItems(items.filter((_, i) => i !== index));
-        }
-    };
-
-    const handleItemChange = (index: number, field: keyof TransactionItem, value: string) => {
-        setItems(items.map((item, i) => i === index ? { ...item, [field]: value } : item));
-    };
-
-    return {
-        data,
-        isLoading,
-        error,
-        setData,
-        showModal,
-        setShowModal,
-        editingTransaction,
-        setEditingTransaction,
-        typeFilter,
-        setTypeFilter,
-        showDetailModal,
-        setShowDetailModal,
-        selectedTransaction,
-        setSelectedTransaction,
-        formData,
-        setFormData,
-        handleInputChange,
-        resetForm,
-        handleSubmit,
-        handleAddClick,
-        handleDetailClick,
-        items,
-        setItems,
-        handleAddItemRow,
-        handleRemoveItemRow,
-        handleItemChange,
-    };
+    return { data, isLoading, error, setData, showModal, setShowModal, editingTransaction, setEditingTransaction, typeFilter, setTypeFilter, showDetailModal, setShowDetailModal, selectedTransaction, setSelectedTransaction, formData, setFormData, handleInputChange, resetForm, handleSubmit, handleAddClick, handleDetailClick, items, setItems, handleAddItemRow, handleRemoveItemRow, handleItemChange };
 }

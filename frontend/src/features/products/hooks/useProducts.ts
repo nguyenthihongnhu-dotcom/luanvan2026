@@ -30,11 +30,7 @@ const initialFormState = {
     expiryDate: '',
 };
 
-const fallbackProducts: ProductItem[] = [
-    { id: 1, sku: "BIM-HUG-M", name: "Tã quần Huggies Size M", category: "Bỉm tã", stock: 150, minStock: 10, expiryDate: "2026-12-31", status: "In Stock" },
-    { id: 2, sku: "SUA-FRISO-3", name: "Sữa Frisolac Gold Số 3", category: "Sữa công thức", stock: 8, minStock: 20, expiryDate: "2026-11-30", status: "Low Stock" },
-    { id: 3, sku: "TI-GIAM-CHICCO", name: "Ti giả Chicco silicone", category: "Đồ sơ sinh", stock: 0, minStock: 5, expiryDate: "2026-10-31", status: "Out of Stock" },
-];
+const fallbackProducts: ProductItem[] = [];
 
 export function useProducts() {
     const [showModal, setShowModal] = useState(false);
@@ -43,6 +39,11 @@ export function useProducts() {
     const [products, setProducts] = useState<ProductItem[]>(fallbackProducts);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const reloadProducts = async () => {
+        const result = await productService.listProducts();
+        setProducts(result);
+    };
 
     useEffect(() => {
         let isMounted = true;
@@ -53,34 +54,26 @@ export function useProducts() {
 
             try {
                 const result = await productService.listProducts();
-                if (isMounted && result.length > 0) {
-                    setProducts(result);
-                }
+                if (isMounted) setProducts(result);
             } catch (err) {
                 console.error('Failed to load products from backend:', err);
-                if (isMounted) {
-                    setError('Không tải được sản phẩm từ backend, đang hiển thị dữ liệu mẫu.');
-                }
+                if (isMounted) setError('Không tải được sản phẩm từ backend.');
             } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
+                if (isMounted) setIsLoading(false);
             }
         }
 
         void loadProducts();
-
-        return () => {
-            isMounted = false;
-        };
+        return () => { isMounted = false; };
     }, []);
 
-    const handleSubmit = (e: FormEvent) => {
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
         const stockNum = parseInt(formData.stock) || 0;
         const minStockNum = parseInt(formData.minStock) || 0;
-        const productData = {
+        const productData: ProductItem = {
+            id: editingProduct?.id ?? 0,
             sku: formData.sku,
             name: formData.name,
             category: formData.category,
@@ -91,14 +84,15 @@ export function useProducts() {
         };
 
         if (editingProduct) {
-            setProducts(products.map(p => p.id === editingProduct.id ? { ...p, ...productData } : p));
+            await productService.updateProduct(editingProduct.id, productData);
         } else {
-            const newId = products.length > 0 ? Math.max(...products.map(p => p.id)) + 1 : 1;
-            setProducts([...products, { id: newId, ...productData }]);
+            await productService.createProduct(productData);
         }
 
+        await reloadProducts();
         setShowModal(false);
         setEditingProduct(null);
+        resetForm();
     };
 
     const handleEdit = (product: ProductItem) => {
@@ -116,7 +110,8 @@ export function useProducts() {
 
     const handleDelete = async (id: number) => {
         if (!window.confirm("Bạn có chắc chắn muốn xóa sản phẩm này?")) return;
-        setProducts(products.filter(p => p.id !== id));
+        await productService.deleteProduct(id);
+        await reloadProducts();
     };
 
     return {

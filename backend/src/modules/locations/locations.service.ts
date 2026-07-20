@@ -1,5 +1,9 @@
 import type {
   CreateLocationInput,
+  CreateShelfInput,
+  CreateZoneInput,
+  CreateZoneResult,
+  CreateShelfResult,
   CreateLocationResult,
   LocationFilters,
   LocationRow,
@@ -8,6 +12,8 @@ import type {
 import {
   findLocations as findLocationsRepository,
   insertLocation,
+  insertShelf,
+  insertZone,
   softDeleteLocationByLayer,
   softDeleteLocationsByShelfId,
 } from './locations.repository';
@@ -35,4 +41,15 @@ export async function removeLocationLayer(
   layerNo: number,
 ): Promise<MutationResult> {
   return softDeleteLocationByLayer(shelfId, layerNo);
+}
+
+export async function createShelf(
+  input: CreateShelfInput,
+): Promise<CreateShelfResult> {
+  return insertShelf(input);
+}
+export async function createZone(
+  input: CreateZoneInput,
+): Promise<CreateZoneResult> {
+  return insertZone(input);
 }

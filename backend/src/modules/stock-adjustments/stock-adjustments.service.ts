@@ -7,12 +7,14 @@ import type {
   RejectStockAdjustmentInput,
   RejectStockAdjustmentResult,
   StockAdjustmentsFilters,
+  CreateStockAdjustmentInput,
   StockAdjustmentsRow,
 } from './stock-adjustments.model';
 import {
   approveStockAdjustmentTransaction,
   cancelStockAdjustmentTransaction,
   findStockAdjustments as findStockAdjustmentsRepository,
+  insertStockAdjustment,
   rejectStockAdjustmentTransaction,
 } from './stock-adjustments.repository';
 
@@ -115,4 +117,9 @@ export async function cancelStockAdjustment(
 
     throw error;
   }
+}
+export async function createStockAdjustment(
+  input: CreateStockAdjustmentInput,
+): Promise<{ id: number }> {
+  return insertStockAdjustment(input);
 }

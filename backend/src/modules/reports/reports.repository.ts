@@ -1,4 +1,4 @@
-﻿import { db } from '../../database/db';
+import { db } from '../../database/db';
 import type { QueryParams, ReportsFilters, ReportsRow } from './reports.model';
 
 function appendCommonFilters(
@@ -35,7 +35,9 @@ export async function findProductStockReport(
   }
 
   if (filters.search) {
-    where.push('(sku LIKE :search OR product_name LIKE :search OR variant_name LIKE :search)');
+    where.push(
+      '(sku LIKE :search OR product_name LIKE :search OR variant_name LIKE :search)',
+    );
     params.search = `%${filters.search}%`;
   }
 
@@ -58,7 +60,9 @@ export async function findNearExpiryReport(
   const params: QueryParams = {};
 
   if (filters.search) {
-    where.push('(sku LIKE :search OR product_name LIKE :search OR lot_number LIKE :search)');
+    where.push(
+      '(sku LIKE :search OR product_name LIKE :search OR lot_number LIKE :search)',
+    );
     params.search = `%${filters.search}%`;
   }
 
@@ -122,7 +126,9 @@ export async function findInventoryTransactionReport(
   const params: QueryParams = {};
 
   if (filters.search) {
-    where.push('(transaction_code LIKE :search OR reference_type LIKE :search)');
+    where.push(
+      '(transaction_code LIKE :search OR reference_type LIKE :search)',
+    );
     params.search = `%${filters.search}%`;
   }
 

@@ -73,6 +73,34 @@ export async function listTransactions(): Promise<Transaction[]> {
     ].sort((a, b) => b.ngay.localeCompare(a.ngay));
 }
 
+
+export async function createTransaction(input: Transaction): Promise<void> {
+    if (input.loai === 'NHAP') {
+        await httpClient.post('/goods-receipts', {
+            receiptCode: input.soPhieu,
+            supplierId: input.maNCC ? Number(input.maNCC) : undefined,
+            referenceNo: input.maDonHangThamChieu || undefined,
+            note: input.lyDo || undefined,
+        });
+        return;
+    }
+
+    if (input.loai === 'XUAT') {
+        await httpClient.post('/goods-issues', {
+            issueCode: input.soPhieu,
+            referenceNo: input.maDonHangThamChieu || undefined,
+            note: input.lyDo || undefined,
+        });
+        return;
+    }
+
+    await httpClient.post('/stock-adjustments', {
+        adjustmentCode: input.soPhieu,
+        reasonCode: input.lyDo || 'DIEU_CHINH_THU_CONG',
+        note: input.lyDo || undefined,
+    });
+}
 export const transactionService = {
     listTransactions,
+    createTransaction,
 };

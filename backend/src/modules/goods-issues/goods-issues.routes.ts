@@ -4,12 +4,14 @@ import { requirePermission, verifyToken } from '../auth/auth.module';
 import {
   confirmGoodsIssueController,
   listGoodsIssuesController,
+  createGoodsIssueController,
   reverseGoodsIssueController,
 } from './goods-issues.controller';
 
 export const goodsIssuesRouter = Router();
 
 goodsIssuesRouter.get('/', asyncHandler(listGoodsIssuesController));
+goodsIssuesRouter.post('/', asyncHandler(createGoodsIssueController));
 goodsIssuesRouter.post(
   '/:id/confirm',
   asyncHandler(verifyToken),

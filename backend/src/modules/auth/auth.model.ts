@@ -96,3 +96,25 @@ export type RequestPasswordResetResult = {
 export type ResetPasswordResult = {
   reset: true;
 };
+
+export type RegisterInput = {
+  email: string;
+  password: string;
+  fullName: string;
+  phone?: string;
+  employeeCode?: string;
+  roleCode?: string;
+};
+
+export type RegisterResult = LoginResult;
+
+export type UserListRow = RowDataPacket & {
+  id: number;
+  employee_code: string | null;
+  full_name: string;
+  email: string;
+  phone: string | null;
+  status: string;
+  role_code: string;
+  role_name: string;
+};

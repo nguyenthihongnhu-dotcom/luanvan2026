@@ -1,34 +1,46 @@
 import { useEffect, useState } from "react";
+import type { FormEvent } from "react";
 import DashboardLayout from "@/layouts/dashboard/DashboardLayout";
 import Tablelayout from "@/shared/ui/Table/TableLayout";
 import { useSidebar } from "@/app/providers/useSidebar";
 import type { ColumnProps } from "@/shared/ui/Table/types";
+import { partnerService } from "@/features/partners/services/partnerService";
+import type { Partner } from "@/features/partners/services/partnerService";
 
 type PartnerFilter = "All" | "NCC" | "KH";
 
-interface Partner {
-    MaNCC: number;
-    TenNCC: string;
-    NguoiLienHe: string;
-    Email: string;
-    SoDienThoai: string;
-    type: "NCC" | "KH";
-}
+const initialFormState = {
+    TenNCC: "",
+    NguoiLienHe: "",
+    SoDienThoai: "",
+    Email: ""
+};
 
 export default function Partners() {
     const { setExtraContent } = useSidebar();
     const [type, setType] = useState<PartnerFilter>("All");
+    const [data, setData] = useState<Partner[]>([]);
+    const [error, setError] = useState<string | null>(null);
+    const [showModal, setShowModal] = useState(false);
+    const [formData, setFormData] = useState(initialFormState);
 
-    const data: Partner[] = [
-        { MaNCC: 1, TenNCC: "Cong ty Sửa Vinamilk", NguoiLienHe: "Bà Nguyễn Thị Mai", type: "NCC", SoDienThoai: "028383838", Email: "contact@vinamilk.vn" },
-        { MaNCC: 2, TenNCC: "Đại lý Mẹ & Bé Hà Nội", NguoiLienHe: "Ông Trần Văn Bình", type: "NCC", SoDienThoai: "0909123456", Email: "vanbinh@dv.com" },
-    ];
+    async function loadPartners() {
+        try {
+            setError(null);
+            setData(await partnerService.listPartners());
+        } catch (err) {
+            console.error(err);
+            setError("Không tải được danh sách đối tác từ backend.");
+        }
+    }
+
+    useEffect(() => { void loadPartners(); }, []);
 
     useEffect(() => {
         setExtraContent(
             <div className="space-y-4">
-                <label className="block text-xs font-semibold text-gray-500 uppercase">Phân loại đối tác</label>
-                <select className="w-full text-sm border-gray-200 rounded-md" value={type} onChange={(e) => setType(e.target.value as PartnerFilter)}>
+                <label className="block text-xs font-semibold uppercase text-gray-500">Phân loại đối tác</label>
+                <select className="w-full rounded-md border-gray-200 text-sm" value={type} onChange={(e) => setType(e.target.value as PartnerFilter)}>
                     <option value="All">Tất cả</option>
                     <option value="NCC">Nhà cung cấp</option>
                     <option value="KH">Khách hàng</option>
@@ -38,31 +50,74 @@ export default function Partners() {
         return () => setExtraContent(null);
     }, [setExtraContent, type]);
 
+    const handleSubmit = async (event: FormEvent) => {
+        event.preventDefault();
+        await partnerService.createPartner(formData);
+        setFormData(initialFormState);
+        setShowModal(false);
+        await loadPartners();
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!window.confirm("Bạn có chắc muốn xóa đối tác này?")) return;
+        await partnerService.deletePartner(id);
+        await loadPartners();
+    };
+
     const columns: ColumnProps<Partner>[] = [
         { key: "MaNCC", title: "Mã NCC", className: "w-20" },
         { key: "TenNCC", title: "Tên nhà cung cấp", className: "font-semibold text-gray-900" },
         { key: "NguoiLienHe", title: "Người liên hệ" },
         { key: "SoDienThoai", title: "Số điện thoại" },
         { key: "Email", title: "Email" },
-        { key: "actions", title: "Thao tác", render: () => <button className="text-pink-600 hover:text-pink-800 font-medium">Sửa</button> }
+        { key: "actions", title: "Thao tác", render: (_, record) => <button onClick={() => handleDelete(record.MaNCC)} className="font-medium text-red-600 hover:text-red-800">Xóa</button> }
     ];
 
-    const filtered = data.filter(d => type === "All" || d.type === type);
+    const filtered = data.filter((partner) => type === "All" || partner.type === type);
 
     return (
         <DashboardLayout>
             <div className="flex flex-col space-y-4">
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                     <h1 className="text-xl font-bold text-gray-800">Quản lý đối tác</h1>
-                    <button className="bg-pink-600 text-white px-4 py-2 rounded-md text-sm">+ Thêm đối tác</button>
+                    <button onClick={() => setShowModal(true)} className="rounded-md bg-pink-600 px-4 py-2 text-sm text-white">+ Thêm đối tác</button>
                 </div>
-
-                <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <input type="text" placeholder="Tìm theo tên, email, SĐT..." className="w-full md:w-1/3 px-4 py-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-pink-500" />
-                </div>
-
+                {error && <div className="text-sm text-red-600">{error}</div>}
                 <Tablelayout columns={columns} dataSource={filtered} rowKey="MaNCC" />
             </div>
+
+            {showModal && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md">
+                    <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl">
+                        <div className="flex items-center justify-between border-b border-gray-100 bg-pink-50 px-6 py-4">
+                            <h2 className="text-lg font-bold text-pink-700">Thêm nhà cung cấp</h2>
+                            <button type="button" onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600" aria-label="Đóng">×</button>
+                        </div>
+                        <form onSubmit={handleSubmit} className="space-y-4 p-6">
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-gray-700">Tên nhà cung cấp</label>
+                                <input required value={formData.TenNCC} onChange={(e) => setFormData({ ...formData, TenNCC: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-gray-700">Người liên hệ</label>
+                                <input value={formData.NguoiLienHe} onChange={(e) => setFormData({ ...formData, NguoiLienHe: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-gray-700">Số điện thoại</label>
+                                <input value={formData.SoDienThoai} onChange={(e) => setFormData({ ...formData, SoDienThoai: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                            </div>
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-gray-700">Email</label>
+                                <input type="email" value={formData.Email} onChange={(e) => setFormData({ ...formData, Email: e.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                            </div>
+                            <div className="flex gap-3 pt-4">
+                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Hủy</button>
+                                <button type="submit" className="flex-1 rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700">Lưu đối tác</button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
         </DashboardLayout>
     );
 }

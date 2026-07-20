@@ -1,4 +1,4 @@
-﻿import { db } from '../../database/db';
+import { db } from '../../database/db';
 import type { AlertsFilters, AlertsRow, QueryParams } from './alerts.model';
 
 const tableName = 'alerts';

@@ -1,10 +1,16 @@
 import type { Request, Response } from 'express';
 import { HttpError } from '../../common/http';
-import { confirmGoodsIssue, listGoodsIssues, reverseGoodsIssue } from './goods-issues.service';
+import {
+  confirmGoodsIssue,
+  createGoodsIssue,
+  listGoodsIssues,
+  reverseGoodsIssue,
+} from './goods-issues.service';
 import {
   parseConfirmGoodsIssueBody,
   parseGoodsIssueId,
   parseGoodsIssuesFilters,
+  parseCreateGoodsIssue,
 } from './goods-issues.validation';
 
 export async function listGoodsIssuesController(
@@ -52,4 +58,12 @@ export async function reverseGoodsIssueController(
       reversedBy: Number(req.user.id),
     }),
   });
+}
+export async function createGoodsIssueController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  res
+    .status(201)
+    .json({ data: await createGoodsIssue(parseCreateGoodsIssue(req.body)) });
 }

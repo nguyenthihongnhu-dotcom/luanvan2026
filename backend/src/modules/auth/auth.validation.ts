@@ -6,6 +6,7 @@ import type {
   RefreshInput,
   RequestPasswordResetInput,
   ResetPasswordInput,
+  RegisterInput,
 } from './auth.model';
 
 const passwordSchema = z.string().min(8).max(128);
@@ -28,6 +29,16 @@ const requestPasswordResetSchema = z.object({
 const resetPasswordSchema = z.object({
   token: z.string().min(32).max(512),
   newPassword: passwordSchema,
+});
+const registerSchema = z.object({
+  email: z.string().trim().email().max(191).toLowerCase(),
+  password: z.string().min(6).max(128),
+  fullName: z.string().trim().min(1).max(150),
+  phone: z.string().trim().min(1).max(30).optional(),
+  employeeCode: z.string().trim().min(1).max(50).optional(),
+  roleCode: z
+    .enum(['ADMIN', 'WAREHOUSE_MANAGER', 'STAFF', 'AUDITOR'])
+    .optional(),
 });
 
 export function parseLoginInput(
@@ -56,4 +67,8 @@ export function parseRequestPasswordResetInput(
 
 export function parseResetPasswordInput(input: unknown): ResetPasswordInput {
   return validateInput(resetPasswordSchema, input);
+}
+
+export function parseRegisterInput(input: unknown): RegisterInput {
+  return validateInput(registerSchema, input);
 }

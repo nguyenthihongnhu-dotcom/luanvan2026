@@ -1,4 +1,4 @@
-﻿import { useEffect } from "react";
+import { useEffect } from "react";
 import { createPortal } from "react-dom";
 import DashboardLayout from "@/layouts/dashboard/DashboardLayout";
 import Tablelayout from "@/shared/ui/Table/TableLayout";
@@ -25,6 +25,22 @@ function getTransactionTypeLabel(type: Transaction["loai"]): string {
     }
 }
 
+function getTransactionStatusLabel(status: string): string {
+    const normalized = status.trim().toUpperCase();
+    const labels: Record<string, string> = {
+        DRAFT: "Nháp",
+        MOI_TAO: "Mới tạo",
+        PENDING: "Chờ xử lý",
+        PENDING_APPROVAL: "Chờ duyệt",
+        CONFIRMED: "Đã xác nhận",
+        APPROVED: "Đã duyệt",
+        REJECTED: "Đã từ chối",
+        CANCELLED: "Đã hủy",
+        REVERSED: "Đã đảo phiếu",
+        COMPLETED: "Hoàn tất"
+    };
+    return labels[normalized] ?? status;
+}
 export default function Transactions() {
     const { setExtraContent } = useSidebar();
     const { formatDate } = useDateFormatter();
@@ -90,7 +106,7 @@ export default function Transactions() {
             }
         },
         { key: "ngay", title: "Ngày thực hiện", render: (value) => formatDate(value as string) },
-        { key: "status", title: "Trạng thái" },
+        { key: "status", title: "Trạng thái", render: (value) => getTransactionStatusLabel(String(value ?? "")) },
         { key: "nguoiTao", title: "Người tạo" },
         {
             key: "actions",

@@ -12,6 +12,7 @@ import type {
   CancelStockAdjustmentInput,
   CancelStockAdjustmentResult,
   QueryParams,
+  CreateStockAdjustmentInput,
   RejectStockAdjustmentInput,
   RejectStockAdjustmentResult,
   StockAdjustmentItemRow,
@@ -511,4 +512,28 @@ export async function cancelStockAdjustmentTransaction(
   } finally {
     connection.release();
   }
+}
+export async function insertStockAdjustment(
+  input: CreateStockAdjustmentInput,
+): Promise<{ id: number }> {
+  const [warehouseRows] = await db.query<Array<RowDataPacket & { id: number }>>(
+    'SELECT id FROM warehouses WHERE id = ? OR code = ? LIMIT 1',
+    [input.warehouseId ?? 0, 'KHO-HCM-01'],
+  );
+  const [userRows] = await db.query<Array<RowDataPacket & { id: number }>>(
+    'SELECT id FROM users WHERE id = ? OR employee_code = ? LIMIT 1',
+    [input.createdBy ?? 0, 'NV-KHO-01'],
+  );
+  const [result] = await db.query<ResultSetHeader>(
+    `INSERT INTO stock_adjustments (adjustment_code, warehouse_id, adjustment_type, status, reason_code, note, created_by)
+     VALUES (?, ?, 'MANUAL', 'DRAFT', ?, ?, ?)`,
+    [
+      input.adjustmentCode,
+      warehouseRows[0]?.id,
+      input.reasonCode ?? 'DIEU_CHINH_THU_CONG',
+      input.note ?? null,
+      userRows[0]?.id,
+    ],
+  );
+  return { id: result.insertId };
 }

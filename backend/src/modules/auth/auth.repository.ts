@@ -5,6 +5,7 @@ import type {
   LoginUserRow,
   PasswordResetTokenRow,
   SessionRow,
+  UserListRow,
 } from './auth.model';
 
 type PasswordResetUserRow = RowDataPacket & { id: number };
@@ -310,4 +311,53 @@ export async function resetPasswordWithTokenHash(input: {
   } finally {
     connection.release();
   }
+}
+
+export async function listUsers(): Promise<UserListRow[]> {
+  const [rows] = await db.query<UserListRow[]>(`
+    SELECT
+      u.id,
+      u.employee_code,
+      u.full_name,
+      u.email,
+      u.phone,
+      u.status,
+      r.code AS role_code,
+      r.name AS role_name
+    FROM users u
+    JOIN roles r ON r.id = u.role_id
+    WHERE u.deleted_at IS NULL
+    ORDER BY u.id
+    LIMIT 100
+  `);
+
+  return rows;
+}
+
+export async function createUser(input: {
+  roleCode: string;
+  employeeCode: string;
+  fullName: string;
+  email: string;
+  phone?: string;
+  passwordHash: string;
+}): Promise<number> {
+  const [result] = await db.query<ResultSetHeader>(
+    `
+      INSERT INTO users (role_id, employee_code, full_name, email, phone, password_hash, status)
+      SELECT r.id, ?, ?, ?, ?, ?, 'ACTIVE'
+      FROM roles r
+      WHERE r.code = ?
+    `,
+    [
+      input.employeeCode,
+      input.fullName,
+      input.email,
+      input.phone ?? null,
+      input.passwordHash,
+      input.roleCode,
+    ],
+  );
+
+  return result.insertId;
 }

@@ -1,59 +1,72 @@
 # Bambi WMS - Warehouse Management System
 
-Bambi WMS là đồ án hệ thống quản lý kho cho cửa hàng Mẹ & Bé. Repo này có 2 phần chính:
+Bambi WMS là đồ án hệ thống quản lý kho cho cửa hàng Mẹ & Bé.
 
-- `backend/`: API server dùng Express + TypeScript + MySQL.
-- `frontend/`: Web app dùng React + TypeScript + Vite.
+Repo gồm hai phần chính:
 
-Tài liệu này viết cho người đọc, đặc biệt là intern hoặc thành viên mới vào project. Mục tiêu là giúp bạn biết chạy project, hiểu luồng code, và biết nên sửa/thêm code ở đâu.
+- `backend/`: Express + TypeScript + MySQL API.
+- `frontend/`: React + TypeScript + Vite web app.
 
-## 1. Kiến Trúc Tổng Quan
+## Đọc docs ở đâu
+
+Backend:
+
+- [Backend README](backend/README.md)
+- [Backend docs tổng](backend/docs/README.md)
+- [Guide đọc code cho intern](backend/docs/intern-code-guide.md)
+- [Overview kiến trúc backend](backend/docs/overview.md)
+- [Thiết kế database](backend/warehouse_database_design.md)
+- Docs từng module: `backend/src/modules/<module>/README.md`
+
+Frontend:
+
+- [Frontend README](frontend/README.md)
+- [Frontend docs tổng](frontend/docs/README.md)
+- [Guide đọc code frontend cho intern](frontend/docs/intern-code-guide.md)
+
+## Kiến trúc tổng quan
 
 ```text
 Browser
-  |
-  | HTTP API
-  v
-Frontend React app
-  |
-  | fetch/httpClient
-  v
-Backend Express API
-  |
-  | mysql2/promise
-  v
-MySQL database
+  -> Frontend React/Vite
+  -> shared httpClient
+  -> Backend Express API
+  -> mysql2/promise
+  -> MySQL
 ```
 
-Frontend dùng API backend cho các màn core và vẫn giữ fallback cục bộ ở một số nơi để demo không bị trắng màn khi API tắt. Backend hiện đã có các module nghiệp vụ kho chính, chạy với MySQL thật và có seed data mẫu để demo.
+Backend chia theo module nghiệp vụ. Mỗi module có route, controller, validation, service, repository, model và README riêng.
 
-## 2. Yêu Cầu Môi Trường
+Frontend chia theo feature. Component không gọi API trực tiếp; gọi qua service layer trong feature.
 
-Cài sẵn:
-
-- Node.js: nên dùng Node 20+ vì Vite/React Router hiện tại yêu cầu môi trường mới.
-- npm
-- MySQL 8+ nếu chạy backend với database thật.
-- Git
-
-## 3. Cài Đặt Lần Đầu
-
-Ở root repo:
+## Chạy backend
 
 ```bash
 cd backend
 npm install
 cp .env.example .env
+npm run start:dev
 ```
 
-Cập nhật `backend/.env` theo máy local của bạn, đặc biệt là `DATABASE_URL` và `JWT_SECRET`.
+Backend mặc định:
 
-Sau đó cài frontend:
+```text
+http://localhost:3000
+```
+
+Swagger UI:
+
+```text
+http://localhost:3000/docs
+```
+
+## Chạy frontend
 
 ```bash
-cd ../frontend
+cd frontend
 npm install
 cp .env.example .env
+npm run dev
 ```
 
 Frontend `.env` tối thiểu:
@@ -62,35 +75,17 @@ Frontend `.env` tối thiểu:
 VITE_API_BASE_URL=http://localhost:3000
 ```
 
-## 4. Chạy Project
+## Database
 
-Chạy backend:
+Import schema và data mẫu:
 
 ```bash
 cd backend
-npm run start:dev
+mysql -u root -p warehouse_management < warehouse_management_mysql.sql
+mysql -u root -p warehouse_management < warehouse_sample_data.sql
 ```
 
-Backend mặc định chạy ở:
-
-```text
-http://localhost:3000
-```
-
-Chạy frontend:
-
-```bash
-cd frontend
-npm run dev
-```
-
-Vite sẽ in URL local, thường là:
-
-```text
-http://localhost:5173
-```
-
-## 5. Kiểm Tra Trước Khi Commit
+## Kiểm tra trước khi báo xong
 
 Backend:
 
@@ -98,64 +93,32 @@ Backend:
 cd backend
 npm run lint
 npm run build
+npm test
 npm run test:e2e
+npm run test:integration
 ```
 
 Frontend:
 
 ```bash
 cd frontend
-npm run lint
 npx tsc -b
 npm run build
 ```
 
-## 6. Cấu Trúc Repo
+`test:integration` cần MySQL đang chạy và đã import sample data.
 
-```text
-luanvan2026/
-  backend/
-    src/
-      app.ts
-      main.ts
-      common/
-      config/
-      database/
-      modules/
-      socket/
-    warehouse_management_mysql.sql
-    README.md
+## Module backend quan trọng
 
-  frontend/
-    src/
-      app/
-      features/
-      layouts/
-      shared/
-    README.md
-```
+- Auth/Authorization: đăng nhập, token, role, permission.
+- Catalog: danh mục, sản phẩm, SKU.
+- Locations/Warehouses: cấu trúc kho, khu, kệ, tầng/vị trí.
+- Stock: tồn hiện tại, gần hết hạn, allocation FEFO/FIFO.
+- Goods Receipts: nhập kho, tăng tồn.
+- Goods Issues: xuất kho, giảm tồn.
+- Stock Transfers: chuyển kho.
+- Stock Counts: kiểm kê.
+- Stock Adjustments: điều chỉnh tồn.
+- Reports/Alerts/Notifications/Audit Logs: báo cáo và hỗ trợ vận hành.
 
-Đọc tiếp:
-
-- Backend chi tiết: `backend/README.md`
-- Frontend chi tiết: `frontend/README.md`
-
-## 7. Quy Ước Làm Việc
-
-Khi thêm tính năng mới:
-
-1. Xác định tính năng thuộc backend, frontend, hay cả hai.
-2. Backend: thêm/sửa trong đúng module tại `backend/src/modules/<module-name>`.
-3. Frontend: thêm/sửa trong đúng feature tại `frontend/src/features/<feature-name>`.
-4. Không gọi API trực tiếp trong component. Dùng service layer.
-5. Không để business logic lớn trong component UI.
-6. Không hardcode secret/token/password trong code.
-7. Chạy lint/build trước khi báo đã xong.
-
-## 8. Trạng Thái Hiện Tại
-
-Backend đã có nền tảng production-oriented cho API, auth middleware, validation, database repository, một số transaction flow quan trọng của kho.
-
-Frontend đã được refactor theo hướng feature-first, có app providers, shared services, auth context, dashboard layout và các màn hình quản lý cơ bản.
-
-Backend core đã triển khai đầy đủ cho phạm vi đồ án: auth/session, phân quyền, cấu trúc kho, hàng hóa, lô hàng, tồn kho, nhập/xuất/chuyển kho, kiểm kê, điều chỉnh, cảnh báo, thông báo, báo cáo, audit log và OpenAPI. Frontend vẫn có fallback local ở một số màn để hỗ trợ demo khi backend/MySQL chưa chạy.
+Để đọc nhanh backend, bắt đầu từ [backend/docs/intern-code-guide.md](backend/docs/intern-code-guide.md).

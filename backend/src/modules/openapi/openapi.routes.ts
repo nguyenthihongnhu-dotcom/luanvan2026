@@ -1,4 +1,4 @@
-﻿import { Router } from 'express';
+import { Router } from 'express';
 import { getOpenApiJson, getSwaggerUi } from './openapi.controller';
 
 export const openApiRouter = Router();

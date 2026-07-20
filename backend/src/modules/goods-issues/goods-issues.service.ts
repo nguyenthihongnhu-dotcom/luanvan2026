@@ -3,6 +3,7 @@ import type {
   ConfirmGoodsIssueInput,
   ConfirmGoodsIssueResult,
   GoodsIssuesFilters,
+  CreateGoodsIssueInput,
   GoodsIssuesRow,
   ReverseGoodsIssueInput,
   ReverseGoodsIssueResult,
@@ -10,6 +11,7 @@ import type {
 import {
   confirmGoodsIssueTransaction,
   findGoodsIssues as findGoodsIssuesRepository,
+  insertGoodsIssue,
   reverseGoodsIssueTransaction,
 } from './goods-issues.repository';
 
@@ -54,7 +56,11 @@ const confirmErrorMap: Record<string, HttpError> = {
     'Only CONFIRMED goods issues can be reversed',
     'GOODS_ISSUE_NOT_REVERSIBLE',
   ),
-  REFERENCE_ALREADY_REVERSED: new HttpError(409, 'Reference already reversed', 'REFERENCE_ALREADY_REVERSED'),
+  REFERENCE_ALREADY_REVERSED: new HttpError(
+    409,
+    'Reference already reversed',
+    'REFERENCE_ALREADY_REVERSED',
+  ),
 };
 
 export async function listGoodsIssues(
@@ -89,4 +95,9 @@ export async function reverseGoodsIssue(
 
     throw error;
   }
+}
+export async function createGoodsIssue(
+  input: CreateGoodsIssueInput,
+): Promise<{ id: number }> {
+  return insertGoodsIssue(input);
 }

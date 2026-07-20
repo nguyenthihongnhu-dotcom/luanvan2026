@@ -16,6 +16,7 @@ export default function WarehouseMapping() {
         activeLocation,
         setActiveLocation,
         getLocationInfo,
+        handleAddZone,
         handleAddShelf,
         handleAddLayer,
         handleDeleteShelf,
@@ -29,6 +30,7 @@ export default function WarehouseMapping() {
                 <ZoneSelector
                     selectedZone={selectedZone}
                     setSelectedZone={setSelectedZone}
+                    onAddZone={handleAddZone}
                 />
 
                 {!selectedZone ? (

@@ -5,11 +5,13 @@ import {
   cancelStockAdjustment,
   listStockAdjustments,
   rejectStockAdjustment,
+  createStockAdjustment,
 } from './stock-adjustments.service';
 import {
   parseRejectStockAdjustment,
   parseStockAdjustmentId,
   parseStockAdjustmentsFilters,
+  parseCreateStockAdjustment,
 } from './stock-adjustments.validation';
 
 export async function listStockAdjustmentsController(
@@ -72,5 +74,13 @@ export async function cancelStockAdjustmentController(
       adjustmentId,
       cancelledBy: Number(req.user.id),
     }),
+  });
+}
+export async function createStockAdjustmentController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  res.status(201).json({
+    data: await createStockAdjustment(parseCreateStockAdjustment(req.body)),
   });
 }

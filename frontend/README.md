@@ -1,536 +1,62 @@
-﻿ontend Documentation - Bambi WMS
+# Frontend - Bambi WMS
 
-Frontend là web app cho hệ thống quản lý kho Bambi WMS. Code dùng React + TypeScript + Vite.
+Frontend là web app quản lý kho Bambi WMS, dùng React + TypeScript + Vite. App đi theo kiến trúc feature-first: page không gọi API trực tiếp, mà đi qua hook/service của feature.
 
-Tài liệu này dành cho người mới vào project. Mục tiêu là giúp bạn biết chạy app, hiểu folder nào làm gì, thêm màn hình ở đâu, gọi API ở đâu, và tránh nhét logic sai chỗ.
+## Đọc docs ở đâu
 
-## 1. Frontend Làm Gì?
+- [Frontend overview](docs/overview.md)
+- [Guide đọc code cho intern](docs/intern-code-guide.md)
+- Docs từng feature: `src/features/<feature>/README.md`
 
-Frontend chịu trách nhiệm:
-
-- Hiển thị giao diện quản lý kho.
-- Điều hướng giữa các màn hình.
-- Quản lý UI state.
-- Gọi API backend qua service layer.
-- Quản lý auth state bằng React Context.
-- Cung cấp layout dashboard dùng chung.
-
-Hiện tại một số màn hình vẫn dùng mock data trong hook/service để phục vụ phát triển UI. Khi nối API thật, thay mock trong service/hook bằng API call, không gọi API trực tiếp trong component.
-
-## 2. Công Nghệ Chính
-
-- React 19
-- TypeScript
-- Vite
-- React Router
-- Tailwind CSS utility classes
-- ESLint
-- Ant Design dependency đã có, nhưng UI hiện tại phần lớn đang dùng custom markup/Tailwind class
-
-## 3. Chạy Frontend
-
-Cài dependency:
+## Chạy frontend
 
 ```bash
 cd frontend
 npm install
-```
-
-Tạo `.env`:
-
-```bash
 cp .env.example .env
-```
-
-Nội dung tối thiểu:
-
-```env
-VITE_API_BASE_URL=http://localhost:3000
-```
-
-Chạy dev server:
-
-```bash
 npm run dev
 ```
 
-Build production:
-
-```bash
-npm run build
-```
-
-Lint:
-
-```bash
-npm run lint
-```
-
-Type check:
-
-```bash
-npx tsc -b
-```
-
-## 4. Cấu Trúc Source
-
-```text
-src/
-  main.tsx
-
-  app/
-    App.tsx
-    providers/
-    router/
-
-  layouts/
-    dashboard/
-
-  features/
-    auth/
-    products/
-    transactions/
-    locations/
-    partners/
-    staff/
-
-  shared/
-    config/
-    hooks/
-    services/
-    ui/
-
-  assets/
-  index.css
-```
-
-Ý nghĩa:
-
-- `app/`: setup cấp ứng dụng như router và providers.
-- `layouts/`: layout dùng bởi nhiều màn hình, ví dụ dashboard shell.
-- `features/`: code theo nghiệp vụ/màn hình.
-- `shared/`: code dùng chung, không thuộc riêng feature nào.
-
-## 5. App Bootstrap
-
-Entry point:
-
-```text
-src/main.tsx
-```
-
-`main.tsx` render:
-
-```text
-src/app/App.tsx
-```
-
-`App.tsx` bọc:
-
-- `AppProviders`
-- `AppRouter`
-
-Provider hiện có:
-
-```text
-src/app/providers/AppProviders.tsx
-```
-
-Trong đó app được bọc bởi:
-
-- `AuthProvider`: giữ auth state.
-- `SidebarProvider`: giữ nội dung sidebar động.
-- `BrowserRouter`: routing của React Router.
-
-## 6. Routing
-
-Routes nằm ở:
-
-```text
-src/app/router/AppRouter.tsx
-```
-
-Ví dụ:
-
-```tsx
-<Route path="/products" element={<ProductsPage />} />
-<Route path="/transactions" element={<TransactionsPage />} />
-```
-
-Khi thêm page mới:
-
-1. Tạo page trong `src/features/<feature>/pages`.
-2. Import page vào `AppRouter.tsx`.
-3. Thêm `<Route />`.
-4. Nếu cần menu top navbar, thêm item trong `layouts/dashboard/Navbar.tsx`.
-
-## 7. Feature-first Structure
-
-Mỗi feature nên có cấu trúc như sau:
-
-```text
-features/<feature-name>/
-  components/   # Component chỉ dùng trong feature này
-  pages/        # Page route-level
-  hooks/        # Hook nghiệp vụ/UI state của feature
-  services/     # API/service của feature
-  context/      # Context riêng feature nếu cần
-  types.ts      # Type dùng trong feature
-```
-
-Không phải feature nào cũng cần đủ folder. Chỉ tạo khi thật sự dùng.
-
-Ví dụ auth:
-
-```text
-features/auth/
-  components/RegisterModal.tsx
-  context/AuthContext.ts
-  context/AuthProvider.tsx
-  context/useAuth.ts
-  pages/LoginPage.tsx
-  services/authService.ts
-  types.ts
-```
-
-## 8. Shared Layer
-
-`shared/` chứa code dùng lại ở nhiều feature.
-
-Hiện có:
-
-```text
-shared/config/env.ts
-shared/services/httpClient.ts
-shared/hooks/useForm.ts
-shared/ui/Table/TableLayout.tsx
-shared/ui/Table/types.ts
-```
-
-Quy tắc:
-
-- Nếu code chỉ dùng cho một feature, để trong feature.
-- Nếu code dùng từ 2 feature trở lên, cân nhắc đưa vào `shared`.
-- Không đưa business logic riêng của một feature vào `shared` chỉ vì muốn import ngắn hơn.
-
-## 9. Services Layer
-
-Không gọi API trực tiếp trong component/page.
-
-Đúng:
-
-```text
-Page -> feature service -> shared httpClient -> backend API
-```
-
-Sai:
-
-```text
-Page -> fetch('/api/...')
-```
-
-Shared HTTP client nằm ở:
-
-```text
-src/shared/services/httpClient.ts
-```
-
-Config API base URL nằm ở:
-
-```text
-src/shared/config/env.ts
-```
-
-Auth service nằm ở:
-
-```text
-src/features/auth/services/authService.ts
-```
-
-Hiện `authService` vẫn đang mock login/register để frontend chạy độc lập. Khi backend có auth API thật, thay implementation trong service, không sửa `LoginPage` nhiều.
-
-Ví dụ hướng nối API thật sau này:
-
-```ts
-async function login(credentials: LoginCredentials): Promise<AuthResponse> {
-  return httpClient.post<AuthResponse>('/auth/login', credentials);
-}
-```
-
-## 10. Auth State
-
-Auth state không lưu trực tiếp trong component và không dùng `localStorage` trong UI.
-
-Auth context nằm ở:
-
-```text
-features/auth/context/
-  AuthContext.ts
-  AuthProvider.tsx
-  useAuth.ts
-```
-
-Cách dùng trong component:
-
-```tsx
-const auth = useAuth();
-
-auth.login(user);
-auth.logout();
-```
-
-`LoginPage` gọi `auth.login(result)` sau khi login thành công.
-
-`Sidebar` đọc:
-
-```tsx
-const { user, logout } = useAuth();
-```
-
-Hiện auth state là in-memory. Nghĩa là refresh browser sẽ mất login. Đây là lựa chọn tạm thời tốt hơn việc component tự ghi `localStorage`.
-
-Khi backend auth hoàn chỉnh, hướng production nên là:
-
-- Backend set refresh token bằng httpOnly cookie.
-- Frontend giữ `user` trong Context.
-- Khi app load, frontend gọi `/auth/me` để hydrate user.
-- Access token nếu có thì quản lý tập trung trong service/http client, không rải trong component.
-
-## 11. Layout Dashboard
-
-Dashboard layout nằm ở:
-
-```text
-src/layouts/dashboard/
-  DashboardLayout.tsx
-  Navbar.tsx
-  Sidebar.tsx
-```
-
-`DashboardLayout` bọc sidebar, navbar và nội dung page.
-
-Page dashboard thường viết như sau:
-
-```tsx
-export default function ProductsPage() {
-  return (
-    <DashboardLayout>
-      <div>...</div>
-    </DashboardLayout>
-  );
-}
-```
-
-`Sidebar` có vùng nội dung động. Page có thể set filter/sidebar content qua `useSidebar()`.
-
-## 12. Table Shared Component
-
-Table dùng chung nằm ở:
-
-```text
-src/shared/ui/Table/
-  TableLayout.tsx
-  types.ts
-```
-
-Cách dùng:
-
-```tsx
-const columns: ColumnProps<Product>[] = [
-  { key: 'name', title: 'Ten san pham' },
-  {
-    key: 'actions',
-    title: 'Thao tac',
-    render: (_, record) => <button>{record.id}</button>,
-  },
-];
-
-<Tablelayout columns={columns} dataSource={products} rowKey="id" />
-```
-
-`render` nhận `value: unknown`, vì table không thể biết type của mọi column custom. Khi cần, cast tại nơi dùng và chỉ cast đúng type mình biết chắc.
-
-## 13. Hooks
-
-Shared hook:
-
-```text
-src/shared/hooks/useForm.ts
-```
-
-Feature hooks:
-
-```text
-features/products/hooks/useProducts.ts
-features/transactions/hooks/useTransactions.ts
-features/locations/hooks/useWarehouse.ts
-```
-
-Quy tắc:
-
-- Hook xử lý state và handler liên quan đến UI/business nhỏ.
-- Hook không nên render JSX lớn.
-- Nếu hook bắt đầu gọi API, gọi qua service.
-- Nếu logic quá lớn, tách helper/service riêng.
-
-## 14. Cách Thêm Một Feature Mới
-
-Ví dụ thêm feature `orders`:
-
-```text
-src/features/orders/
-  pages/OrdersPage.tsx
-  components/OrderModal.tsx
-  hooks/useOrders.ts
-  services/orderService.ts
-  types.ts
-```
-
-Các bước:
-
-1. Tạo `features/orders`.
-2. Tạo page route-level trong `pages`.
-3. Tạo service nếu cần gọi API.
-4. Tạo hook nếu page có nhiều state/handler.
-5. Thêm route trong `app/router/AppRouter.tsx`.
-6. Thêm menu trong `layouts/dashboard/Navbar.tsx` nếu cần.
-7. Chạy lint/typecheck/build.
-
-## 15. Cách Nối API Thật Cho Một Màn Hình
-
-Ví dụ nối products API:
-
-1. Tạo `features/products/services/productService.ts`.
-2. Trong service, gọi `httpClient.get/post/put/delete`.
-3. Trong `useProducts`, gọi `productService`.
-4. Page chỉ dùng hook, không gọi API trực tiếp.
-5. Xử lý loading/error state trong hook hoặc component boundary phù hợp.
-
-Pattern mong muốn:
-
-```text
-ProductsPage
-  -> useProducts
-    -> productService
-      -> httpClient
-        -> backend API
-```
-
-## 16. Environment Variables
-
-Frontend chỉ đọc được biến bắt đầu bằng `VITE_`.
-
-File example:
-
-```text
-.env.example
-```
-
-Hiện có:
+`.env` tối thiểu:
 
 ```env
 VITE_API_BASE_URL=http://localhost:3000
 ```
 
-Không commit `.env` thật.
-
-## 17. Scripts Quan Trọng
+## Kiểm tra
 
 ```bash
-npm run dev       # Chạy dev server
-npm run build     # Typecheck + build production
-npm run lint      # ESLint
-npx tsc -b        # TypeScript build check
-npm run preview   # Preview dist sau build
+npx tsc -b
+npm run build
+npm run lint
 ```
 
-## 18. Quy Ước Code Frontend
+## Thứ tự hiểu frontend nhanh
 
-- Không dùng `any` nếu có thể dùng type rõ ràng hoặc `unknown`.
-- Không gọi API trong component. Dùng service.
-- Không để component quá lớn nếu có thể tách component/hook.
-- Không dùng `localStorage` trực tiếp trong page/component cho auth state.
-- Không import vòng giữa feature với nhau.
-- Không đưa logic feature-specific vào `shared`.
-- Không hardcode API URL. Dùng `env.ts`.
-- Chạy `npm run lint` và `npx tsc -b` trước khi báo xong.
+1. `src/main.tsx`, `src/app/App.tsx`, `src/app/providers/AppProviders.tsx`
+2. `src/app/router/AppRouter.tsx`
+3. `src/shared/config/env.ts`, `src/shared/services/httpClient.ts`
+4. `src/features/auth`
+5. `src/layouts/dashboard`
+6. Feature nghiệp vụ: products, locations, transactions, partners, staff
 
-## 19. Lỗi Thường Gặp
+## Feature hiện có
 
-### Alias `@/` không resolve
+| Feature | Route | Backend API chính | Docs |
+| --- | --- | --- | --- |
+| Auth | `/login` | `/auth/login` | [README](src/features/auth/README.md) |
+| Products | `/products`, `/categories` | `/reports/*`, `/catalog/*` | [README](src/features/products/README.md) |
+| Locations | `/locations` | `/locations/*` | [README](src/features/locations/README.md) |
+| Transactions | `/transactions` | `/goods-receipts`, `/goods-issues`, `/stock-adjustments` | [README](src/features/transactions/README.md) |
+| Partners | `/partners` | `/suppliers` | [README](src/features/partners/README.md) |
+| Staff | `/employees` | `/auth/users` | [README](src/features/staff/README.md) |
 
-Kiểm tra:
+## Quy tắc code frontend
 
-- `vite.config.ts` có alias `@` chưa.
-- `tsconfig.app.json` có paths chưa.
-- Import viết đúng chưa, ví dụ `@/features/auth/...`.
-
-### Component cần auth nhưng báo `useAuth must be used within an AuthProvider`
-
-Component đang render ngoài `AuthProvider`. Kiểm tra `AppProviders.tsx` có bọc `AuthProvider` chưa.
-
-### Refresh trang mất login
-
-Hiện auth state là in-memory. Đây là trạng thái tạm thời. Sau này backend auth hoàn chỉnh sẽ hydrate lại user từ endpoint `/auth/me`.
-
-### Lỗi CORS khi gọi backend
-
-Kiểm tra:
-
-- Backend đang chạy chưa.
-- `VITE_API_BASE_URL` đúng port chưa.
-- Backend `CORS_ORIGIN` có cho phép frontend origin không.
-
-## 20. Checklist Cho Intern Khi Sửa Frontend
-
-Trước khi báo xong:
-
-- Code nằm đúng feature/shared/layout chưa?
-- Component có đang gọi API trực tiếp không? Nếu có, tách service.
-- Có type rõ ràng chưa?
-- Có dùng `any` không?
-- Có làm hỏng route/menu không?
-- Đã chạy `npm run lint` chưa?
-- Đã chạy `npx tsc -b` chưa?
-- Nếu thay đổi build/runtime, đã chạy `npm run build` chưa?
-## 21. Reusable Formatting Hooks
-
-Dung format ngay gio, tien te, so lieu qua shared hooks, khong goi `toLocaleString` truc tiep trong component.
-
-Files:
-
-```text
-src/shared/hooks/useDateFormatter.ts
-src/shared/hooks/useNumberFormatter.ts
-src/shared/hooks/useCurrencyFormatter.ts
-src/shared/hooks/useFormatters.ts
-src/shared/hooks/index.ts
-```
-
-Vi du dung trong page:
-
-```tsx
-import { useFormatters } from '@/shared/hooks';
-
-const { formatDate, formatNumber, formatCurrency } = useFormatters();
-
-formatDate('2026-07-17');       // 17 thg 7, 2026
-formatNumber(12500);            // 12.500
-formatCurrency(150000);         // 150.000 d
-```
-
-Neu chi can mot loai formatter:
-
-```tsx
-const { formatDateTime } = useDateFormatter();
-const { formatPercent } = useNumberFormatter();
-const { formatCurrency } = useCurrencyFormatter({ currency: 'VND' });
-```
-
-Quy uoc:
-
-- Input rong hoac sai format tra ve `-`.
-- Mac dinh locale la `vi-VN`.
-- Mac dinh currency la `VND`.
-- Neu can format dac biet, truyen override options tai noi dung.
-
+- Component/page không gọi `fetch` trực tiếp.
+- API nằm trong `features/<feature>/services` hoặc `shared/services` nếu dùng chung.
+- Hook feature giữ UI state, loading/error và handler.
+- Page chỉ compose layout, hook và component.
+- Text hiển thị cho người dùng phải là tiếng Việt sạch.
+- Backend trả tiếng Anh/raw code thì frontend map sang tiếng Việt ở service/util/page.
+- Không dùng mock fallback nếu màn đã nối backend thật; lỗi backend phải hiện error rõ.

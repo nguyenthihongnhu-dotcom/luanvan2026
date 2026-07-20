@@ -17,6 +17,7 @@ import type {
   GoodsReceiptsFilters,
   GoodsReceiptsRow,
   QueryParams,
+  CreateGoodsReceiptInput,
 } from './goods-receipts.model';
 
 const tableName = 'goods_receipts';
@@ -398,4 +399,29 @@ export async function reverseGoodsReceiptTransaction(
   } finally {
     connection.release();
   }
+}
+export async function insertGoodsReceipt(
+  input: CreateGoodsReceiptInput,
+): Promise<{ id: number }> {
+  const [warehouseRows] = await db.query<Array<RowDataPacket & { id: number }>>(
+    'SELECT id FROM warehouses WHERE id = ? OR code = ? LIMIT 1',
+    [input.warehouseId ?? 0, 'KHO-HCM-01'],
+  );
+  const [userRows] = await db.query<Array<RowDataPacket & { id: number }>>(
+    'SELECT id FROM users WHERE id = ? OR employee_code = ? LIMIT 1',
+    [input.createdBy ?? 0, 'NV-KHO-01'],
+  );
+  const [result] = await db.query<ResultSetHeader>(
+    `INSERT INTO goods_receipts (receipt_code, warehouse_id, supplier_id, status, reference_no, note, created_by)
+     VALUES (?, ?, ?, 'DRAFT', ?, ?, ?)`,
+    [
+      input.receiptCode,
+      warehouseRows[0]?.id,
+      input.supplierId ?? null,
+      input.referenceNo ?? null,
+      input.note ?? null,
+      userRows[0]?.id,
+    ],
+  );
+  return { id: result.insertId };
 }

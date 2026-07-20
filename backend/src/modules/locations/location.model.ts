@@ -59,3 +59,31 @@ export type MutationResult = {
 export type CreateLocationResult = {
   id: number;
 };
+
+export type CreateShelfInput = {
+  zoneCode: string;
+  warehouseId?: number;
+  code?: string;
+  name?: string;
+  layerCount?: number;
+};
+
+export type CreateShelfResult = {
+  id: number;
+  code: string;
+  createdLocationCount: number;
+};
+export type CreateZoneInput = {
+  warehouseId?: number;
+  code: string;
+  name?: string;
+  shelfCount?: number;
+  layerCount?: number;
+};
+
+export type CreateZoneResult = {
+  id: number;
+  code: string;
+  createdShelfCount: number;
+  createdLocationCount: number;
+};

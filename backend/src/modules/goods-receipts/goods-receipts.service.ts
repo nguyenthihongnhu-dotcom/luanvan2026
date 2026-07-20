@@ -3,6 +3,7 @@ import type {
   ConfirmGoodsReceiptInput,
   ConfirmGoodsReceiptResult,
   GoodsReceiptsFilters,
+  CreateGoodsReceiptInput,
   GoodsReceiptsRow,
   ReverseGoodsReceiptInput,
   ReverseGoodsReceiptResult,
@@ -10,6 +11,7 @@ import type {
 import {
   confirmGoodsReceiptTransaction,
   findGoodsReceipts as findGoodsReceiptsRepository,
+  insertGoodsReceipt,
   reverseGoodsReceiptTransaction,
 } from './goods-receipts.repository';
 
@@ -49,8 +51,16 @@ const confirmErrorMap: Record<string, HttpError> = {
     'Only CONFIRMED goods receipts can be reversed',
     'GOODS_RECEIPT_NOT_REVERSIBLE',
   ),
-  REFERENCE_ALREADY_REVERSED: new HttpError(409, 'Reference already reversed', 'REFERENCE_ALREADY_REVERSED'),
-  REVERSAL_INSUFFICIENT_STOCK: new HttpError(409, 'Insufficient stock to reverse receipt', 'REVERSAL_INSUFFICIENT_STOCK'),
+  REFERENCE_ALREADY_REVERSED: new HttpError(
+    409,
+    'Reference already reversed',
+    'REFERENCE_ALREADY_REVERSED',
+  ),
+  REVERSAL_INSUFFICIENT_STOCK: new HttpError(
+    409,
+    'Insufficient stock to reverse receipt',
+    'REVERSAL_INSUFFICIENT_STOCK',
+  ),
 };
 
 export async function listGoodsReceipts(
@@ -85,4 +95,9 @@ export async function reverseGoodsReceipt(
 
     throw error;
   }
+}
+export async function createGoodsReceipt(
+  input: CreateGoodsReceiptInput,
+): Promise<{ id: number }> {
+  return insertGoodsReceipt(input);
 }

@@ -5,12 +5,14 @@ import {
   approveStockAdjustmentController,
   cancelStockAdjustmentController,
   listStockAdjustmentsController,
+  createStockAdjustmentController,
   rejectStockAdjustmentController,
 } from './stock-adjustments.controller';
 
 export const stockAdjustmentsRouter = Router();
 
 stockAdjustmentsRouter.get('/', asyncHandler(listStockAdjustmentsController));
+stockAdjustmentsRouter.post('/', asyncHandler(createStockAdjustmentController));
 stockAdjustmentsRouter.post(
   '/:id/approve',
   asyncHandler(verifyToken),

@@ -4,19 +4,17 @@ import { HttpError, asyncHandler, errorHandler, notFoundHandler } from './http';
 describe('common/http', () => {
   it('wraps async route failures and forwards them to next', async () => {
     const error = new Error('boom');
-    const next = jest.fn();
-    const handler = asyncHandler(async () => {
-      throw error;
-    });
+    const next = jest.fn<void, [unknown]>();
+    const handler = asyncHandler(() => Promise.reject(error));
 
     handler({} as Request, {} as Response, next as NextFunction);
-    await new Promise(process.nextTick);
+    await new Promise<void>((resolve) => process.nextTick(resolve));
 
     expect(next).toHaveBeenCalledWith(error);
   });
 
   it('creates a route not found error with request context', () => {
-    const next = jest.fn();
+    const next = jest.fn<void, [unknown]>();
 
     notFoundHandler(
       { method: 'GET', path: '/missing' } as Request,
@@ -25,9 +23,11 @@ describe('common/http', () => {
     );
 
     expect(next).toHaveBeenCalledWith(expect.any(HttpError));
-    const error = next.mock.calls[0][0] as HttpError;
-    expect(error.statusCode).toBe(404);
-    expect(error.code).toBe('ROUTE_NOT_FOUND');
+    const error = next.mock.calls[0]?.[0];
+    expect(error).toBeInstanceOf(HttpError);
+    const httpError = error as HttpError;
+    expect(httpError.statusCode).toBe(404);
+    expect(httpError.code).toBe('ROUTE_NOT_FOUND');
   });
 
   it('serializes HttpError responses consistently', () => {

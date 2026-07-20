@@ -7,6 +7,7 @@ export interface ViTriKho {
     Ke: string;
     Tang: string;
     MaViTriCha: number | null;
+    MaKe?: number;
     TrangThai: 'Trong' | 'DangChua' | 'Day';
     SanPhamLuuTru?: string;
 }
@@ -23,149 +24,94 @@ export interface Layer {
     name: string;
 }
 
-const mockShelves: Shelf[] = [
-    { id: 's1', code: '01', name: 'Kệ 01' },
-    { id: 's2', code: '02', name: 'Kệ 02' },
-    { id: 's3', code: '03', name: 'Kệ 03' },
-];
-
-const mockLayers: Layer[] = [
-    { id: 'l3', code: '03', name: 'Tầng 03' },
-    { id: 'l2', code: '02', name: 'Tầng 02' },
-    { id: 'l1', code: '01', name: 'Tầng 01' },
-];
-
-const generateMockLocations = (): ViTriKho[] => {
-    const list: ViTriKho[] = [];
-    let id = 1;
-    const zones = ['A', 'B', 'C', 'D', 'E'];
-    const shelves = ['01', '02', '03'];
-    const layers = ['01', '02', '03'];
-
-    zones.forEach(zone => {
-        shelves.forEach(shelf => {
-            layers.forEach(layer => {
-                list.push({
-                    MaViTri: id++,
-                    KhuVuc: zone,
-                    Ke: shelf,
-                    Tang: layer,
-                    MaViTriCha: null,
-                    TrangThai: 'Trong',
-                });
-            });
-        });
-    });
-
-    return list;
-};
-
-const mockLocations = generateMockLocations();
-
 export function useWarehouse() {
     const [selectedZone, setSelectedZone] = useState<string | null>(null);
-    const [layers, setLayers] = useState<Layer[]>(mockLayers);
-    const [shelves, setShelves] = useState<Shelf[]>(mockShelves);
-    const [locations, setLocations] = useState<ViTriKho[]>(mockLocations);
+    const [layers, setLayers] = useState<Layer[]>([]);
+    const [shelves, setShelves] = useState<Shelf[]>([]);
+    const [locations, setLocations] = useState<ViTriKho[]>([]);
     const [activeLocation, setActiveLocation] = useState<ViTriKho | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
-    useEffect(() => {
-        let isMounted = true;
-
-        async function loadLocations() {
-            setIsLoading(true);
-            setError(null);
-
-            try {
-                const result = await warehouseService.listWarehouseLocations();
-                if (isMounted && result.length > 0) {
-                    setLocations(result);
-                    setShelves(warehouseService.deriveShelves(result));
-                    setLayers(warehouseService.deriveLayers(result));
-                }
-            } catch (err) {
-                console.error('Failed to load locations from backend:', err);
-                if (isMounted) {
-                    setError('Không tải được vị trí kho từ backend, đang hiển thị dữ liệu mẫu.');
-                }
-            } finally {
-                if (isMounted) {
-                    setIsLoading(false);
-                }
-            }
+    const loadLocations = async () => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const result = await warehouseService.listWarehouseLocations();
+            setLocations(result);
+            setShelves(warehouseService.deriveShelves(result));
+            setLayers(warehouseService.deriveLayers(result));
+        } catch (err) {
+            console.error('Failed to load locations from backend:', err);
+            setError('Không tải được vị trí kho từ backend.');
+        } finally {
+            setIsLoading(false);
         }
-
-        void loadLocations();
-
-        return () => {
-            isMounted = false;
-        };
-    }, []);
-
-    const getLocationInfo = (shelfCode: string, layerCode: string) => {
-        return locations.find((loc) =>
-            loc.KhuVuc === selectedZone && loc.Ke === shelfCode && loc.Tang === layerCode
-        );
     };
 
-    const handleAddShelf = () => {
+    useEffect(() => { void loadLocations(); }, []);
+
+
+    const handleAddZone = async (code: string, name?: string) => {
+        await warehouseService.createZone({ code, name, shelfCount: 1, layerCount: 3 });
+        await loadLocations();
+        setSelectedZone(code);
+    };
+    const getLocationInfo = (shelfCode: string, layerCode: string) => {
+        return locations.find((loc) => loc.KhuVuc === selectedZone && loc.Ke === shelfCode && loc.Tang === layerCode);
+    };
+
+        const handleAddShelf = async () => {
+        if (!selectedZone) return;
         const nextCodeInt = shelves.length > 0
             ? Math.max(...shelves.map(shelf => parseInt(shelf.code) || 0)) + 1
             : 1;
         const shelfCode = nextCodeInt.toString().padStart(2, '0');
-        const newShelf: Shelf = { id: `s${nextCodeInt}`, code: shelfCode, name: `Kệ ${shelfCode}` };
-        let currentMaxId = locations.length > 0 ? Math.max(...locations.map(l => l.MaViTri)) : 0;
-        const newLocationsForShelf = layers.map((layer) => ({
-            MaViTri: ++currentMaxId,
-            KhuVuc: selectedZone || '',
-            Ke: shelfCode,
-            Tang: layer.code,
-            MaViTriCha: null,
-            TrangThai: 'Trong' as const,
-        }));
 
-        setShelves([...shelves, newShelf]);
-        setLocations([...locations, ...newLocationsForShelf]);
+        await warehouseService.createShelf({
+            zoneCode: selectedZone,
+            code: shelfCode,
+            name: `Kệ ${shelfCode}`,
+            layerCount: Math.max(layers.length, 1),
+        });
+        await loadLocations();
     };
 
-    const handleAddLayer = () => {
-        const nextCodeInt = layers.length > 0
-            ? Math.max(...layers.map(layer => parseInt(layer.code) || 0)) + 1
-            : 1;
+    const handleAddLayer = async () => {
+        const nextCodeInt = layers.length > 0 ? Math.max(...layers.map(layer => parseInt(layer.code) || 0)) + 1 : 1;
         const layerCode = nextCodeInt.toString().padStart(2, '0');
-        const newLayer: Layer = { id: `l${nextCodeInt}`, code: layerCode, name: `Tầng ${layerCode}` };
-        let currentMaxId = locations.length > 0 ? Math.max(...locations.map(l => l.MaViTri)) : 0;
-        const newLocationsForLayer = shelves.map(shelf => ({
-            MaViTri: ++currentMaxId,
-            KhuVuc: selectedZone || '',
-            Ke: shelf.code,
-            Tang: layerCode,
-            MaViTriCha: null,
-            TrangThai: 'Trong' as const,
-        }));
+        const targetShelves = shelves.filter((shelf) => Number.isFinite(Number(shelf.id)));
 
-        setLayers([newLayer, ...layers]);
-        setLocations([...locations, ...newLocationsForLayer]);
+        for (const shelf of targetShelves) {
+            await warehouseService.createLocation({
+                shelfId: Number(shelf.id),
+                code: `${selectedZone || 'ZONE'}-${shelf.code}-${layerCode}-${Date.now()}`,
+                layerNo: nextCodeInt,
+                name: `Tầng ${layerCode}`,
+            });
+        }
+
+        await loadLocations();
     };
 
-    const handleDeleteShelf = (shelfId: string, shelfCode: string) => {
+    const handleDeleteShelf = async (shelfId: string, shelfCode: string) => {
         if (!window.confirm(`Bạn có chắc muốn xóa kệ ${shelfCode}?`)) return;
-        setShelves(shelves.filter(s => s.id !== shelfId));
-        setLocations(locations.filter(l => !(l.KhuVuc === selectedZone && l.Ke === shelfCode)));
-        if (activeLocation?.KhuVuc === selectedZone && activeLocation?.Ke === shelfCode) {
+        const numericShelfId = Number(shelfId);
+        if (Number.isFinite(numericShelfId)) {
+            await warehouseService.deleteShelf(numericShelfId);
+            await loadLocations();
             setActiveLocation(null);
         }
     };
 
-    const handleDeleteLayer = (layerId: string, layerCode: string) => {
+    const handleDeleteLayer = async (_layerId: string, layerCode: string) => {
         if (!window.confirm(`Bạn có chắc muốn xóa tầng ${layerCode}?`)) return;
-        setLayers(layers.filter(l => l.id !== layerId));
-        setLocations(locations.filter(l => !(l.KhuVuc === selectedZone && l.Tang === layerCode)));
-        if (activeLocation?.KhuVuc === selectedZone && activeLocation?.Tang === layerCode) {
-            setActiveLocation(null);
+        const targetLocations = locations.filter(l => l.KhuVuc === selectedZone && l.Tang === layerCode && l.MaKe);
+        for (const location of targetLocations) {
+            await warehouseService.deleteLayer(location.MaKe!, Number(layerCode));
         }
+        await loadLocations();
+        setActiveLocation(null);
     };
 
     return {
@@ -179,6 +125,7 @@ export function useWarehouse() {
         activeLocation,
         setActiveLocation,
         getLocationInfo,
+        handleAddZone,
         handleAddShelf,
         handleAddLayer,
         handleDeleteShelf,

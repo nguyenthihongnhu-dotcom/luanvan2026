@@ -1,6 +1,11 @@
 import { z } from 'zod';
 import { validateInput } from '../../common/validation/validate';
-import type { CreateLocationInput, LocationFilters } from './location.model';
+import type {
+  CreateLocationInput,
+  CreateShelfInput,
+  CreateZoneInput,
+  LocationFilters,
+} from './location.model';
 
 const locationStatusSchema = z.enum([
   'ACTIVE',
@@ -33,6 +38,22 @@ const createLocationSchema = z.object({
   notes: z.string().trim().max(500).optional(),
 });
 
+const createZoneSchema = z.object({
+  warehouseId: z.coerce.number().int().positive().optional(),
+  code: z.string().trim().min(1).max(30).toUpperCase(),
+  name: z.string().trim().max(100).optional(),
+  shelfCount: z.coerce.number().int().positive().max(20).optional(),
+  layerCount: z.coerce.number().int().positive().max(20).optional(),
+});
+
+const createShelfSchema = z.object({
+  zoneCode: z.string().trim().min(1).max(30).toUpperCase(),
+  warehouseId: z.coerce.number().int().positive().optional(),
+  code: z.string().trim().min(1).max(30).optional(),
+  name: z.string().trim().max(100).optional(),
+  layerCount: z.coerce.number().int().positive().max(20).optional(),
+});
+
 const layerDeleteSchema = z.object({
   shelfId: z.coerce.number().int().positive(),
   layerNo: z.coerce.number().int().positive(),
@@ -55,4 +76,11 @@ export function parseLayerDeleteQuery(input: unknown): {
   layerNo: number;
 } {
   return validateInput(layerDeleteSchema, input);
+}
+
+export function parseCreateShelf(input: unknown): CreateShelfInput {
+  return validateInput(createShelfSchema, input);
+}
+export function parseCreateZone(input: unknown): CreateZoneInput {
+  return validateInput(createZoneSchema, input);
 }

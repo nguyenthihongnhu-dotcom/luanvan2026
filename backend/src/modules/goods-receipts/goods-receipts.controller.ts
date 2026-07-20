@@ -4,10 +4,12 @@ import {
   confirmGoodsReceipt,
   listGoodsReceipts,
   reverseGoodsReceipt,
+  createGoodsReceipt,
 } from './goods-receipts.service';
 import {
   parseGoodsReceiptId,
   parseGoodsReceiptsFilters,
+  parseCreateGoodsReceipt,
 } from './goods-receipts.validation';
 
 export async function listGoodsReceiptsController(
@@ -52,5 +54,13 @@ export async function reverseGoodsReceiptController(
       receiptId,
       reversedBy: Number(req.user.id),
     }),
+  });
+}
+export async function createGoodsReceiptController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  res.status(201).json({
+    data: await createGoodsReceipt(parseCreateGoodsReceipt(req.body)),
   });
 }

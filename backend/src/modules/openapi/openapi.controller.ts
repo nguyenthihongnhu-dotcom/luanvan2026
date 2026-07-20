@@ -141,6 +141,14 @@ const openApiDocument = {
     },
     '/docs': { get: { tags: ['System'], summary: 'Swagger UI' } },
 
+    '/auth/users': listGet('List users'),
+    '/auth/register': {
+      post: {
+        tags: ['Auth'],
+        summary: 'Register user and issue tokens',
+        responses: jsonResponse,
+      },
+    },
     '/auth/login': {
       post: {
         tags: ['Auth'],
@@ -204,10 +212,43 @@ const openApiDocument = {
     '/authorization': listGet('List roles and permissions', true),
     '/warehouses': listGet('List warehouses'),
     '/locations': listGet('List warehouse structure and locations'),
+    '/locations/zones': {
+      post: {
+        tags: ['Warehouse'],
+        summary: 'Create warehouse zone with default shelves and locations',
+        responses: jsonResponse,
+      },
+    },
+    '/locations/shelves': {
+      post: {
+        tags: ['Warehouse'],
+        summary: 'Create shelf with default locations',
+        responses: jsonResponse,
+      },
+    },
     '/catalog': listGet(
       'List categories, brands, units, products and variants',
     ),
-    '/suppliers': listGet('List suppliers'),
+    '/suppliers': {
+      ...listGet('List suppliers'),
+      post: {
+        tags: ['Warehouse'],
+        summary: 'Create supplier',
+        responses: jsonResponse,
+      },
+    },
+    '/suppliers/{id}': {
+      put: {
+        tags: ['Warehouse'],
+        summary: 'Update supplier',
+        responses: jsonResponse,
+      },
+      delete: {
+        tags: ['Warehouse'],
+        summary: 'Delete supplier',
+        responses: jsonResponse,
+      },
+    },
     '/batches': listGet('List product batches'),
     '/stock/current': listGet('Current stock by location and batch'),
     '/stock/near-expiry': listGet('Near-expiry stock'),
@@ -216,14 +257,28 @@ const openApiDocument = {
       'List immutable inventory transaction log',
     ),
 
-    '/goods-receipts': listGet('List goods receipts'),
+    '/goods-receipts': {
+      ...listGet('List goods receipts'),
+      post: {
+        tags: ['Documents'],
+        summary: 'Create goods receipt header',
+        responses: jsonResponse,
+      },
+    },
     '/goods-receipts/{id}/confirm': protectedPost(
       'Confirm goods receipt and increase stock',
     ),
     '/goods-receipts/{id}/reverse': protectedPost(
       'Reverse confirmed goods receipt',
     ),
-    '/goods-issues': listGet('List goods issues'),
+    '/goods-issues': {
+      ...listGet('List goods issues'),
+      post: {
+        tags: ['Documents'],
+        summary: 'Create goods issue header',
+        responses: jsonResponse,
+      },
+    },
     '/goods-issues/{id}/confirm': protectedPost(
       'Confirm goods issue and decrease stock',
     ),
@@ -256,7 +311,14 @@ const openApiDocument = {
     },
     '/stock-counts/{id}/submit': protectedPost('Submit stock count'),
     '/stock-counts/{id}/approve': protectedPost('Approve stock count'),
-    '/stock-adjustments': listGet('List stock adjustments'),
+    '/stock-adjustments': {
+      ...listGet('List stock adjustments'),
+      post: {
+        tags: ['Inventory'],
+        summary: 'Create stock adjustment header',
+        responses: jsonResponse,
+      },
+    },
     '/stock-adjustments/{id}/approve': protectedPost(
       'Approve stock adjustment',
     ),
