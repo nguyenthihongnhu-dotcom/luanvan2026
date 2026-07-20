@@ -144,3 +144,6 @@ return unwrapData(response);
 4. Thêm menu trong `layouts/dashboard/Navbar.tsx` nếu cần.
 5. Không gọi API trực tiếp trong page.
 6. Cập nhật `frontend/docs/overview.md` nếu thêm route/API chính.
+## 9. Backend module còn thiếu UI
+
+Xem chi tiết tại [Backend UI Gap](backend-ui-gap.md). File đó là checklist để biết backend module nào đã có giao diện, module nào còn thiếu route/màn hình, và nên triển khai theo ưu tiên nào.

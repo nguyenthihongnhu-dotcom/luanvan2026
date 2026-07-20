@@ -6,10 +6,11 @@
 
 1. [Intern Code Guide](intern-code-guide.md): cách đọc một màn hình, layer nào làm gì, cách debug API và text tiếng Việt.
 2. [Overview](overview.md): kiến trúc frontend, route map, API map và thứ tự phụ thuộc feature.
-3. `src/app/README.md`: app bootstrap, providers, router.
-4. `src/shared/README.md`: httpClient, env, formatter, table.
-5. `src/layouts/dashboard/README.md`: dashboard shell, navbar, sidebar.
-6. README trong feature đang sửa: `src/features/<feature>/README.md`.
+3. [Backend UI Gap](backend-ui-gap.md): backend module nào đã có UI, module nào frontend còn thiếu giao diện.
+4. `src/app/README.md`: app bootstrap, providers, router.
+5. `src/shared/README.md`: httpClient, env, formatter, table.
+6. `src/layouts/dashboard/README.md`: dashboard shell, navbar, sidebar.
+7. README trong feature đang sửa: `src/features/<feature>/README.md`.
 
 ## Thứ tự feature để hiểu nhanh
 
