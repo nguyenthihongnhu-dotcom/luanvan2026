@@ -1,4 +1,4 @@
-﻿import React from 'react';
+import React from 'react';
 import type { RegisterData } from '@/features/auth/types';
 
 interface RegisterModalProps {
@@ -27,7 +27,7 @@ export default function RegisterModal({
                 width: '450px', maxWidth: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
                 maxHeight: '90vh', overflowY: 'auto'
             }}>
-                <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#DB2777' }}>Dang Ky Thanh Vien</h2>
+                <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#DB2777' }}>Đăng Ký Thành Viên</h2>
                 <form onSubmit={handleRegister}>
                     <div style={{ marginBottom: '10px' }}>
                         <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Username:</label>
@@ -60,7 +60,7 @@ export default function RegisterModal({
                     </div>
 
                     <div style={{ marginBottom: '10px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>So dien thoai:</label>
+                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Số điện thoại:</label>
                         <input type="text" name="sdt" value={registerData.sdt} onChange={handleRegisterInputChange} required
                             style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
                     </div>
@@ -86,7 +86,7 @@ export default function RegisterModal({
                                 fontWeight: 'bold'
                             }}
                         >
-                            Xac Nhan Dang Ky
+                            Xác Nhận Đăng Ký
                         </button>
                         <button
                             type="button"
@@ -96,7 +96,7 @@ export default function RegisterModal({
                                 border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold'
                             }}
                         >
-                            Huy
+                            Hủy
                         </button>
                     </div>
                 </form>

@@ -3,6 +3,7 @@ import { HttpError } from '../../common/http';
 import {
   confirmGoodsReceipt,
   listGoodsReceipts,
+  reverseGoodsReceipt,
 } from './goods-receipts.service';
 import {
   parseGoodsReceiptId,
@@ -32,6 +33,24 @@ export async function confirmGoodsReceiptController(
     data: await confirmGoodsReceipt({
       receiptId,
       confirmedBy: Number(req.user.id),
+    }),
+  });
+}
+
+export async function reverseGoodsReceiptController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  if (!req.user) {
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
+  }
+
+  const receiptId = parseGoodsReceiptId(req.params.id);
+
+  res.json({
+    data: await reverseGoodsReceipt({
+      receiptId,
+      reversedBy: Number(req.user.id),
     }),
   });
 }

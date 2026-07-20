@@ -48,3 +48,15 @@ export type ConfirmGoodsIssueResult = {
   strategy: AllocationStrategy;
   transactionCount: number;
 };
+
+export type ReverseGoodsIssueInput = {
+  issueId: number;
+  reversedBy: number;
+};
+
+export type ReverseGoodsIssueResult = {
+  issueId: number;
+  issueCode: string;
+  status: 'CANCELLED';
+  reversalCount: number;
+};

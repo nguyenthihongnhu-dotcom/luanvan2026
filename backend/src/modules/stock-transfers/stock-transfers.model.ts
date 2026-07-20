@@ -46,3 +46,15 @@ export type ConfirmStockTransferResult = {
   status: 'CONFIRMED';
   transactionCount: number;
 };
+
+export type ReverseStockTransferInput = {
+  transferId: number;
+  reversedBy: number;
+};
+
+export type ReverseStockTransferResult = {
+  transferId: number;
+  transferCode: string;
+  status: 'CANCELLED';
+  reversalCount: number;
+};

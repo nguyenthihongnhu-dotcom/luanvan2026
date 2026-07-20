@@ -1,5 +1,6 @@
 import express from 'express';
 import { errorHandler, notFoundHandler } from './common/http';
+import { requestContext, requestLogger } from './common/middleware/request-context.middleware';
 import { config } from './config/config';
 import { alertsModule } from './modules/alerts/alerts.module';
 import { authModule } from './modules/auth/auth.module';
@@ -14,6 +15,7 @@ import { healthModule } from './modules/health/health.module';
 import { inventoryTransactionsModule } from './modules/inventory-transactions/inventory-transactions.module';
 import { locationsModule } from './modules/locations/locations.module';
 import { notificationsModule } from './modules/notifications/notifications.module';
+import { openApiModule } from './modules/openapi/openapi.module';
 import { reportsModule } from './modules/reports/reports.module';
 import { settingsModule } from './modules/settings/settings.module';
 import { stockModule } from './modules/stock/stock.module';
@@ -27,6 +29,8 @@ export function createApp(): express.Express {
   const app = express();
 
   app.disable('x-powered-by');
+  app.use(requestContext);
+  app.use(requestLogger);
   app.use((req, res, next) => {
     res.header('Access-Control-Allow-Origin', config.corsOrigin);
     res.header(
@@ -51,6 +55,7 @@ export function createApp(): express.Express {
     });
   });
 
+  app.use(openApiModule);
   app.use('/health', healthModule);
   app.use('/auth', authModule);
   app.use('/authorization', authorizationModule);

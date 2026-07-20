@@ -5,11 +5,14 @@ import type {
 } from 'mysql2/promise';
 import { insertAuditLog } from '../../common/audit/audit.repository';
 import { buildUniqueCode } from '../../common/code/code-generator';
+import { reverseInventoryReference } from '../../common/inventory/reversal.repository';
 import { db } from '../../database/db';
 import type { AllocationStrategy } from '../stock/stock.model';
 import type {
   ConfirmGoodsIssueInput,
   ConfirmGoodsIssueResult,
+  ReverseGoodsIssueInput,
+  ReverseGoodsIssueResult,
   GoodsIssueDemand,
   GoodsIssueItemRow,
   GoodsIssueRow,
@@ -433,6 +436,76 @@ export async function confirmGoodsIssueTransaction(
       status: 'CONFIRMED',
       strategy: input.strategy,
       transactionCount,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function reverseGoodsIssueTransaction(
+  input: ReverseGoodsIssueInput,
+): Promise<ReverseGoodsIssueResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const issue = await lockGoodsIssue(connection, input.issueId);
+
+    if (!issue) {
+      throw new Error('GOODS_ISSUE_NOT_FOUND');
+    }
+
+    if (issue.status === 'CANCELLED') {
+      await connection.commit();
+      return {
+        issueId: issue.id,
+        issueCode: issue.issue_code,
+        status: 'CANCELLED',
+        reversalCount: 0,
+      };
+    }
+
+    if (issue.status !== 'CONFIRMED') {
+      throw new Error('GOODS_ISSUE_NOT_REVERSIBLE');
+    }
+
+    const reversalCount = await reverseInventoryReference(connection, {
+      referenceType: 'GOODS_ISSUE',
+      referenceId: issue.id,
+      reversedBy: input.reversedBy,
+      note: `Reversed goods issue ${issue.issue_code}`,
+    });
+
+    await insertAuditLog(connection, {
+      userId: input.reversedBy,
+      action: 'REVERSE',
+      module: 'goods_issues',
+      entityType: 'GOODS_ISSUE',
+      entityId: issue.id,
+      oldValues: { status: issue.status },
+      newValues: { status: 'CANCELLED', reversalCount },
+    });
+
+    await connection.query(
+      `
+        UPDATE goods_issues
+        SET status = 'CANCELLED', cancelled_by = ?, cancelled_at = CURRENT_TIMESTAMP(3)
+        WHERE id = ?
+      `,
+      [input.reversedBy, issue.id],
+    );
+
+    await connection.commit();
+
+    return {
+      issueId: issue.id,
+      issueCode: issue.issue_code,
+      status: 'CANCELLED',
+      reversalCount,
     };
   } catch (error) {
     await connection.rollback();

@@ -999,6 +999,59 @@ VALUES
     ('AUDITOR', 'Auditor', 'Chỉ đọc và kiểm toán', TRUE)
 ON DUPLICATE KEY UPDATE name = VALUES(name);
 
+INSERT INTO permissions (code, name, module, description)
+VALUES
+    ('goods_receipts:confirm', 'Confirm goods receipts', 'goods_receipts', 'Confirm receipt and increase stock'),
+    ('goods_receipts:reverse', 'Reverse goods receipts', 'goods_receipts', 'Reverse confirmed receipt with reversal transactions'),
+    ('goods_issues:confirm', 'Confirm goods issues', 'goods_issues', 'Confirm issue and decrease stock'),
+    ('goods_issues:reverse', 'Reverse goods issues', 'goods_issues', 'Reverse confirmed issue with reversal transactions'),
+    ('stock_transfers:confirm', 'Confirm stock transfers', 'stock_transfers', 'Confirm transfer between locations'),
+    ('stock_transfers:reverse', 'Reverse stock transfers', 'stock_transfers', 'Reverse confirmed transfer with reversal transactions'),
+    ('stock_adjustments:approve', 'Approve stock adjustments', 'stock_adjustments', 'Approve adjustment and update stock'),
+    ('stock_adjustments:reject', 'Reject stock adjustments', 'stock_adjustments', 'Reject pending adjustment before stock update'),
+    ('stock_adjustments:cancel', 'Cancel stock adjustments', 'stock_adjustments', 'Cancel draft or pending adjustment'),
+    ('stock_counts:create', 'Create stock counts', 'stock_counts', 'Create stock count snapshot'),
+    ('stock_counts:start', 'Start stock counts', 'stock_counts', 'Start stock counting'),
+    ('stock_counts:count', 'Record stock counts', 'stock_counts', 'Record actual counted quantity'),
+    ('stock_counts:submit', 'Submit stock counts', 'stock_counts', 'Submit counted result'),
+    ('stock_counts:approve', 'Approve stock counts', 'stock_counts', 'Approve stock count and create adjustment'),
+    ('alerts:generate', 'Generate alerts', 'alerts', 'Generate inventory alerts from stock views'),
+    ('notifications:generate', 'Generate notifications', 'notifications', 'Generate notifications from open alerts')
+ON DUPLICATE KEY UPDATE name = VALUES(name), module = VALUES(module), description = VALUES(description);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.code IN (
+    'goods_receipts:confirm',
+    'goods_receipts:reverse',
+    'goods_issues:confirm',
+    'goods_issues:reverse',
+    'stock_transfers:confirm',
+    'stock_transfers:reverse',
+    'stock_adjustments:approve',
+    'stock_adjustments:reject',
+    'stock_adjustments:cancel',
+    'stock_counts:create',
+    'stock_counts:start',
+    'stock_counts:count',
+    'stock_counts:submit',
+    'stock_counts:approve',
+    'alerts:generate',
+    'notifications:generate'
+)
+WHERE r.code IN ('ADMIN', 'WAREHOUSE_MANAGER')
+ON DUPLICATE KEY UPDATE permission_id = VALUES(permission_id);
+
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.code IN (
+    'stock_counts:count',
+    'stock_counts:submit'
+)
+WHERE r.code = 'STAFF'
+ON DUPLICATE KEY UPDATE permission_id = VALUES(permission_id);
 INSERT INTO units (code, name, precision_scale)
 VALUES
     ('PCS', 'Cái', 0),
@@ -1014,3 +1067,4 @@ SET FOREIGN_KEY_CHECKS = 1;
 -- ============================================================
 -- END OF SCHEMA
 -- ============================================================
+

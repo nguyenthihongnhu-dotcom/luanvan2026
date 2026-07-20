@@ -1,9 +1,9 @@
-﻿import React, { useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import RegisterModal from '@/features/auth/components/RegisterModal';
 import { authService, getAuthErrorMessage } from '@/features/auth/services/authService';
 import { useAuth } from '@/features/auth/context/useAuth';
-import type { AuthRole, RegisterData, RegisterPayload } from '@/features/auth/types';
+import type { RegisterData, RegisterPayload } from '@/features/auth/types';
 
 const emptyRegisterData: RegisterData = {
     username: '',
@@ -65,7 +65,7 @@ const Login: React.FC = () => {
             navigate('/');
         } catch (err: unknown) {
             console.error('Loi dang ky:', err);
-            alert(getAuthErrorMessage(err, 'Dang ky that bai. Vui long thu lai.'));
+            alert(getAuthErrorMessage(err, 'Đăng ký thất bại. Vui lòng thử lại.'));
         }
     };
 
@@ -77,21 +77,24 @@ const Login: React.FC = () => {
             const result = response.result;
 
             if (!result?.role) {
-                setError('Khong lay duoc thong tin phan quyen tu server.');
+                setError('Không lấy được thông tin phân quyền từ server.');
                 return;
             }
 
             auth.login(result);
 
-            const redirectRoutes: Record<AuthRole, string> = {
+            const redirectRoutes: Record<string, string> = {
                 ADMIN: '/products',
+                WAREHOUSE_MANAGER: '/products',
+                STAFF: '/transactions',
+                AUDITOR: '/transactions',
                 KHACHHANG: '/cusorderpage',
             };
-            const targetPath = redirectRoutes[result.role] || '/';
+            const targetPath = redirectRoutes[result.role] || '/products';
             navigate(targetPath);
         } catch (err: unknown) {
             console.error('Loi dang nhap:', err);
-            setError(getAuthErrorMessage(err, 'Dang nhap that bai. Vui long kiem tra lai tai khoan va mat khau.'));
+            setError(getAuthErrorMessage(err, 'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản và mật khẩu.'));
         }
     };
 
@@ -102,7 +105,7 @@ const Login: React.FC = () => {
 
     return (
         <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#DB2777' }}>Dang Nhap</h2>
+            <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#DB2777' }}>Đăng Nhập</h2>
             {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
 
             <form onSubmit={handleLogin}>
@@ -133,14 +136,14 @@ const Login: React.FC = () => {
                         type="submit"
                         style={{ flex: 1, padding: '10px', backgroundColor: '#DB2777', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}
                     >
-                        Dang Nhap
+                        Đăng Nhập
                     </button>
                     <button
                         type="button"
                         style={{ flex: 1, padding: '10px', backgroundColor: '#16b423', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}
                         onClick={() => setShowRegisterModal(true)}
                     >
-                        Dang Ky
+                        Đăng Ký
                     </button>
                 </div>
             </form>
@@ -159,5 +162,7 @@ const Login: React.FC = () => {
 };
 
 export default Login;
+
+
 
 

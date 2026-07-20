@@ -8,9 +8,10 @@
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
-    "start": "ts-node src/main.ts",
-    "start:dev": "ts-node src/main.ts",
-    "start:debug": "node --inspect-brk -r ts-node/register src/main.ts",
+    "start": "ts-node --files src/main.ts",
+    "start:dev": "ts-node --files src/main.ts",
+    "dev": "ts-node --files src/main.ts",
+    "start:debug": "node --inspect-brk -r ts-node/register -e \"process.env.TS_NODE_FILES='true'; require('./src/main.ts')\"",
     "start:prod": "node dist/main",
     "lint": "eslint \"{src,test}/**/*.ts\"",
     "test": "jest",

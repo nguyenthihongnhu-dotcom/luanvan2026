@@ -1,7 +1,17 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { asyncHandler } from '../../common/http';
-import { listNotificationsController } from './notifications.controller';
+import { requirePermission, verifyToken } from '../auth/auth.module';
+import {
+  generateNotificationsController,
+  listNotificationsController,
+} from './notifications.controller';
 
 export const notificationsRouter = Router();
 
 notificationsRouter.get('/', asyncHandler(listNotificationsController));
+notificationsRouter.post(
+  '/generate',
+  asyncHandler(verifyToken),
+  requirePermission('notifications:generate'),
+  asyncHandler(generateNotificationsController),
+);

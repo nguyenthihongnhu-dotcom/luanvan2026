@@ -32,7 +32,7 @@ export function notFoundHandler(
 
 export function errorHandler(
   error: unknown,
-  _req: Request,
+  req: Request,
   res: Response,
   _next: NextFunction,
 ): void {
@@ -43,17 +43,24 @@ export function errorHandler(
       error: {
         code: error.code,
         message: error.message,
+        requestId: req.requestId,
       },
     });
     return;
   }
 
-  console.error(error);
+  console.error(JSON.stringify({
+    level: 'error',
+    event: 'unhandled_error',
+    requestId: req.requestId,
+    error: error instanceof Error ? error.message : String(error),
+  }));
 
   res.status(500).json({
     error: {
       code: 'INTERNAL_SERVER_ERROR',
       message: 'Unexpected server error',
+      requestId: req.requestId,
     },
   });
 }

@@ -4,10 +4,13 @@ import type {
   ConfirmGoodsIssueResult,
   GoodsIssuesFilters,
   GoodsIssuesRow,
+  ReverseGoodsIssueInput,
+  ReverseGoodsIssueResult,
 } from './goods-issues.model';
 import {
   confirmGoodsIssueTransaction,
   findGoodsIssues as findGoodsIssuesRepository,
+  reverseGoodsIssueTransaction,
 } from './goods-issues.repository';
 
 const confirmErrorMap: Record<string, HttpError> = {
@@ -46,6 +49,12 @@ const confirmErrorMap: Record<string, HttpError> = {
     'Stock changed while confirming goods issue',
     'CONCURRENT_STOCK_UPDATE',
   ),
+  GOODS_ISSUE_NOT_REVERSIBLE: new HttpError(
+    409,
+    'Only CONFIRMED goods issues can be reversed',
+    'GOODS_ISSUE_NOT_REVERSIBLE',
+  ),
+  REFERENCE_ALREADY_REVERSED: new HttpError(409, 'Reference already reversed', 'REFERENCE_ALREADY_REVERSED'),
 };
 
 export async function listGoodsIssues(
@@ -59,6 +68,20 @@ export async function confirmGoodsIssue(
 ): Promise<ConfirmGoodsIssueResult> {
   try {
     return await confirmGoodsIssueTransaction(input);
+  } catch (error) {
+    if (error instanceof Error && confirmErrorMap[error.message]) {
+      throw confirmErrorMap[error.message];
+    }
+
+    throw error;
+  }
+}
+
+export async function reverseGoodsIssue(
+  input: ReverseGoodsIssueInput,
+): Promise<ReverseGoodsIssueResult> {
+  try {
+    return await reverseGoodsIssueTransaction(input);
   } catch (error) {
     if (error instanceof Error && confirmErrorMap[error.message]) {
       throw confirmErrorMap[error.message];

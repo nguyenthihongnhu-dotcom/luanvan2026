@@ -9,6 +9,16 @@ interface WarehouseGridProps {
     getLocationInfo: (shelfCode: string, layerCode: string) => ViTriKho | undefined;
 }
 
+function getLocationStyle(status: ViTriKho["TrangThai"]) {
+    if (status === "DangChua") {
+        return "bg-orange-50 border-orange-300 hover:bg-orange-100 text-orange-800";
+    }
+    if (status === "Day") {
+        return "bg-red-50 border-red-300 hover:bg-red-100 text-red-800";
+    }
+    return "bg-green-50 border-green-300 hover:bg-green-100 text-green-800";
+}
+
 export default function WarehouseGrid({
     layers,
     shelves,
@@ -18,39 +28,32 @@ export default function WarehouseGrid({
     getLocationInfo,
 }: WarehouseGridProps) {
     return (
-        <div className="flex-1 p-8 overflow-auto flex flex-col items-center justify-start">
-            <div className="bg-white p-8 rounded-xl shadow-sm border border-gray-200">
-                <h3 className="text-center font-bold text-base mb-8 text-gray-600 uppercase">MÃ´ hÃ¬nh máº·t Ä‘á»©ng dÃ£y ká»‡</h3>
+        <main className="flex flex-1 flex-col items-center justify-start overflow-auto p-8">
+            <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
+                <h3 className="mb-8 text-center text-base font-bold uppercase text-gray-600">Mô hình mặt đứng dãy kệ</h3>
 
                 <div className="space-y-4">
-                    {/* VÃ²ng láº·p theo cÃ¡c Táº§ng tá»« cao xuá»‘ng tháº¥p (Trá»¥c Y) */}
                     {layers.map((layer) => (
                         <div key={layer.id} className="flex items-center gap-4">
-                            {/* Cá»™t hiá»ƒn thá»‹ tÃªn Táº§ng á»Ÿ rÃ¬a trÃ¡i */}
-                            <div className="w-20 text-right font-semibold text-sm text-gray-500">
+                            <div className="w-20 text-right text-sm font-semibold text-gray-500">
                                 {layer.name}
                             </div>
 
-                            {/* VÃ²ng láº·p hiá»ƒn thá»‹ cÃ¡c Ká»‡ theo hÃ ng ngang (Trá»¥c X) */}
                             <div className="flex gap-4">
                                 {shelves.map((shelf) => {
                                     const location = getLocationInfo(shelf.code, layer.code);
                                     if (!location) return null;
 
-                                    // Äá»‹nh dáº¡ng mÃ u sáº¯c dá»±a trÃªn status
-                                    let bgClass = 'bg-green-50 border-green-300 hover:bg-green-100 text-green-800';
-                                    if (location.TrangThai === 'DangChua') bgClass = 'bg-orange-50 border-orange-300 hover:bg-orange-100 text-orange-800';
-                                    if (location.TrangThai === 'Day') bgClass = 'bg-red-50 border-red-300 hover:bg-red-100 text-red-800';
-
                                     return (
                                         <button
                                             key={`${shelf.code}-${layer.code}`}
+                                            type="button"
                                             onClick={() => setActiveLocation(location)}
-                                            className={`w-28 h-20 border-2 rounded-xl flex flex-col items-center justify-center p-2 cursor-pointer transition-all shadow-sm ${bgClass} ${activeLocation?.MaViTri === location.MaViTri ? 'ring-4 ring-pink-500 scale-105' : ''}`}
+                                            className={`flex h-20 w-28 cursor-pointer flex-col items-center justify-center rounded-xl border-2 p-2 shadow-sm transition-all ${getLocationStyle(location.TrangThai)} ${activeLocation?.MaViTri === location.MaViTri ? "scale-105 ring-4 ring-pink-500" : ""}`}
                                         >
                                             <span className="text-xs font-bold tracking-wider">{selectedZone}-{location.Ke}-{location.Tang}</span>
-                                            <span className="text-[10px] mt-1 truncate max-w-full font-medium">
-                                                {location.SanPhamLuuTru ? location.SanPhamLuuTru : 'Trá»‘ng'}
+                                            <span className="mt-1 max-w-full truncate text-[10px] font-medium">
+                                                {location.SanPhamLuuTru || "Trống"}
                                             </span>
                                         </button>
                                     );
@@ -59,12 +62,11 @@ export default function WarehouseGrid({
                         </div>
                     ))}
 
-                    {/* DÃ²ng hiá»ƒn thá»‹ tÃªn Ká»‡ á»Ÿ dÆ°á»›i Ä‘Ã¡y sÆ¡ Ä‘á»“ */}
                     <div className="flex items-center gap-4 pt-2">
-                        <div className="w-20"></div> {/* Khoáº£ng trá»‘ng bÃ¹ dÃ²ng táº§ng */}
+                        <div className="w-20" />
                         <div className="flex gap-4">
                             {shelves.map((shelf) => (
-                                <div key={shelf.id} className="w-28 text-center font-semibold text-sm text-gray-500">
+                                <div key={shelf.id} className="w-28 text-center text-sm font-semibold text-gray-500">
                                     {shelf.name}
                                 </div>
                             ))}
@@ -72,7 +74,6 @@ export default function WarehouseGrid({
                     </div>
                 </div>
             </div>
-        </div>
+        </main>
     );
 }
-

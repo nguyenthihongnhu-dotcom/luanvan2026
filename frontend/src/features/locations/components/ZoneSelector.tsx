@@ -5,29 +5,29 @@ interface ZoneSelectorProps {
 
 export default function ZoneSelector({ selectedZone, setSelectedZone }: ZoneSelectorProps) {
     return (
-        <div className="flex flex-wrap items-center justify-between p-4 bg-white border-b border-gray-200 shadow-sm gap-4">
+        <div className="flex flex-wrap items-center justify-between gap-4 border-b border-gray-200 bg-white p-4 shadow-sm">
             <div className="flex items-center gap-3">
-                {/* Nút quay lại bản đồ tổng thể khi đang ở view chi tiết */}
                 {selectedZone && (
                     <button
+                        type="button"
                         onClick={() => setSelectedZone(null)}
-                        className="px-3 py-1.5 bg-slate-50 hover:bg-slate-100 text-slate-700 hover:text-pink-600 font-bold rounded-lg text-xs flex items-center gap-1.5 transition-colors border border-slate-200 shadow-sm cursor-pointer"
-                        title="Quay lại Bản đồ tổng thể"
+                        className="flex cursor-pointer items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-1.5 text-xs font-bold text-slate-700 shadow-sm transition-colors hover:bg-slate-100 hover:text-pink-600"
+                        title="Quay lại bản đồ tổng thể"
                     >
-                        Quay lại Bản đồ
+                        Quay lại bản đồ
                     </button>
                 )}
 
-                <h1 className="text-lg font-bold text-gray-900 uppercase tracking-tight flex items-center gap-1.5">
+                <h1 className="flex items-center gap-1.5 text-lg font-bold uppercase tracking-tight text-gray-900">
                     <span>Sơ đồ cấu trúc kho</span>
                     {selectedZone && (
-                        <span className="text-sm font-bold text-pink-600 bg-pink-50 px-2 py-0.5 rounded-full border border-pink-100">
+                        <span className="rounded-full border border-pink-100 bg-pink-50 px-2 py-0.5 text-sm font-bold text-pink-600">
                             Zone {selectedZone}
                         </span>
                     )}
                 </h1>
 
-                <div className="h-6 w-px bg-gray-200 mx-1 hidden sm:block"></div>
+                <div className="mx-1 hidden h-6 w-px bg-gray-200 sm:block" />
 
                 <select
                     value={selectedZone || "map"}
@@ -36,7 +36,7 @@ export default function ZoneSelector({ selectedZone, setSelectedZone }: ZoneSele
                         if (val === "map") {
                             setSelectedZone(null);
                         } else if (val === "add") {
-                            const name = window.prompt("Nhập mã phân khu mới (vd: F):");
+                            const name = window.prompt("Nhập mã phân khu mới (VD: F):");
                             if (name) {
                                 setSelectedZone(name.trim().toUpperCase());
                             }
@@ -44,7 +44,7 @@ export default function ZoneSelector({ selectedZone, setSelectedZone }: ZoneSele
                             setSelectedZone(val);
                         }
                     }}
-                    className="px-3 py-1.5 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-pink-500 text-sm font-semibold text-slate-700 bg-white cursor-pointer"
+                    className="cursor-pointer rounded-lg border border-gray-300 bg-white px-3 py-1.5 text-sm font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
                 >
                     <option value="map">Bản đồ tổng thể</option>
                     <option value="A">Khu vực A (Zone A)</option>
@@ -55,18 +55,18 @@ export default function ZoneSelector({ selectedZone, setSelectedZone }: ZoneSele
                     <option value="add">Thêm khu vực mới</option>
                 </select>
             </div>
-            
+
             <div className="flex gap-4 text-sm font-medium text-slate-600">
                 <div className="flex items-center gap-1.5">
-                    <span className="w-3.5 h-3.5 bg-green-100 border border-green-400 rounded shadow-sm"></span>
+                    <span className="h-3.5 w-3.5 rounded border border-green-400 bg-green-100 shadow-sm" />
                     <span>Trống</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    <span className="w-3.5 h-3.5 bg-orange-100 border border-orange-400 rounded shadow-sm"></span>
+                    <span className="h-3.5 w-3.5 rounded border border-orange-400 bg-orange-100 shadow-sm" />
                     <span>Đang chứa</span>
                 </div>
                 <div className="flex items-center gap-1.5">
-                    <span className="w-3.5 h-3.5 bg-red-100 border border-red-400 rounded shadow-sm"></span>
+                    <span className="h-3.5 w-3.5 rounded border border-red-400 bg-red-100 shadow-sm" />
                     <span>Đầy</span>
                 </div>
             </div>

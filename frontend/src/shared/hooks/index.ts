@@ -1,4 +1,4 @@
-﻿export { useCurrencyFormatter } from './useCurrencyFormatter';
+export { useCurrencyFormatter } from './useCurrencyFormatter';
 export type { UseCurrencyFormatterOptions } from './useCurrencyFormatter';
 export { useDateFormatter } from './useDateFormatter';
 export type { DateInput, UseDateFormatterOptions } from './useDateFormatter';

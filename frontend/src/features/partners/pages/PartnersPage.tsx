@@ -12,7 +12,7 @@ interface Partner {
     NguoiLienHe: string;
     Email: string;
     SoDienThoai: string;
-    type: "NCC" | "KH"; 
+    type: "NCC" | "KH";
 }
 
 export default function Partners() {
@@ -20,31 +20,31 @@ export default function Partners() {
     const [type, setType] = useState<PartnerFilter>("All");
 
     const data: Partner[] = [
-        { MaNCC: 1, TenNCC: "CÃƒÂ´ng ty SÃ¡Â»Â¯a Vinamilk", NguoiLienHe: "BÃƒ  NguyÃ¡Â»â€¦n ThÃ¡Â»â€¹ Mai", type: "NCC", SoDienThoai: "028383838", Email: "contact@vinamilk.vn" },
-        { MaNCC: 2, TenNCC: "Ã„ÂÃ¡ÂºÂ¡i lÃƒÂ½ MÃ¡ÂºÂ¹ & BÃƒÂ© HÃƒ  NÃ¡Â»â„¢i", NguoiLienHe: "Ãƒâ€ng TrÃ¡ÂºÂ§n VÃ„Æ’n BÃƒÂ¬nh", type: "NCC", SoDienThoai: "0909123456", Email: "vanbinh@dv.com" },
+        { MaNCC: 1, TenNCC: "Cong ty Sửa Vinamilk", NguoiLienHe: "Bà Nguyễn Thị Mai", type: "NCC", SoDienThoai: "028383838", Email: "contact@vinamilk.vn" },
+        { MaNCC: 2, TenNCC: "Đại lý Mẹ & Bé Hà Nội", NguoiLienHe: "Ông Trần Văn Bình", type: "NCC", SoDienThoai: "0909123456", Email: "vanbinh@dv.com" },
     ];
 
     useEffect(() => {
         setExtraContent(
             <div className="space-y-4">
-                <label className="block text-xs font-semibold text-gray-500 uppercase">PhÃƒÂ¢n loÃ¡ÂºÂ¡i Ã„â€˜Ã¡Â»â€˜i tÃƒÂ¡c</label>
-                <select className="w-full text-sm border-gray-200 rounded-md" onChange={(e) => setType(e.target.value as PartnerFilter)}>
-                    <option value="All">TÃ¡ÂºÂ¥t cÃ¡ÂºÂ£</option>
-                    <option value="NCC">NhÃƒ  cung cÃ¡ÂºÂ¥p</option>
-                    <option value="KH">KhÃƒÂ¡ch hÃƒ ng</option>
+                <label className="block text-xs font-semibold text-gray-500 uppercase">Phân loại đối tác</label>
+                <select className="w-full text-sm border-gray-200 rounded-md" value={type} onChange={(e) => setType(e.target.value as PartnerFilter)}>
+                    <option value="All">Tất cả</option>
+                    <option value="NCC">Nhà cung cấp</option>
+                    <option value="KH">Khách hàng</option>
                 </select>
             </div>
         );
         return () => setExtraContent(null);
-    }, [setExtraContent]);
+    }, [setExtraContent, type]);
 
     const columns: ColumnProps<Partner>[] = [
-        { key: "MaNCC", title: "MÃƒÂ£ NCC", className: "w-20" },
-        { key: "TenNCC", title: "TÃƒÂªn NhÃƒ  Cung CÃ¡ÂºÂ¥p", className: "font-semibold text-gray-900" },
-        { key: "NguoiLienHe", title: "NgÃ†Â°Ã¡Â»Âi LiÃƒÂªn HÃ¡Â»â€¡" },
-        { key: "SoDienThoai", title: "SÃ¡Â»â€˜ Ã„ÂiÃ¡Â»â€¡n ThoÃ¡ÂºÂ¡i" },
+        { key: "MaNCC", title: "Mã NCC", className: "w-20" },
+        { key: "TenNCC", title: "Tên nhà cung cấp", className: "font-semibold text-gray-900" },
+        { key: "NguoiLienHe", title: "Người liên hệ" },
+        { key: "SoDienThoai", title: "Số điện thoại" },
         { key: "Email", title: "Email" },
-        { key: "actions", title: "Thao tÃƒÂ¡c", render: () => <button className="text-pink-600 hover:text-pink-800 font-medium">SÃ¡Â»Â­a</button> }
+        { key: "actions", title: "Thao tác", render: () => <button className="text-pink-600 hover:text-pink-800 font-medium">Sửa</button> }
     ];
 
     const filtered = data.filter(d => type === "All" || d.type === type);
@@ -53,24 +53,16 @@ export default function Partners() {
         <DashboardLayout>
             <div className="flex flex-col space-y-4">
                 <div className="flex justify-between items-center">
-                    <h1 className="text-xl font-bold text-gray-800">QuÃ¡ÂºÂ£n lÃƒÂ½ Ã„ÂÃ¡Â»â€˜i tÃƒÂ¡c</h1>
-                    <button className="bg-pink-600 text-white px-4 py-2 rounded-md text-sm">+ ThÃƒÂªm Ã„â€˜Ã¡Â»â€˜i tÃƒÂ¡c</button>
+                    <h1 className="text-xl font-bold text-gray-800">Quản lý đối tác</h1>
+                    <button className="bg-pink-600 text-white px-4 py-2 rounded-md text-sm">+ Thêm đối tác</button>
                 </div>
 
                 <div className="bg-white p-4 rounded-lg border border-gray-200">
-                    <input
-                        type="text" placeholder="TÃƒÂ¬m theo tÃƒÂªn, email, sÃ„â€˜t..."
-                        className="w-full md:w-1/3 px-4 py-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-pink-500"
-                    />
+                    <input type="text" placeholder="Tìm theo tên, email, SĐT..." className="w-full md:w-1/3 px-4 py-2 border rounded-md text-sm outline-none focus:ring-2 focus:ring-pink-500" />
                 </div>
 
-                <Tablelayout
-                    columns={columns}
-                    dataSource={filtered}
-                    rowKey="MaNCC"
-                />
+                <Tablelayout columns={columns} dataSource={filtered} rowKey="MaNCC" />
             </div>
         </DashboardLayout>
     );
 }
-

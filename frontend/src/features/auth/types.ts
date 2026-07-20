@@ -1,9 +1,12 @@
-﻿export type AuthRole = 'ADMIN' | 'KHACHHANG';
+export type AuthRole = 'ADMIN' | 'WAREHOUSE_MANAGER' | 'STAFF' | 'AUDITOR' | 'KHACHHANG';
 
 export interface AuthUser {
     maTK: string;
-    role: AuthRole;
+    role: AuthRole | string;
     ten?: string;
+    permissions?: string[];
+    accessToken?: string;
+    refreshToken?: string;
 }
 
 export interface RegisterData {

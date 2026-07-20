@@ -1,6 +1,6 @@
 import type { Request, Response } from 'express';
 import { HttpError } from '../../common/http';
-import { confirmGoodsIssue, listGoodsIssues } from './goods-issues.service';
+import { confirmGoodsIssue, listGoodsIssues, reverseGoodsIssue } from './goods-issues.service';
 import {
   parseConfirmGoodsIssueBody,
   parseGoodsIssueId,
@@ -32,6 +32,24 @@ export async function confirmGoodsIssueController(
       issueId,
       confirmedBy: Number(req.user.id),
       strategy: body.strategy,
+    }),
+  });
+}
+
+export async function reverseGoodsIssueController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  if (!req.user) {
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
+  }
+
+  const issueId = parseGoodsIssueId(req.params.id);
+
+  res.json({
+    data: await reverseGoodsIssue({
+      issueId,
+      reversedBy: Number(req.user.id),
     }),
   });
 }

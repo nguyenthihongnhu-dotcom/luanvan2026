@@ -32,15 +32,15 @@ export default function WarehouseMapping() {
                 />
 
                 {!selectedZone ? (
-                    /* BÆ¯á»šC 1: Báº¢N Äá»’ Tá»”NG THá»‚ CÃC KHU Vá»°C KHO (GIAO DIá»†N Máº¶C Äá»ŠNH) */
+                    /* Overall warehouse map */
                     <WarehouseGridEditor
                         onSelectZone={setSelectedZone}
                         locations={locations}
                     />
                 ) : (
-                    /* BÆ¯á»šC 2: GIAO DIá»†N CHI TIáº¾T Cáº¤U TRÃšC 3 Cá»˜T (KHI ÄÃƒ CHá»ŒN ZONE Cá»¤ THá»‚) */
+                    /* Zone detail view */
                     <div className="flex flex-1 overflow-hidden">
-                        {/* 2. LEFT SIDEBAR: Cáº¥u hÃ¬nh nhanh */}
+                        {/* Structure controls */}
                         <StructureSidebar
                             selectedZone={selectedZone}
                             shelves={shelves}
@@ -51,7 +51,7 @@ export default function WarehouseMapping() {
                             handleDeleteLayer={handleDeleteLayer}
                         />
 
-                        {/* 3. MAIN CONTENT: Báº£n Ä‘á»“ Ma tráº­n 2D Grid */}
+                        {/* Rack and layer grid */}
                         <WarehouseGrid
                             layers={layers}
                             shelves={shelves}
@@ -61,7 +61,7 @@ export default function WarehouseMapping() {
                             getLocationInfo={getLocationInfo}
                         />
 
-                        {/* 4. SIDEBAR CHI TIáº¾T */}
+                        {/* Location detail */}
                         {activeLocation && (
                             <LocationDetailSidebar
                                 activeLocation={activeLocation}

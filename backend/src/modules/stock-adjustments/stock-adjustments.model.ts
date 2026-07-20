@@ -49,3 +49,26 @@ export type ApproveStockAdjustmentResult = {
   status: 'APPROVED';
   transactionCount: number;
 };
+
+export type RejectStockAdjustmentInput = {
+  adjustmentId: number;
+  rejectedBy: number;
+  rejectionReason: string;
+};
+
+export type RejectStockAdjustmentResult = {
+  adjustmentId: number;
+  adjustmentCode: string;
+  status: 'REJECTED';
+};
+
+export type CancelStockAdjustmentInput = {
+  adjustmentId: number;
+  cancelledBy: number;
+};
+
+export type CancelStockAdjustmentResult = {
+  adjustmentId: number;
+  adjustmentCode: string;
+  status: 'CANCELLED';
+};

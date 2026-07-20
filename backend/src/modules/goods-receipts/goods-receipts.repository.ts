@@ -5,10 +5,13 @@ import type {
 } from 'mysql2/promise';
 import { insertAuditLog } from '../../common/audit/audit.repository';
 import { buildUniqueCode } from '../../common/code/code-generator';
+import { reverseInventoryReference } from '../../common/inventory/reversal.repository';
 import { db } from '../../database/db';
 import type {
   ConfirmGoodsReceiptInput,
   ConfirmGoodsReceiptResult,
+  ReverseGoodsReceiptInput,
+  ReverseGoodsReceiptResult,
   GoodsReceiptItemRow,
   GoodsReceiptRow,
   GoodsReceiptsFilters,
@@ -318,6 +321,76 @@ export async function confirmGoodsReceiptTransaction(
       receiptCode: receipt.receipt_code,
       status: 'CONFIRMED',
       transactionCount,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function reverseGoodsReceiptTransaction(
+  input: ReverseGoodsReceiptInput,
+): Promise<ReverseGoodsReceiptResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const receipt = await lockReceipt(connection, input.receiptId);
+
+    if (!receipt) {
+      throw new Error('GOODS_RECEIPT_NOT_FOUND');
+    }
+
+    if (receipt.status === 'CANCELLED') {
+      await connection.commit();
+      return {
+        receiptId: receipt.id,
+        receiptCode: receipt.receipt_code,
+        status: 'CANCELLED',
+        reversalCount: 0,
+      };
+    }
+
+    if (receipt.status !== 'CONFIRMED') {
+      throw new Error('GOODS_RECEIPT_NOT_REVERSIBLE');
+    }
+
+    const reversalCount = await reverseInventoryReference(connection, {
+      referenceType: 'GOODS_RECEIPT',
+      referenceId: receipt.id,
+      reversedBy: input.reversedBy,
+      note: `Reversed goods receipt ${receipt.receipt_code}`,
+    });
+
+    await insertAuditLog(connection, {
+      userId: input.reversedBy,
+      action: 'REVERSE',
+      module: 'goods_receipts',
+      entityType: 'GOODS_RECEIPT',
+      entityId: receipt.id,
+      oldValues: { status: receipt.status },
+      newValues: { status: 'CANCELLED', reversalCount },
+    });
+
+    await connection.query(
+      `
+        UPDATE goods_receipts
+        SET status = 'CANCELLED', cancelled_by = ?, cancelled_at = CURRENT_TIMESTAMP(3)
+        WHERE id = ?
+      `,
+      [input.reversedBy, receipt.id],
+    );
+
+    await connection.commit();
+
+    return {
+      receiptId: receipt.id,
+      receiptCode: receipt.receipt_code,
+      status: 'CANCELLED',
+      reversalCount,
     };
   } catch (error) {
     await connection.rollback();

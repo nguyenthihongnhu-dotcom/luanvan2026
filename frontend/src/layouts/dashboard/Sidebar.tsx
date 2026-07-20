@@ -1,14 +1,22 @@
-﻿import type { ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/features/auth/context/useAuth";
 import { useSidebar } from "@/app/providers/useSidebar";
+
+const roleLabels: Record<string, string> = {
+    ADMIN: "Quản trị viên",
+    WAREHOUSE_MANAGER: "Quản lý kho",
+    STAFF: "Nhân viên",
+    AUDITOR: "Kiểm kê",
+    KHACHHANG: "Khách hàng",
+};
 
 export default function Sidebar(): ReactNode {
     const navigate = useNavigate();
     const { user, logout } = useAuth();
     const { extraContent } = useSidebar();
-    const userRole = user?.role ?? "STAFF";
-    const displayName = user?.ten ?? "Nhan vien PHS";
+    const userRole = roleLabels[user?.role ?? "STAFF"] ?? "Nhân viên";
+    const displayName = user?.ten ?? "Nhân viên PHS";
 
     const handleLogout = () => {
         logout();
@@ -25,7 +33,7 @@ export default function Sidebar(): ReactNode {
                 <div className="flex-1 overflow-y-auto px-4 py-6 space-y-6">
                     {extraContent && (
                         <div className="space-y-4">
-                            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Bo loc du lieu</h2>
+                            <h2 className="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-4 border-b border-gray-100 pb-2">Bộ lọc dữ liệu</h2>
                             {extraContent}
                         </div>
                     )}
@@ -43,7 +51,7 @@ export default function Sidebar(): ReactNode {
                 <button
                     onClick={handleLogout}
                     className="p-1.5 text-gray-400 hover:text-red-500 rounded-md hover:bg-red-50 transition-colors"
-                    title="Dang xuat"
+                    title="Đăng xuất"
                 >
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />

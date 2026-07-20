@@ -1,4 +1,4 @@
-﻿import { createContext } from 'react';
+import { createContext } from 'react';
 import type { AuthUser } from '@/features/auth/types';
 
 export interface AuthContextValue {

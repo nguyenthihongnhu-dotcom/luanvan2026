@@ -47,3 +47,15 @@ export type ConfirmGoodsReceiptResult = {
   status: 'CONFIRMED';
   transactionCount: number;
 };
+
+export type ReverseGoodsReceiptInput = {
+  receiptId: number;
+  reversedBy: number;
+};
+
+export type ReverseGoodsReceiptResult = {
+  receiptId: number;
+  receiptCode: string;
+  status: 'CANCELLED';
+  reversalCount: number;
+};

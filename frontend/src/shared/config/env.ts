@@ -1,4 +1,4 @@
-﻿interface FrontendEnv {
+interface FrontendEnv {
     apiBaseUrl: string;
 }
 

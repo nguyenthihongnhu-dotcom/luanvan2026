@@ -4,10 +4,13 @@ import type {
   ConfirmGoodsReceiptResult,
   GoodsReceiptsFilters,
   GoodsReceiptsRow,
+  ReverseGoodsReceiptInput,
+  ReverseGoodsReceiptResult,
 } from './goods-receipts.model';
 import {
   confirmGoodsReceiptTransaction,
   findGoodsReceipts as findGoodsReceiptsRepository,
+  reverseGoodsReceiptTransaction,
 } from './goods-receipts.repository';
 
 const confirmErrorMap: Record<string, HttpError> = {
@@ -41,6 +44,13 @@ const confirmErrorMap: Record<string, HttpError> = {
     'Receipt item location does not belong to receipt warehouse',
     'LOCATION_WAREHOUSE_MISMATCH',
   ),
+  GOODS_RECEIPT_NOT_REVERSIBLE: new HttpError(
+    409,
+    'Only CONFIRMED goods receipts can be reversed',
+    'GOODS_RECEIPT_NOT_REVERSIBLE',
+  ),
+  REFERENCE_ALREADY_REVERSED: new HttpError(409, 'Reference already reversed', 'REFERENCE_ALREADY_REVERSED'),
+  REVERSAL_INSUFFICIENT_STOCK: new HttpError(409, 'Insufficient stock to reverse receipt', 'REVERSAL_INSUFFICIENT_STOCK'),
 };
 
 export async function listGoodsReceipts(
@@ -54,6 +64,20 @@ export async function confirmGoodsReceipt(
 ): Promise<ConfirmGoodsReceiptResult> {
   try {
     return await confirmGoodsReceiptTransaction(input);
+  } catch (error) {
+    if (error instanceof Error && confirmErrorMap[error.message]) {
+      throw confirmErrorMap[error.message];
+    }
+
+    throw error;
+  }
+}
+
+export async function reverseGoodsReceipt(
+  input: ReverseGoodsReceiptInput,
+): Promise<ReverseGoodsReceiptResult> {
+  try {
+    return await reverseGoodsReceiptTransaction(input);
   } catch (error) {
     if (error instanceof Error && confirmErrorMap[error.message]) {
       throw confirmErrorMap[error.message];

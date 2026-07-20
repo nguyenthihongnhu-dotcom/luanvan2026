@@ -2,12 +2,15 @@ import { HttpError } from '../../common/http';
 import type {
   ConfirmStockTransferInput,
   ConfirmStockTransferResult,
+  ReverseStockTransferInput,
+  ReverseStockTransferResult,
   StockTransfersFilters,
   StockTransfersRow,
 } from './stock-transfers.model';
 import {
   confirmStockTransferTransaction,
   findStockTransfers as findStockTransfersRepository,
+  reverseStockTransferTransaction,
 } from './stock-transfers.repository';
 
 const confirmErrorMap: Record<string, HttpError> = {
@@ -41,6 +44,13 @@ const confirmErrorMap: Record<string, HttpError> = {
     'Transfer item location does not belong to expected warehouse',
     'LOCATION_WAREHOUSE_MISMATCH',
   ),
+  STOCK_TRANSFER_NOT_REVERSIBLE: new HttpError(
+    409,
+    'Only CONFIRMED stock transfers can be reversed',
+    'STOCK_TRANSFER_NOT_REVERSIBLE',
+  ),
+  REFERENCE_ALREADY_REVERSED: new HttpError(409, 'Reference already reversed', 'REFERENCE_ALREADY_REVERSED'),
+  REVERSAL_INSUFFICIENT_STOCK: new HttpError(409, 'Insufficient destination stock to reverse transfer', 'REVERSAL_INSUFFICIENT_STOCK'),
 };
 
 export async function listStockTransfers(
@@ -54,6 +64,20 @@ export async function confirmStockTransfer(
 ): Promise<ConfirmStockTransferResult> {
   try {
     return await confirmStockTransferTransaction(input);
+  } catch (error) {
+    if (error instanceof Error && confirmErrorMap[error.message]) {
+      throw confirmErrorMap[error.message];
+    }
+
+    throw error;
+  }
+}
+
+export async function reverseStockTransfer(
+  input: ReverseStockTransferInput,
+): Promise<ReverseStockTransferResult> {
+  try {
+    return await reverseStockTransferTransaction(input);
   } catch (error) {
     if (error instanceof Error && confirmErrorMap[error.message]) {
       throw confirmErrorMap[error.message];

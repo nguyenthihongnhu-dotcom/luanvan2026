@@ -1,4 +1,4 @@
-﻿import { useCurrencyFormatter } from './useCurrencyFormatter';
+import { useCurrencyFormatter } from './useCurrencyFormatter';
 import type { UseCurrencyFormatterOptions } from './useCurrencyFormatter';
 import { useDateFormatter } from './useDateFormatter';
 import type { UseDateFormatterOptions } from './useDateFormatter';

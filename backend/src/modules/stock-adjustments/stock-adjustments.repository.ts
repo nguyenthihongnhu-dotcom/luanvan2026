@@ -9,7 +9,11 @@ import { db } from '../../database/db';
 import type {
   ApproveStockAdjustmentInput,
   ApproveStockAdjustmentResult,
+  CancelStockAdjustmentInput,
+  CancelStockAdjustmentResult,
   QueryParams,
+  RejectStockAdjustmentInput,
+  RejectStockAdjustmentResult,
   StockAdjustmentItemRow,
   StockAdjustmentRow,
   StockAdjustmentsFilters,
@@ -371,6 +375,135 @@ export async function approveStockAdjustmentTransaction(
       adjustmentCode: adjustment.adjustment_code,
       status: 'APPROVED',
       transactionCount,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function rejectStockAdjustmentTransaction(
+  input: RejectStockAdjustmentInput,
+): Promise<RejectStockAdjustmentResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const adjustment = await lockAdjustment(connection, input.adjustmentId);
+
+    if (!adjustment) {
+      throw new Error('STOCK_ADJUSTMENT_NOT_FOUND');
+    }
+
+    if (adjustment.status === 'REJECTED') {
+      await connection.commit();
+      return {
+        adjustmentId: adjustment.id,
+        adjustmentCode: adjustment.adjustment_code,
+        status: 'REJECTED',
+      };
+    }
+
+    if (adjustment.status !== 'PENDING') {
+      throw new Error('STOCK_ADJUSTMENT_NOT_REJECTABLE');
+    }
+
+    await connection.query(
+      `
+        UPDATE stock_adjustments
+        SET
+          status = 'REJECTED',
+          rejected_by = ?,
+          rejected_at = CURRENT_TIMESTAMP(3),
+          rejection_reason = ?
+        WHERE id = ?
+      `,
+      [input.rejectedBy, input.rejectionReason, adjustment.id],
+    );
+
+    await insertAuditLog(connection, {
+      userId: input.rejectedBy,
+      action: 'REJECT',
+      module: 'stock_adjustments',
+      entityType: 'STOCK_ADJUSTMENT',
+      entityId: adjustment.id,
+      oldValues: { status: adjustment.status },
+      newValues: {
+        status: 'REJECTED',
+        rejectionReason: input.rejectionReason,
+      },
+    });
+
+    await connection.commit();
+
+    return {
+      adjustmentId: adjustment.id,
+      adjustmentCode: adjustment.adjustment_code,
+      status: 'REJECTED',
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function cancelStockAdjustmentTransaction(
+  input: CancelStockAdjustmentInput,
+): Promise<CancelStockAdjustmentResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const adjustment = await lockAdjustment(connection, input.adjustmentId);
+
+    if (!adjustment) {
+      throw new Error('STOCK_ADJUSTMENT_NOT_FOUND');
+    }
+
+    if (adjustment.status === 'CANCELLED') {
+      await connection.commit();
+      return {
+        adjustmentId: adjustment.id,
+        adjustmentCode: adjustment.adjustment_code,
+        status: 'CANCELLED',
+      };
+    }
+
+    if (!['DRAFT', 'PENDING'].includes(adjustment.status)) {
+      throw new Error('STOCK_ADJUSTMENT_NOT_CANCELLABLE');
+    }
+
+    await connection.query(
+      `
+        UPDATE stock_adjustments
+        SET status = 'CANCELLED'
+        WHERE id = ?
+      `,
+      [adjustment.id],
+    );
+
+    await insertAuditLog(connection, {
+      userId: input.cancelledBy,
+      action: 'CANCEL',
+      module: 'stock_adjustments',
+      entityType: 'STOCK_ADJUSTMENT',
+      entityId: adjustment.id,
+      oldValues: { status: adjustment.status },
+      newValues: { status: 'CANCELLED' },
+    });
+
+    await connection.commit();
+
+    return {
+      adjustmentId: adjustment.id,
+      adjustmentCode: adjustment.adjustment_code,
+      status: 'CANCELLED',
     };
   } catch (error) {
     await connection.rollback();

@@ -5,10 +5,13 @@ import type {
 } from 'mysql2/promise';
 import { insertAuditLog } from '../../common/audit/audit.repository';
 import { buildUniqueCode } from '../../common/code/code-generator';
+import { reverseInventoryReference } from '../../common/inventory/reversal.repository';
 import { db } from '../../database/db';
 import type {
   ConfirmStockTransferInput,
   ConfirmStockTransferResult,
+  ReverseStockTransferInput,
+  ReverseStockTransferResult,
   QueryParams,
   StockTransferItemRow,
   StockTransferRow,
@@ -388,6 +391,76 @@ export async function confirmStockTransferTransaction(
       transferCode: transfer.transfer_code,
       status: 'CONFIRMED',
       transactionCount,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function reverseStockTransferTransaction(
+  input: ReverseStockTransferInput,
+): Promise<ReverseStockTransferResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const transfer = await lockTransfer(connection, input.transferId);
+
+    if (!transfer) {
+      throw new Error('STOCK_TRANSFER_NOT_FOUND');
+    }
+
+    if (transfer.status === 'CANCELLED') {
+      await connection.commit();
+      return {
+        transferId: transfer.id,
+        transferCode: transfer.transfer_code,
+        status: 'CANCELLED',
+        reversalCount: 0,
+      };
+    }
+
+    if (transfer.status !== 'CONFIRMED') {
+      throw new Error('STOCK_TRANSFER_NOT_REVERSIBLE');
+    }
+
+    const reversalCount = await reverseInventoryReference(connection, {
+      referenceType: 'STOCK_TRANSFER',
+      referenceId: transfer.id,
+      reversedBy: input.reversedBy,
+      note: `Reversed stock transfer ${transfer.transfer_code}`,
+    });
+
+    await insertAuditLog(connection, {
+      userId: input.reversedBy,
+      action: 'REVERSE',
+      module: 'stock_transfers',
+      entityType: 'STOCK_TRANSFER',
+      entityId: transfer.id,
+      oldValues: { status: transfer.status },
+      newValues: { status: 'CANCELLED', reversalCount },
+    });
+
+    await connection.query(
+      `
+        UPDATE stock_transfers
+        SET status = 'CANCELLED', cancelled_by = ?, cancelled_at = CURRENT_TIMESTAMP(3)
+        WHERE id = ?
+      `,
+      [input.reversedBy, transfer.id],
+    );
+
+    await connection.commit();
+
+    return {
+      transferId: transfer.id,
+      transferCode: transfer.transfer_code,
+      status: 'CANCELLED',
+      reversalCount,
     };
   } catch (error) {
     await connection.rollback();

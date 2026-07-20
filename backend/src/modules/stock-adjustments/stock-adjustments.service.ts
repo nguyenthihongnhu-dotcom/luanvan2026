@@ -2,12 +2,18 @@ import { HttpError } from '../../common/http';
 import type {
   ApproveStockAdjustmentInput,
   ApproveStockAdjustmentResult,
+  CancelStockAdjustmentInput,
+  CancelStockAdjustmentResult,
+  RejectStockAdjustmentInput,
+  RejectStockAdjustmentResult,
   StockAdjustmentsFilters,
   StockAdjustmentsRow,
 } from './stock-adjustments.model';
 import {
   approveStockAdjustmentTransaction,
+  cancelStockAdjustmentTransaction,
   findStockAdjustments as findStockAdjustmentsRepository,
+  rejectStockAdjustmentTransaction,
 } from './stock-adjustments.repository';
 
 const approveErrorMap: Record<string, HttpError> = {
@@ -51,6 +57,16 @@ const approveErrorMap: Record<string, HttpError> = {
     'Adjustment item location does not belong to adjustment warehouse',
     'LOCATION_WAREHOUSE_MISMATCH',
   ),
+  STOCK_ADJUSTMENT_NOT_REJECTABLE: new HttpError(
+    409,
+    'Only PENDING stock adjustments can be rejected',
+    'STOCK_ADJUSTMENT_NOT_REJECTABLE',
+  ),
+  STOCK_ADJUSTMENT_NOT_CANCELLABLE: new HttpError(
+    409,
+    'Only DRAFT or PENDING stock adjustments can be cancelled',
+    'STOCK_ADJUSTMENT_NOT_CANCELLABLE',
+  ),
 };
 
 export async function listStockAdjustments(
@@ -64,6 +80,34 @@ export async function approveStockAdjustment(
 ): Promise<ApproveStockAdjustmentResult> {
   try {
     return await approveStockAdjustmentTransaction(input);
+  } catch (error) {
+    if (error instanceof Error && approveErrorMap[error.message]) {
+      throw approveErrorMap[error.message];
+    }
+
+    throw error;
+  }
+}
+
+export async function rejectStockAdjustment(
+  input: RejectStockAdjustmentInput,
+): Promise<RejectStockAdjustmentResult> {
+  try {
+    return await rejectStockAdjustmentTransaction(input);
+  } catch (error) {
+    if (error instanceof Error && approveErrorMap[error.message]) {
+      throw approveErrorMap[error.message];
+    }
+
+    throw error;
+  }
+}
+
+export async function cancelStockAdjustment(
+  input: CancelStockAdjustmentInput,
+): Promise<CancelStockAdjustmentResult> {
+  try {
+    return await cancelStockAdjustmentTransaction(input);
   } catch (error) {
     if (error instanceof Error && approveErrorMap[error.message]) {
       throw approveErrorMap[error.message];
