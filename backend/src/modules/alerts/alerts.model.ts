@@ -9,3 +9,7 @@ export type AlertsFilters = {
 };
 
 export type AlertsRow = RowDataPacket & Record<string, unknown>;
+
+export type AlertMutationResult = {
+  affectedRows: number;
+};

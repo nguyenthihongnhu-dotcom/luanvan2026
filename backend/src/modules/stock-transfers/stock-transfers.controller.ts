@@ -2,11 +2,13 @@ import type { Request, Response } from 'express';
 import { HttpError } from '../../common/http';
 import {
   confirmStockTransfer,
+  createStockTransfer,
   listStockTransfers,
   reverseStockTransfer,
 } from './stock-transfers.service';
 import {
   parseStockTransferId,
+  parseCreateStockTransferInput,
   parseStockTransfersFilters,
 } from './stock-transfers.validation';
 
@@ -53,4 +55,13 @@ export async function reverseStockTransferController(
       reversedBy: Number(req.user.id),
     }),
   });
+}
+
+export async function createStockTransferController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const input = parseCreateStockTransferInput(req.body);
+
+  res.status(201).json({ data: await createStockTransfer(input) });
 }

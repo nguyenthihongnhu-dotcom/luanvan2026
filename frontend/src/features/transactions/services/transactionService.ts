@@ -1,7 +1,30 @@
 import { httpClient, unwrapData } from '@/shared/services/httpClient';
 import type { Transaction } from '@/features/transactions/hooks/useTransactions';
+import { warehouseService } from '@/features/warehouses/services/warehouseService';
+import type { WarehouseOption } from '@/features/warehouses/services/warehouseService';
 
 type BackendRow = Record<string, unknown>;
+
+export type AllocationStrategy = 'FEFO' | 'FIFO';
+
+export interface AllocationPreviewItem {
+    stockLocationId: number;
+    productVariantId: number;
+    locationId: number;
+    locationCode: string;
+    batchId: number | null;
+    lotNumber: string | null;
+    expiryDate: string | null;
+    receivedDate: string | null;
+    quantity: number;
+}
+
+export interface AllocationPreviewResult {
+    strategy: AllocationStrategy;
+    requestedQuantity: number;
+    allocatedQuantity: number;
+    items: AllocationPreviewItem[];
+}
 
 type BackendReceipt = BackendRow & {
     id?: number;
@@ -73,6 +96,17 @@ export async function listTransactions(): Promise<Transaction[]> {
     ].sort((a, b) => b.ngay.localeCompare(a.ngay));
 }
 
+function mapItems(input: Transaction) {
+    return (input.items ?? []).map((item) => ({
+        productVariantId: Number(item.productVariantId),
+        batchId: item.batchId ? Number(item.batchId) : undefined,
+        locationId: Number(item.locationId),
+        quantity: Number(item.quantity),
+        adjustmentDirection: item.adjustmentDirection,
+        reasonCode: input.lyDo || undefined,
+        note: item.note || undefined,
+    }));
+}
 
 export async function createTransaction(input: Transaction): Promise<void> {
     if (input.loai === 'NHAP') {
@@ -81,6 +115,7 @@ export async function createTransaction(input: Transaction): Promise<void> {
             supplierId: input.maNCC ? Number(input.maNCC) : undefined,
             referenceNo: input.maDonHangThamChieu || undefined,
             note: input.lyDo || undefined,
+            items: mapItems(input),
         });
         return;
     }
@@ -90,6 +125,7 @@ export async function createTransaction(input: Transaction): Promise<void> {
             issueCode: input.soPhieu,
             referenceNo: input.maDonHangThamChieu || undefined,
             note: input.lyDo || undefined,
+            items: mapItems(input),
         });
         return;
     }
@@ -98,9 +134,110 @@ export async function createTransaction(input: Transaction): Promise<void> {
         adjustmentCode: input.soPhieu,
         reasonCode: input.lyDo || 'DIEU_CHINH_THU_CONG',
         note: input.lyDo || undefined,
+        items: mapItems(input),
     });
 }
+
+export async function confirmTransaction(input: Transaction): Promise<void> {
+    if (input.loai === 'NHAP') {
+        await httpClient.post(`/goods-receipts/${input.id}/confirm`);
+        return;
+    }
+
+    if (input.loai === 'XUAT') {
+        await httpClient.post(`/goods-issues/${input.id}/confirm`, { strategy: 'FEFO' });
+    }
+}
+
+export async function reverseTransaction(input: Transaction): Promise<void> {
+    if (input.loai === 'NHAP') {
+        await httpClient.post(`/goods-receipts/${input.id}/reverse`);
+        return;
+    }
+
+    if (input.loai === 'XUAT') {
+        await httpClient.post(`/goods-issues/${input.id}/reverse`);
+    }
+}
+
+export async function approveAdjustment(id: number): Promise<void> {
+    await httpClient.post(`/stock-adjustments/${id}/approve`);
+}
+
+export async function rejectAdjustment(id: number, rejectionReason: string): Promise<void> {
+    await httpClient.post(`/stock-adjustments/${id}/reject`, { rejectionReason });
+}
+
+export async function cancelAdjustment(id: number): Promise<void> {
+    await httpClient.post(`/stock-adjustments/${id}/cancel`);
+}
+
+export async function listWarehouses(): Promise<WarehouseOption[]> {
+    return warehouseService.listWarehouses();
+}
+
+export async function previewAllocation(input: {
+    warehouseId: number;
+    productVariantId: number;
+    quantity: number;
+    strategy: AllocationStrategy;
+}): Promise<AllocationPreviewResult> {
+    const params = new URLSearchParams({
+        warehouseId: String(input.warehouseId),
+        productVariantId: String(input.productVariantId),
+        quantity: String(input.quantity),
+        strategy: input.strategy,
+    });
+
+    const response = await httpClient.get<{ data: AllocationPreviewResult }>(`/stock/allocation?${params.toString()}`);
+    return unwrapData(response);
+}
+
+
+export interface TransactionDetailLine {
+    id: number;
+    product_variant_id: number;
+    sku?: string | null;
+    product_name?: string | null;
+    variant_name?: string | null;
+    batch_id?: number | null;
+    lot_number?: string | null;
+    expiry_date?: string | null;
+    location_id?: number | null;
+    location_code?: string | null;
+    quantity: string | number;
+    unit_cost?: string | number | null;
+    adjustment_direction?: string | null;
+    reason_code?: string | null;
+    note?: string | null;
+}
+
+export interface TransactionDetail {
+    type: Transaction['loai'];
+    header: Record<string, unknown>;
+    items: TransactionDetailLine[];
+}
+
+export async function getTransactionDetail(type: Transaction['loai'], id: number): Promise<TransactionDetail> {
+    const path = type === 'NHAP'
+        ? `/goods-receipts/${id}`
+        : type === 'XUAT'
+            ? `/goods-issues/${id}`
+            : `/stock-adjustments/${id}`;
+    const response = await httpClient.get<{ data: { header: Record<string, unknown>; items: TransactionDetailLine[] } }>(path);
+    const detail = unwrapData(response);
+    return { type, header: detail.header, items: detail.items };
+}
+
 export const transactionService = {
     listTransactions,
     createTransaction,
+    confirmTransaction,
+    reverseTransaction,
+    approveAdjustment,
+    rejectAdjustment,
+    cancelAdjustment,
+    listWarehouses,
+    previewAllocation,
+    getTransactionDetail,
 };

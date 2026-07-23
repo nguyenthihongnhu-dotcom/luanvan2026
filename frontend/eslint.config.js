@@ -18,5 +18,13 @@ export default defineConfig([
     languageOptions: {
       globals: globals.browser,
     },
+    rules: {
+      // Project convention is fetch-on-mount via useEffect + setState in an
+      // async loader (see frontend/README.md "Quy tắc code frontend"), not
+      // the React Compiler-oriented effect-purity model this rule assumes.
+      // Downgrade to warn instead of mass-rewriting ~14 pages that all use
+      // this same, intentional shape.
+      'react-hooks/set-state-in-effect': 'warn',
+    },
   },
 ])

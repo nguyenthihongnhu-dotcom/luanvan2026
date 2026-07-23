@@ -6,6 +6,7 @@ import {
   listStockAdjustments,
   rejectStockAdjustment,
   createStockAdjustment,
+  getStockAdjustmentDetail,
 } from './stock-adjustments.service';
 import {
   parseRejectStockAdjustment,
@@ -23,6 +24,13 @@ export async function listStockAdjustmentsController(
   res.json({ data: await listStockAdjustments(filters) });
 }
 
+export async function getStockAdjustmentDetailController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const adjustmentId = parseStockAdjustmentId(req.params.id);
+  res.json({ data: await getStockAdjustmentDetail(adjustmentId) });
+}
 export async function approveStockAdjustmentController(
   req: Request,
   res: Response,

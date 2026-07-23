@@ -59,6 +59,15 @@ export type ReverseGoodsReceiptResult = {
   status: 'CANCELLED';
   reversalCount: number;
 };
+export type CreateGoodsReceiptItemInput = {
+  productVariantId: number;
+  batchId?: number | null;
+  locationId: number;
+  quantity: number;
+  unitCost?: number | null;
+  note?: string;
+};
+
 export type CreateGoodsReceiptInput = {
   receiptCode: string;
   warehouseId?: number;
@@ -66,4 +75,5 @@ export type CreateGoodsReceiptInput = {
   referenceNo?: string;
   note?: string;
   createdBy?: number;
+  items?: CreateGoodsReceiptItemInput[];
 };

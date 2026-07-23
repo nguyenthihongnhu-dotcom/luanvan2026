@@ -141,7 +141,26 @@ const openApiDocument = {
     },
     '/docs': { get: { tags: ['System'], summary: 'Swagger UI' } },
 
-    '/auth/users': listGet('List users'),
+    '/auth/users': {
+      get: { tags: ['Auth'], summary: 'List users', responses: jsonResponse },
+      post: {
+        tags: ['Auth'],
+        summary: 'Create managed user',
+        responses: jsonResponse,
+      },
+    },
+    '/auth/users/{id}': {
+      put: {
+        tags: ['Auth'],
+        summary: 'Update managed user',
+        responses: jsonResponse,
+      },
+      delete: {
+        tags: ['Auth'],
+        summary: 'Soft delete managed user',
+        responses: jsonResponse,
+      },
+    },
     '/auth/register': {
       post: {
         tags: ['Auth'],
@@ -210,7 +229,30 @@ const openApiDocument = {
     },
 
     '/authorization': listGet('List roles and permissions', true),
-    '/warehouses': listGet('List warehouses'),
+    '/warehouses': {
+      get: {
+        tags: ['Warehouse'],
+        summary: 'List warehouses',
+        responses: jsonResponse,
+      },
+      post: {
+        tags: ['Warehouse'],
+        summary: 'Create warehouse',
+        responses: jsonResponse,
+      },
+    },
+    '/warehouses/{id}': {
+      put: {
+        tags: ['Warehouse'],
+        summary: 'Update warehouse',
+        responses: jsonResponse,
+      },
+      delete: {
+        tags: ['Warehouse'],
+        summary: 'Soft delete warehouse',
+        responses: jsonResponse,
+      },
+    },
     '/locations': listGet('List warehouse structure and locations'),
     '/locations/zones': {
       post: {
@@ -265,6 +307,7 @@ const openApiDocument = {
         responses: jsonResponse,
       },
     },
+    '/goods-receipts/{id}': listGet('Get goods receipt detail'),
     '/goods-receipts/{id}/confirm': protectedPost(
       'Confirm goods receipt and increase stock',
     ),
@@ -279,6 +322,7 @@ const openApiDocument = {
         responses: jsonResponse,
       },
     },
+    '/goods-issues/{id}': listGet('Get goods issue detail'),
     '/goods-issues/{id}/confirm': protectedPost(
       'Confirm goods issue and decrease stock',
     ),
@@ -319,6 +363,7 @@ const openApiDocument = {
         responses: jsonResponse,
       },
     },
+    '/stock-adjustments/{id}': listGet('Get stock adjustment detail'),
     '/stock-adjustments/{id}/approve': protectedPost(
       'Approve stock adjustment',
     ),
@@ -327,13 +372,45 @@ const openApiDocument = {
 
     '/alerts': listGet('List alerts'),
     '/alerts/generate': protectedPost('Generate inventory alerts'),
+    '/alerts/{id}/read': {
+      patch: {
+        tags: ['Inventory'],
+        summary: 'Mark alert as read',
+        security: [{ bearerAuth: [] }],
+        responses: jsonResponse,
+      },
+    },
+    '/alerts/{id}/resolve': {
+      patch: {
+        tags: ['Inventory'],
+        summary: 'Resolve alert',
+        security: [{ bearerAuth: [] }],
+        responses: jsonResponse,
+      },
+    },
     '/notifications': listGet('List notifications', true),
     '/notifications/generate': protectedPost(
       'Generate notifications from alerts',
     ),
+    '/notifications/{id}/read': {
+      patch: {
+        tags: ['System'],
+        summary: 'Mark notification as read',
+        security: [{ bearerAuth: [] }],
+        responses: jsonResponse,
+      },
+    },
     '/audit-logs': listGet('List audit logs', true),
     '/attachments': listGet('List attachments'),
     '/settings': listGet('List application settings'),
+    '/settings/{id}': {
+      put: {
+        tags: ['System'],
+        summary: 'Update application setting',
+        security: [{ bearerAuth: [] }],
+        responses: jsonResponse,
+      },
+    },
     '/reports': listGet('Default report catalog'),
     '/reports/product-stock': listGet('Product stock report'),
     '/reports/near-expiry': listGet('Near-expiry report'),

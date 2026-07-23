@@ -103,7 +103,10 @@ export type RegisterInput = {
   fullName: string;
   phone?: string;
   employeeCode?: string;
-  roleCode?: string;
+};
+
+export type CreateUserInput = RegisterInput & {
+  roleCode: 'ADMIN' | 'WAREHOUSE_MANAGER' | 'STAFF' | 'AUDITOR';
 };
 
 export type RegisterResult = LoginResult;
@@ -117,4 +120,18 @@ export type UserListRow = RowDataPacket & {
   status: string;
   role_code: string;
   role_name: string;
+};
+
+export type UpdateUserInput = {
+  fullName: string;
+  email: string;
+  phone?: string;
+  employeeCode?: string;
+  roleCode: string;
+  status: 'ACTIVE' | 'LOCKED' | 'INACTIVE';
+};
+
+export type UserMutationResult = {
+  affectedRows: number;
+  insertId?: number;
 };

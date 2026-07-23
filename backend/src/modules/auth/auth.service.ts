@@ -16,10 +16,13 @@ import type {
   RequestPasswordResetResult,
   ResetPasswordInput,
   ResetPasswordResult,
+  CreateUserInput,
   RegisterInput,
   RegisterResult,
   UserListRow,
   TokenPair,
+  UpdateUserInput,
+  UserMutationResult,
 } from './auth.model';
 import {
   createPasswordResetToken,
@@ -32,6 +35,8 @@ import {
   resetPasswordWithTokenHash,
   createUser,
   listUsers as listUsersRepository,
+  updateUserRepository,
+  deleteUserRepository,
   rotateRefreshSession,
   revokeSessionByRefreshHash,
 } from './auth.repository';
@@ -298,7 +303,7 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
   const employeeCode = input.employeeCode ?? `USR-${Date.now()}`;
 
   await createUser({
-    roleCode: input.roleCode ?? 'STAFF',
+    roleCode: 'STAFF',
     employeeCode,
     fullName: input.fullName,
     email: input.email,
@@ -311,4 +316,40 @@ export async function register(input: RegisterInput): Promise<RegisterResult> {
 
 export async function listUsers(): Promise<UserListRow[]> {
   return listUsersRepository();
+}
+
+export async function createManagedUser(
+  input: CreateUserInput,
+): Promise<UserMutationResult> {
+  const passwordHash = await bcrypt.hash(input.password, 10);
+  const employeeCode = input.employeeCode ?? 'USR-' + Date.now();
+  const insertId = await createUser({
+    roleCode: input.roleCode,
+    employeeCode,
+    fullName: input.fullName,
+    email: input.email,
+    phone: input.phone,
+    passwordHash,
+  });
+
+  return { affectedRows: insertId > 0 ? 1 : 0, insertId };
+}
+
+export async function updateUser(
+  id: number,
+  input: UpdateUserInput,
+): Promise<UserMutationResult> {
+  const affectedRows = await updateUserRepository(id, input);
+  if (affectedRows === 0) {
+    throw new HttpError(404, 'User not found', 'USER_NOT_FOUND');
+  }
+  return { affectedRows };
+}
+
+export async function deleteUser(id: number): Promise<UserMutationResult> {
+  const affectedRows = await deleteUserRepository(id);
+  if (affectedRows === 0) {
+    throw new HttpError(404, 'User not found', 'USER_NOT_FOUND');
+  }
+  return { affectedRows };
 }

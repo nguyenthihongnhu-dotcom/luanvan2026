@@ -2,6 +2,8 @@ import { HttpError } from '../../common/http';
 import type {
   ConfirmStockTransferInput,
   ConfirmStockTransferResult,
+  CreateStockTransferInput,
+  CreateStockTransferResult,
   ReverseStockTransferInput,
   ReverseStockTransferResult,
   StockTransfersFilters,
@@ -10,6 +12,7 @@ import type {
 import {
   confirmStockTransferTransaction,
   findStockTransfers as findStockTransfersRepository,
+  insertStockTransfer,
   reverseStockTransferTransaction,
 } from './stock-transfers.repository';
 
@@ -43,6 +46,21 @@ const confirmErrorMap: Record<string, HttpError> = {
     422,
     'Transfer item location does not belong to expected warehouse',
     'LOCATION_WAREHOUSE_MISMATCH',
+  ),
+  WAREHOUSE_NOT_FOUND: new HttpError(
+    422,
+    'Warehouse not found',
+    'WAREHOUSE_NOT_FOUND',
+  ),
+  USER_NOT_FOUND: new HttpError(
+    422,
+    'Created user not found',
+    'USER_NOT_FOUND',
+  ),
+  TRANSFER_SAME_LOCATION: new HttpError(
+    422,
+    'Source and destination locations must be different',
+    'TRANSFER_SAME_LOCATION',
   ),
   STOCK_TRANSFER_NOT_REVERSIBLE: new HttpError(
     409,
@@ -86,6 +104,20 @@ export async function reverseStockTransfer(
 ): Promise<ReverseStockTransferResult> {
   try {
     return await reverseStockTransferTransaction(input);
+  } catch (error) {
+    if (error instanceof Error && confirmErrorMap[error.message]) {
+      throw confirmErrorMap[error.message];
+    }
+
+    throw error;
+  }
+}
+
+export async function createStockTransfer(
+  input: CreateStockTransferInput,
+): Promise<CreateStockTransferResult> {
+  try {
+    return await insertStockTransfer(input);
   } catch (error) {
     if (error instanceof Error && confirmErrorMap[error.message]) {
       throw confirmErrorMap[error.message];

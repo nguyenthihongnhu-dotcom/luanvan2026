@@ -8,3 +8,7 @@ export type NotificationsFilters = {
 };
 
 export type NotificationsRow = RowDataPacket & Record<string, unknown>;
+
+export type NotificationMutationResult = {
+  affectedRows: number;
+};

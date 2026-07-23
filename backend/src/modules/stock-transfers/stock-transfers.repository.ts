@@ -10,6 +10,8 @@ import { db } from '../../database/db';
 import type {
   ConfirmStockTransferInput,
   ConfirmStockTransferResult,
+  CreateStockTransferInput,
+  CreateStockTransferResult,
   ReverseStockTransferInput,
   ReverseStockTransferResult,
   QueryParams,
@@ -461,6 +463,123 @@ export async function reverseStockTransferTransaction(
       transferCode: transfer.transfer_code,
       status: 'CANCELLED',
       reversalCount,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function insertStockTransfer(
+  input: CreateStockTransferInput,
+): Promise<CreateStockTransferResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [warehouseRows] = input.sourceWarehouseId
+      ? await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM warehouses WHERE id = ? LIMIT 1',
+          [input.sourceWarehouseId],
+        )
+      : await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM warehouses WHERE code = ? LIMIT 1',
+          ['KHO-HCM-01'],
+        );
+    const sourceWarehouseId = warehouseRows[0]?.id;
+    const destinationWarehouseId =
+      input.destinationWarehouseId ?? sourceWarehouseId;
+
+    if (!sourceWarehouseId || !destinationWarehouseId) {
+      throw new Error('WAREHOUSE_NOT_FOUND');
+    }
+
+    const [userRows] = input.createdBy
+      ? await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM users WHERE id = ? LIMIT 1',
+          [input.createdBy],
+        )
+      : await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM users WHERE employee_code = ? LIMIT 1',
+          ['NV-KHO-01'],
+        );
+    const createdBy = userRows[0]?.id;
+
+    if (!createdBy) {
+      throw new Error('USER_NOT_FOUND');
+    }
+
+    const transferCode =
+      input.transferCode ?? buildUniqueCode('TRF', String(Date.now()));
+    const [transferResult] = await connection.query<ResultSetHeader>(
+      `
+        INSERT INTO stock_transfers (
+          transfer_code,
+          source_warehouse_id,
+          destination_warehouse_id,
+          status,
+          note,
+          created_by
+        )
+        VALUES (?, ?, ?, 'DRAFT', ?, ?)
+      `,
+      [
+        transferCode,
+        sourceWarehouseId,
+        destinationWarehouseId,
+        input.note ?? null,
+        createdBy,
+      ],
+    );
+
+    for (const item of input.items) {
+      if (item.sourceLocationId === item.destinationLocationId) {
+        throw new Error('TRANSFER_SAME_LOCATION');
+      }
+
+      await connection.query(
+        `
+          INSERT INTO stock_transfer_items (
+            stock_transfer_id,
+            product_variant_id,
+            batch_id,
+            source_location_id,
+            destination_location_id,
+            quantity,
+            note
+          )
+          VALUES (?, ?, ?, ?, ?, ?, ?)
+        `,
+        [
+          transferResult.insertId,
+          item.productVariantId,
+          item.batchId ?? null,
+          item.sourceLocationId,
+          item.destinationLocationId,
+          item.quantity,
+          item.note ?? null,
+        ],
+      );
+    }
+
+    await insertAuditLog(connection, {
+      userId: createdBy,
+      action: 'CREATE',
+      module: 'stock_transfers',
+      entityType: 'STOCK_TRANSFER',
+      entityId: transferResult.insertId,
+      newValues: { transferCode, itemCount: input.items.length },
+    });
+
+    await connection.commit();
+
+    return {
+      id: transferResult.insertId,
+      transferCode,
+      itemCount: input.items.length,
     };
   } catch (error) {
     await connection.rollback();

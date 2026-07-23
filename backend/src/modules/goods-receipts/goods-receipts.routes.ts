@@ -5,12 +5,14 @@ import {
   confirmGoodsReceiptController,
   listGoodsReceiptsController,
   createGoodsReceiptController,
+  getGoodsReceiptDetailController,
   reverseGoodsReceiptController,
 } from './goods-receipts.controller';
 
 export const goodsReceiptsRouter = Router();
 
 goodsReceiptsRouter.get('/', asyncHandler(listGoodsReceiptsController));
+goodsReceiptsRouter.get('/:id', asyncHandler(getGoodsReceiptDetailController));
 goodsReceiptsRouter.post('/', asyncHandler(createGoodsReceiptController));
 goodsReceiptsRouter.post(
   '/:id/confirm',

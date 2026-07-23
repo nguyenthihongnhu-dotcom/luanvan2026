@@ -31,6 +31,16 @@ npm run build
 npm run lint
 ```
 
+## Chạy production
+
+```bash
+npm install
+npm run build
+# deploy thư mục dist/ qua static hosting/CDN/Nginx
+```
+
+`VITE_API_BASE_URL` phải trỏ tới backend qua HTTPS ở production. Vite chỉ expose biến có tiền tố `VITE_` vào bundle client — không đặt secret (API key, token) vào file `.env` frontend vì nó sẽ nằm trong bundle public.
+
 ## Thứ tự hiểu frontend nhanh
 
 1. `src/main.tsx`, `src/app/App.tsx`, `src/app/providers/AppProviders.tsx`
@@ -42,15 +52,26 @@ npm run lint
 
 ## Feature hiện có
 
-| Feature | Route | Backend API chính | Docs |
+| Feature | Route | Backend API | Docs |
 | --- | --- | --- | --- |
-| Auth | `/login` | `/auth/login` | [README](src/features/auth/README.md) |
+| Auth | `/login` | `/auth/login`, `/auth/register` | [README](src/features/auth/README.md) |
 | Products | `/products`, `/categories` | `/reports/*`, `/catalog/*` | [README](src/features/products/README.md) |
 | Locations | `/locations` | `/locations/*` | [README](src/features/locations/README.md) |
+| Warehouses | `/warehouses` | `/warehouses/*` | [README](src/features/warehouses/README.md) |
 | Transactions | `/transactions` | `/goods-receipts`, `/goods-issues`, `/stock-adjustments` | [README](src/features/transactions/README.md) |
+| Stock | `/stock` | `/stock/*` | [README](src/features/stock/README.md) |
+| Inventory Transactions | `/inventory-transactions` | `/inventory-transactions` | [README](src/features/inventory-transactions/README.md) |
+| Batches | `/batches` | `/batches/*` | [README](src/features/batches/README.md) |
+| Alerts | `/alerts` | `/alerts/*`, `/notifications/*` | [README](src/features/alerts/README.md) |
+| Transfers | `/transfers` | `/stock-transfers/*` | [README](src/features/transfers/README.md) |
+| Stock Counts | `/stock-counts` | `/stock-counts/*` | [README](src/features/stock-counts/README.md) |
 | Partners | `/partners` | `/suppliers` | [README](src/features/partners/README.md) |
 | Staff | `/employees` | `/auth/users` | [README](src/features/staff/README.md) |
-
+| Reports | `/reports` | `/reports/*` | [README](src/features/reports/README.md) |
+| Authorization | `/authorization` | `/authorization` | [README](src/features/authorization/README.md) |
+| Audit Logs | `/audit-logs` | `/audit-logs` | [README](src/features/audit-logs/README.md) |
+| Attachments | `/attachments` | `/attachments` | [README](src/features/attachments/README.md) |
+| Settings | `/settings` | `/settings` | [README](src/features/settings/README.md) |
 ## Quy tắc code frontend
 
 - Component/page không gọi `fetch` trực tiếp.

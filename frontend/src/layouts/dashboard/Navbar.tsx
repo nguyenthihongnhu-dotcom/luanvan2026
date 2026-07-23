@@ -1,32 +1,43 @@
-import type { ReactNode } from "react";
-import { Link, useLocation } from "react-router-dom";
+﻿import type { ReactNode } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+
+const navbarItems = [
+    { label: 'Sơ đồ kho', path: '/locations' },
+    { label: 'Kho master', path: '/warehouses' },
+    { label: 'Tồn kho', path: '/stock' },
+    { label: 'Log tồn', path: '/inventory-transactions' },
+    { label: 'Lô hàng', path: '/batches' },
+    { label: 'Cảnh báo', path: '/alerts' },
+    { label: 'Hàng hoá', path: '/products' },
+    { label: 'Giao dịch', path: '/transactions' },
+    { label: 'Chuyển kho', path: '/transfers' },
+    { label: 'Kiểm kê', path: '/stock-counts' },
+    { label: 'Đối tác', path: '/partners' },
+    { label: 'Nhân viên', path: '/employees' },
+    { label: 'Danh mục', path: '/categories' },
+    { label: 'Báo cáo', path: '/reports' },
+    { label: 'Phân quyền', path: '/authorization' },
+    { label: 'Audit', path: '/audit-logs' },
+    { label: 'File', path: '/attachments' },
+    { label: 'Cấu hình', path: '/settings' },
+];
 
 export default function Navbar(): ReactNode {
     const location = useLocation();
 
-    const navbarItems = [
-        // { label: "Tổng quan", path: "/dashboard" },
-        { label: "Kho", path: "/locations" },
-        { label: "Hàng hoá", path: "/products" },
-        { label: "Giao dịch", path: "/transactions" },
-        { label: "Đối tác", path: "/partners" },
-        { label: "Nhân viên", path: "/employees" },
-        { label: "Danh mục", path: "/categories" }
-    ];
-
     return (
-        <nav className="bg-white border-b border-gray-200 px-6 py-4 shadow-sm">
-            <div className="flex items-center max-w-7xl mx-auto">
-                <div className="flex items-center space-x-1 ml-10">
+        <nav className="border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
+            <div className="mx-auto flex max-w-7xl items-center">
+                <div className="ml-10 flex items-center space-x-1 overflow-x-auto">
                     {navbarItems.map((item) => {
                         const isActive = location.pathname === item.path;
                         return (
                             <Link
                                 key={item.path}
                                 to={item.path}
-                                className={`px-4 py-2 rounded-md text-sm font-medium transition-colors ${isActive
-                                    ? "bg-pink-50 text-pink-600"
-                                    : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                                className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${isActive
+                                    ? 'bg-pink-50 text-pink-600'
+                                    : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                                     }`}
                             >
                                 {item.label}
@@ -38,4 +49,3 @@ export default function Navbar(): ReactNode {
         </nav>
     );
 }
-

@@ -8,6 +8,12 @@ const filtersSchema = z.object({
   status: z.string().trim().min(1).max(50).optional(),
 });
 
+const idSchema = z.coerce.number().int().positive();
+
 export function parseAlertsFilters(input: unknown): AlertsFilters {
   return validateInput(filtersSchema, input);
+}
+
+export function parseAlertId(input: unknown): number {
+  return validateInput(idSchema, input);
 }

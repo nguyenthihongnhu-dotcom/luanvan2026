@@ -1015,8 +1015,19 @@ VALUES
     ('stock_counts:count', 'Record stock counts', 'stock_counts', 'Record actual counted quantity'),
     ('stock_counts:submit', 'Submit stock counts', 'stock_counts', 'Submit counted result'),
     ('stock_counts:approve', 'Approve stock counts', 'stock_counts', 'Approve stock count and create adjustment'),
+    ('users:read', 'Read users', 'auth', 'View users'),
+    ('users:create', 'Create users', 'auth', 'Create users from admin UI'),
+    ('users:update', 'Update users', 'auth', 'Update users'),
+    ('users:delete', 'Delete users', 'auth', 'Soft delete users'),
+    ('warehouses:create', 'Create warehouses', 'warehouses', 'Create warehouse master data'),
+    ('warehouses:update', 'Update warehouses', 'warehouses', 'Update warehouse master data'),
+    ('warehouses:delete', 'Delete warehouses', 'warehouses', 'Soft delete warehouse master data'),
+    ('settings:update', 'Update settings', 'settings', 'Update application settings'),
     ('alerts:generate', 'Generate alerts', 'alerts', 'Generate inventory alerts from stock views'),
-    ('notifications:generate', 'Generate notifications', 'notifications', 'Generate notifications from open alerts')
+    ('alerts:read', 'Read alerts', 'alerts', 'Mark alert as read'),
+    ('alerts:resolve', 'Resolve alerts', 'alerts', 'Resolve inventory alerts'),
+    ('notifications:generate', 'Generate notifications', 'notifications', 'Generate notifications from open alerts'),
+    ('notifications:read', 'Read notifications', 'notifications', 'Mark notification as read')
 ON DUPLICATE KEY UPDATE name = VALUES(name), module = VALUES(module), description = VALUES(description);
 
 INSERT INTO role_permissions (role_id, permission_id)
@@ -1037,8 +1048,19 @@ JOIN permissions p ON p.code IN (
     'stock_counts:count',
     'stock_counts:submit',
     'stock_counts:approve',
+    'users:read',
+    'users:create',
+    'users:update',
+    'users:delete',
+    'warehouses:create',
+    'warehouses:update',
+    'warehouses:delete',
+    'settings:update',
     'alerts:generate',
-    'notifications:generate'
+    'alerts:read',
+    'alerts:resolve',
+    'notifications:generate',
+    'notifications:read'
 )
 WHERE r.code IN ('ADMIN', 'WAREHOUSE_MANAGER')
 ON DUPLICATE KEY UPDATE permission_id = VALUES(permission_id);

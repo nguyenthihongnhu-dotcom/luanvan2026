@@ -58,6 +58,47 @@ export async function findGoodsReceipts(
   return rows;
 }
 
+export async function findGoodsReceiptDetail(
+  id: number,
+): Promise<{ header: RowDataPacket; items: RowDataPacket[] } | undefined> {
+  const [headers] = await db.query<RowDataPacket[]>(
+    `
+      SELECT gr.*, w.code AS warehouse_code, w.name AS warehouse_name, s.name AS supplier_name
+      FROM goods_receipts gr
+      LEFT JOIN warehouses w ON w.id = gr.warehouse_id
+      LEFT JOIN suppliers s ON s.id = gr.supplier_id
+      WHERE gr.id = ?
+      LIMIT 1
+    `,
+    [id],
+  );
+
+  const header = headers[0];
+  if (!header) return undefined;
+
+  const [items] = await db.query<RowDataPacket[]>(
+    `
+      SELECT
+        gri.*,
+        pv.sku,
+        pv.name AS variant_name,
+        p.name AS product_name,
+        pb.lot_number,
+        pb.expiry_date,
+        wl.code AS location_code
+      FROM goods_receipt_items gri
+      LEFT JOIN product_variants pv ON pv.id = gri.product_variant_id
+      LEFT JOIN products p ON p.id = pv.product_id
+      LEFT JOIN product_batches pb ON pb.id = gri.batch_id
+      LEFT JOIN warehouse_locations wl ON wl.id = gri.location_id
+      WHERE gri.goods_receipt_id = ?
+      ORDER BY gri.id
+    `,
+    [id],
+  );
+
+  return { header, items };
+}
 async function lockReceipt(
   connection: PoolConnection,
   receiptId: number,
@@ -403,25 +444,63 @@ export async function reverseGoodsReceiptTransaction(
 export async function insertGoodsReceipt(
   input: CreateGoodsReceiptInput,
 ): Promise<{ id: number }> {
-  const [warehouseRows] = await db.query<Array<RowDataPacket & { id: number }>>(
-    'SELECT id FROM warehouses WHERE id = ? OR code = ? LIMIT 1',
-    [input.warehouseId ?? 0, 'KHO-HCM-01'],
-  );
-  const [userRows] = await db.query<Array<RowDataPacket & { id: number }>>(
-    'SELECT id FROM users WHERE id = ? OR employee_code = ? LIMIT 1',
-    [input.createdBy ?? 0, 'NV-KHO-01'],
-  );
-  const [result] = await db.query<ResultSetHeader>(
-    `INSERT INTO goods_receipts (receipt_code, warehouse_id, supplier_id, status, reference_no, note, created_by)
-     VALUES (?, ?, ?, 'DRAFT', ?, ?, ?)`,
-    [
-      input.receiptCode,
-      warehouseRows[0]?.id,
-      input.supplierId ?? null,
-      input.referenceNo ?? null,
-      input.note ?? null,
-      userRows[0]?.id,
-    ],
-  );
-  return { id: result.insertId };
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    const [warehouseRows] = input.warehouseId
+      ? await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM warehouses WHERE id = ? LIMIT 1',
+          [input.warehouseId],
+        )
+      : await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM warehouses WHERE code = ? LIMIT 1',
+          ['KHO-HCM-01'],
+        );
+    const [userRows] = input.createdBy
+      ? await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM users WHERE id = ? LIMIT 1',
+          [input.createdBy],
+        )
+      : await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM users WHERE employee_code = ? LIMIT 1',
+          ['NV-KHO-01'],
+        );
+    const [result] = await connection.query<ResultSetHeader>(
+      `INSERT INTO goods_receipts (receipt_code, warehouse_id, supplier_id, status, reference_no, note, created_by)
+       VALUES (?, ?, ?, 'DRAFT', ?, ?, ?)`,
+      [
+        input.receiptCode,
+        warehouseRows[0]?.id,
+        input.supplierId ?? null,
+        input.referenceNo ?? null,
+        input.note ?? null,
+        userRows[0]?.id,
+      ],
+    );
+
+    for (const item of input.items ?? []) {
+      await connection.query(
+        `INSERT INTO goods_receipt_items (goods_receipt_id, product_variant_id, batch_id, location_id, quantity, unit_cost, note)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          result.insertId,
+          item.productVariantId,
+          item.batchId ?? null,
+          item.locationId,
+          item.quantity,
+          item.unitCost ?? null,
+          item.note ?? null,
+        ],
+      );
+    }
+
+    await connection.commit();
+    return { id: result.insertId };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }

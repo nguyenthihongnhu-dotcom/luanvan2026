@@ -1,6 +1,8 @@
+import type { ResultSetHeader } from 'mysql2';
 import { db } from '../../database/db';
 import type {
   NotificationsFilters,
+  NotificationMutationResult,
   NotificationsRow,
   QueryParams,
 } from './notifications.model';
@@ -81,4 +83,23 @@ export async function generateNotificationsFromAlerts(): Promise<{
   return {
     createdCount: 'affectedRows' in result ? Number(result.affectedRows) : 0,
   };
+}
+
+export async function markNotificationReadRepository(
+  notificationId: number,
+  userId: number,
+): Promise<NotificationMutationResult> {
+  const [result] = await db.query<ResultSetHeader>({
+    sql: `
+      UPDATE notifications
+      SET is_read = TRUE,
+          read_at = CURRENT_TIMESTAMP(3)
+      WHERE id = :notificationId
+        AND user_id = :userId
+        AND is_read = FALSE
+    `,
+    values: { notificationId, userId } satisfies QueryParams,
+  });
+
+  return { affectedRows: result.affectedRows };
 }

@@ -7,15 +7,19 @@ import type {
   CreateLocationResult,
   LocationFilters,
   LocationRow,
+  LocationHistoryRow,
   MutationResult,
+  ReorderShelvesInput,
 } from './location.model';
 import {
   findLocations as findLocationsRepository,
+  findLocationHistory,
   insertLocation,
   insertShelf,
   insertZone,
   softDeleteLocationByLayer,
   softDeleteLocationsByShelfId,
+  reorderShelvesRepository,
 } from './locations.repository';
 
 export async function listLocations(
@@ -52,4 +56,15 @@ export async function createZone(
   input: CreateZoneInput,
 ): Promise<CreateZoneResult> {
   return insertZone(input);
+}
+
+export async function reorderShelves(
+  input: ReorderShelvesInput,
+): Promise<MutationResult> {
+  return reorderShelvesRepository(input.shelfIds);
+}
+export async function listLocationHistory(
+  locationId: number,
+): Promise<LocationHistoryRow[]> {
+  return findLocationHistory(locationId);
 }

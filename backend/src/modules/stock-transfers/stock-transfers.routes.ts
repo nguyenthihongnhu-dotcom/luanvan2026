@@ -3,6 +3,7 @@ import { asyncHandler } from '../../common/http';
 import { requirePermission, verifyToken } from '../auth/auth.module';
 import {
   confirmStockTransferController,
+  createStockTransferController,
   listStockTransfersController,
   reverseStockTransferController,
 } from './stock-transfers.controller';
@@ -10,6 +11,7 @@ import {
 export const stockTransfersRouter = Router();
 
 stockTransfersRouter.get('/', asyncHandler(listStockTransfersController));
+stockTransfersRouter.post('/', asyncHandler(createStockTransferController));
 stockTransfersRouter.post(
   '/:id/confirm',
   asyncHandler(verifyToken),

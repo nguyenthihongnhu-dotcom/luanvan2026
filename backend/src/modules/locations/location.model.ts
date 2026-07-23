@@ -87,3 +87,25 @@ export type CreateZoneResult = {
   createdShelfCount: number;
   createdLocationCount: number;
 };
+
+export type ReorderShelvesInput = {
+  shelfIds: number[];
+};
+export type LocationHistoryRow = RowDataPacket & {
+  id: number;
+  transaction_code: string;
+  transaction_type: string;
+  direction: 'IN' | 'OUT';
+  quantity: string | number;
+  quantity_before: string | number | null;
+  quantity_after: string | number | null;
+  reference_type: string | null;
+  reference_id: number | null;
+  reason_code: string | null;
+  note: string | null;
+  created_at: Date;
+  sku: string;
+  product_name: string;
+  variant_name: string;
+  performed_by_name: string | null;
+};

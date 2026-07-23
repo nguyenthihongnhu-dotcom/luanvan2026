@@ -13,12 +13,16 @@ export default function WarehouseMapping() {
         layers,
         shelves,
         locations,
+        isLoading,
+        isSaving,
+        error,
         activeLocation,
         setActiveLocation,
         getLocationInfo,
         handleAddZone,
         handleAddShelf,
         handleAddLayer,
+        handleReorderShelves,
         handleDeleteShelf,
         handleDeleteLayer,
     } = useWarehouse();
@@ -26,7 +30,9 @@ export default function WarehouseMapping() {
     return (
         <DashboardLayout>
             <div className="flex flex-col bg-gray-50 text-gray-800 rounded-xl overflow-hidden border border-gray-200">
-                {/* 1. TOP BAR */}
+                {error && <div className="border-b border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
+                {isLoading && <div className="border-b border-gray-200 bg-white px-4 py-2 text-sm text-gray-500">Đang tải sơ đồ kho...</div>}
+
                 <ZoneSelector
                     selectedZone={selectedZone}
                     setSelectedZone={setSelectedZone}
@@ -34,26 +40,23 @@ export default function WarehouseMapping() {
                 />
 
                 {!selectedZone ? (
-                    /* Overall warehouse map */
                     <WarehouseGridEditor
                         onSelectZone={setSelectedZone}
                         locations={locations}
                     />
                 ) : (
-                    /* Zone detail view */
                     <div className="flex flex-1 overflow-hidden">
-                        {/* Structure controls */}
                         <StructureSidebar
                             selectedZone={selectedZone}
                             shelves={shelves}
                             layers={layers}
+                            isSaving={isSaving}
                             handleAddShelf={handleAddShelf}
                             handleAddLayer={handleAddLayer}
                             handleDeleteShelf={handleDeleteShelf}
                             handleDeleteLayer={handleDeleteLayer}
                         />
 
-                        {/* Rack and layer grid */}
                         <WarehouseGrid
                             layers={layers}
                             shelves={shelves}
@@ -61,9 +64,9 @@ export default function WarehouseMapping() {
                             activeLocation={activeLocation}
                             setActiveLocation={setActiveLocation}
                             getLocationInfo={getLocationInfo}
+                            onReorderShelves={handleReorderShelves}
                         />
 
-                        {/* Location detail */}
                         {activeLocation && (
                             <LocationDetailSidebar
                                 activeLocation={activeLocation}

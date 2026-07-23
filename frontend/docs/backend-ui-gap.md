@@ -1,128 +1,75 @@
-# Frontend Gap Theo Backend Module
+﻿# Frontend Gap Theo Backend Module
 
-Docs này giúp biết backend module nào đã có giao diện frontend, module nào còn thiếu UI, và nên bổ sung theo thứ tự nào.
+Tài liệu này dùng để biết backend module nào đã có giao diện frontend, module nào chỉ mới có một phần flow, và phần nào còn phụ thuộc backend mở rộng thêm API.
 
 ## Quy ước trạng thái
 
 - `Đã có UI`: frontend có route/màn chính gọi API module đó.
-- `Có một phần`: frontend có dùng dữ liệu module đó nhưng chưa đủ CRUD/flow nghiệp vụ.
-- `Chưa có UI`: backend có API/module nhưng frontend chưa có màn riêng.
-- `Không cần UI riêng`: module kỹ thuật, dùng qua docs/health hoặc hệ thống.
+- `Có một phần`: frontend có dùng API module đó nhưng chưa đủ flow nghiệp vụ hoặc backend chưa có đủ endpoint chi tiết.
+- `Không cần UI riêng`: module kỹ thuật, dùng qua health/docs.
 
 ## Bảng tổng hợp
 
 | Backend module | Frontend hiện tại | Trạng thái | Ghi chú |
 | --- | --- | --- | --- |
 | `health` | Không có màn riêng | Không cần UI riêng | Dùng để debug/monitor: `GET /health`. |
-| `openapi` | Không có màn riêng | Không cần UI riêng | Swagger ở `/docs`, không cần build UI trong app. |
-| `auth` | `features/auth`, `features/staff` | Có một phần | Login đã có. Staff list dùng `/auth/users`. Register service hiện cần kiểm tra/nối lại API thật nếu muốn UI đăng ký hoạt động đầy đủ. |
-| `authorization` | Chưa có màn role/permission | Chưa có UI | Cần nếu muốn admin quản lý quyền. Hiện chỉ dùng ngầm qua token/permission. |
-| `warehouses` | Locations dùng layout kho | Có một phần | Chưa có màn CRUD kho riêng. Locations phụ thuộc warehouse mặc định/backend. |
-| `locations` | `features/locations` | Đã có UI | Có sơ đồ kho, tạo zone/shelf/location và xóa shelf/layer qua API. |
-| `catalog` | `features/products` | Đã có UI | Products/categories đã gọi `/catalog/*`; danh mục và sản phẩm có CRUD cơ bản. |
-| `suppliers` | `features/partners` | Đã có UI | Partners đang map supplier backend; update service có nhưng UI sửa có thể chưa đầy đủ. |
-| `batches` | Products đọc hạn qua report | Có một phần | Chưa có màn quản lý lô riêng. Near-expiry dùng report, không gọi `/batches` trực tiếp. |
-| `stock` | Products/locations dùng tồn qua reports/locations | Có một phần | Chưa có màn tồn kho chuyên biệt gọi `/stock/current`, `/stock/allocation`. |
-| `inventory-transactions` | Transactions/report data | Có một phần | Chưa có màn log tồn riêng gọi trực tiếp `/inventory-transactions`. Integration/report có dùng backend. |
-| `goods-receipts` | `features/transactions` | Có một phần | Có list/tạo header phiếu nhập. Chưa có UI item detail/confirm/reverse đầy đủ. |
-| `goods-issues` | `features/transactions` | Có một phần | Có list/tạo header phiếu xuất. Chưa có UI item detail/confirm/reverse đầy đủ. |
-| `stock-transfers` | Chưa có màn chuyển kho | Chưa có UI | Backend có list/confirm/reverse nhưng frontend chưa có route/form chuyển kho. |
-| `stock-counts` | Chưa có màn kiểm kê | Chưa có UI | Backend có lifecycle kiểm kê nhưng frontend chưa có route. |
-| `stock-adjustments` | `features/transactions` | Có một phần | Có list/tạo header điều chỉnh. Chưa có UI item detail/approve/reject/cancel đầy đủ. |
-| `alerts` | Chưa có màn cảnh báo | Chưa có UI | Backend có list/generate; frontend chưa có badge/list/notification center. |
-| `notifications` | Chưa có notification UI | Chưa có UI | Backend có list/generate; frontend chưa có notification center/realtime. |
-| `reports` | Products dùng report stock/near-expiry | Có một phần | Chưa có dashboard báo cáo riêng cho movement/transaction reports. |
-| `audit-logs` | Chưa có màn audit | Chưa có UI | Cần cho admin/truy vết. |
-| `attachments` | Chưa có UI file đính kèm | Chưa có UI | Backend hiện mới list metadata, chưa upload/download thật. |
-| `settings` | Chưa có màn cấu hình | Chưa có UI | Cần nếu muốn admin chỉnh cấu hình nghiệp vụ. |
+| `openapi` | Không có màn riêng | Không cần UI riêng | Swagger ở `/docs`, không build UI trong app. |
+| `auth` | `features/auth`, `features/staff` | Đã có UI | Login/register; quản lý user dùng `/auth/users` có token/permission. |
+| `authorization` | `features/authorization` | Đã có UI | `/authorization` xem role và permissions theo role. |
+| `warehouses` | `features/warehouses` | Đã có UI | Có CRUD kho master; delete là xoá mềm để giữ dữ liệu vị trí/tồn. |
+| `locations` | `features/locations` | Đã có UI | Sơ đồ kho, tạo zone/shelf/location, reorder kệ, lịch sử vị trí, in QR. |
+| `catalog` | `features/products`, `CategoriesPage` | Đã có UI | Products/categories gọi `/catalog/*`, có CRUD cơ bản. |
+| `suppliers` | `features/partners` | Đã có UI | Partners map supplier backend và có CRUD cơ bản. |
+| `batches` | `features/batches` | Đã có UI | Có list/filter lô, trạng thái, hạn dùng; backend hiện chưa có CRUD lô. |
+| `stock` | `features/stock` | Đã có UI | Tồn hiện tại, gần hết hạn, preview FEFO/FIFO. |
+| `inventory-transactions` | `features/inventory-transactions`, location history | Đã có UI | Có log tồn toàn hệ thống và lịch sử theo vị trí. |
+| `goods-receipts` | `features/transactions` | Đã có UI | List/tạo kèm item, confirm/reverse và route detail `/receipts/:id`. |
+| `goods-issues` | `features/transactions` | Đã có UI | List/tạo kèm item, preview FEFO/FIFO, confirm/reverse và route detail `/issues/:id`. |
+| `stock-transfers` | `features/transfers` | Đã có UI | List, tạo phiếu, confirm/reverse. |
+| `stock-counts` | `features/stock-counts` | Đã có UI | List, create/start/count/submit/approve. |
+| `stock-adjustments` | `features/transactions` | Đã có UI | List/tạo kèm item, approve/reject/cancel và route detail `/adjustments/:id`. |
+| `alerts` | `features/alerts` | Đã có UI | List/filter/generate, mark read, resolve. |
+| `notifications` | `features/alerts` | Đã có UI | Tab thông báo, list/search/generate/mark read. |
+| `reports` | `features/reports`, products/stock | Đã có UI | Dashboard báo cáo: tồn, gần hạn, biến động, transaction report. |
+| `audit-logs` | `features/audit-logs` | Đã có UI | List/filter theo action hiện có của backend. |
+| `attachments` | `features/attachments` | Đã có UI | Xem metadata file; backend chưa có upload/download storage thật. |
+| `settings` | `features/settings` | Đã có UI | Xem/cập nhật app settings bằng quyền `settings:update`, có validate JSON ở frontend. |
 
-## Ưu tiên bổ sung UI
+## Phần còn lại nên làm tiếp
 
-### Ưu tiên 1 - Hoàn thiện nghiệp vụ kho core
+1. CRUD lô hàng: backend hiện mới list, nếu muốn quản lý lô thủ công cần thêm create/update/block.
+2. Upload/download attachments: cần storage strategy trước, không nên fake upload ở frontend.
+3. Audit filter nâng cao: backend hiện mới search theo action; muốn filter user/entity/date cần mở rộng query.
+4. Permission-aware UI nâng cao: hiện đã áp dụng cho transaction actions và settings; có thể mở rộng sang mọi nút admin còn lại.
 
-Các màn này quan trọng nhất để đồ án vận hành đúng chủ đề WMS.
+## Route hiện có
 
-1. **Phiếu nhập chi tiết**
-   - Module backend: `goods-receipts`
-   - Cần UI: thêm item, chọn SKU, batch, hạn sử dụng, vị trí nhập, confirm/reverse.
-
-2. **Phiếu xuất chi tiết**
-   - Module backend: `goods-issues`
-   - Cần UI: thêm item, chọn SKU/số lượng, preview allocation FEFO/FIFO, confirm/reverse.
-
-3. **Chuyển kho**
-   - Module backend: `stock-transfers`
-   - Cần UI: tạo phiếu chuyển, chọn vị trí nguồn/đích, confirm/reverse.
-
-4. **Kiểm kê kho**
-   - Module backend: `stock-counts`
-   - Cần UI: tạo phiếu, start, nhập số đếm, submit, approve.
-
-5. **Điều chỉnh tồn chi tiết**
-   - Module backend: `stock-adjustments`
-   - Cần UI: thêm item điều chỉnh, approve/reject/cancel.
-
-### Ưu tiên 2 - Màn vận hành
-
-1. **Tồn kho chuyên biệt**
-   - Module backend: `stock`
-   - Cần UI: stock current, near-expiry, allocation preview.
-
-2. **Quản lý lô hàng**
-   - Module backend: `batches`
-   - Cần UI: list/search lô, trạng thái, hạn sử dụng, liên kết SKU.
-
-3. **Báo cáo**
-   - Module backend: `reports`
-   - Cần UI: product stock, near-expiry, inventory movements, inventory transactions.
-
-4. **Cảnh báo và thông báo**
-   - Module backend: `alerts`, `notifications`
-   - Cần UI: danh sách cảnh báo, generate, notification center.
-
-### Ưu tiên 3 - Admin/support
-
-1. **Role/Permission admin**
-   - Module backend: `authorization`
-   - Cần UI: xem role/permission, sau này gán quyền.
-
-2. **Kho master data**
-   - Module backend: `warehouses`
-   - Cần UI: CRUD kho nếu không muốn quản lý bằng SQL.
-
-3. **Audit logs**
-   - Module backend: `audit-logs`
-   - Cần UI: filter theo user/action/entity/date.
-
-4. **Attachments**
-   - Module backend: `attachments`
-   - Cần UI sau khi backend có upload/download thật.
-
-5. **Settings**
-   - Module backend: `settings`
-   - Cần UI quản trị cấu hình.
-
-## Route frontend đề xuất
-
-| Route đề xuất | Feature | Backend module |
+| Route | Feature | Backend module |
 | --- | --- | --- |
-| `/stock` | `stock` | `stock` |
+| `/locations` | `locations` | `locations`, `warehouses` |
+| `/warehouses` | `warehouses` | `warehouses` |
+| `/stock` | `stock` | `stock`, `warehouses` |
+| `/inventory-transactions` | `inventory-transactions` | `inventory-transactions` |
 | `/batches` | `batches` | `batches` |
-| `/receipts/:id` | `transactions` hoặc `receipts` | `goods-receipts` |
-| `/issues/:id` | `transactions` hoặc `issues` | `goods-issues` |
-| `/transfers` | `transfers` | `stock-transfers` |
-| `/stock-counts` | `stock-counts` | `stock-counts` |
-| `/adjustments/:id` | `transactions` hoặc `adjustments` | `stock-adjustments` |
-| `/reports` | `reports` | `reports` |
 | `/alerts` | `alerts` | `alerts`, `notifications` |
-| `/audit-logs` | `audit` | `audit-logs` |
+| `/products` | `products` | `catalog`, `reports` |
+| `/transactions` | `transactions` | `goods-receipts`, `goods-issues`, `stock-adjustments`, `stock` |
+| `/receipts/:id`, `/issues/:id`, `/adjustments/:id` | `transactions/detail` | `goods-receipts`, `goods-issues`, `stock-adjustments` |
+| `/transfers` | `transfers` | `stock-transfers`, `stock`, `locations` |
+| `/stock-counts` | `stock-counts` | `stock-counts`, `warehouses` |
+| `/partners` | `partners` | `suppliers` |
+| `/employees` | `staff` | `auth/users` |
+| `/categories` | `products/categories` | `catalog/categories` |
+| `/reports` | `reports` | `reports` |
+| `/authorization` | `authorization` | `authorization` |
+| `/audit-logs` | `audit-logs` | `audit-logs` |
+| `/attachments` | `attachments` | `attachments` |
 | `/settings` | `settings` | `settings` |
 
-## Lưu ý khi triển khai các UI còn thiếu
+## Quy tắc triển khai tiếp
 
 - Không tạo mock local cho màn đã có backend API.
-- Mỗi feature mới phải có `src/features/<feature>/README.md`.
-- API gọi qua `services`, không gọi trực tiếp trong page/component.
-- Flow confirm/approve cần token và permission, nên phải test bằng user đủ quyền.
+- Mỗi feature mới phải có service riêng; page không gọi `httpClient` trực tiếp.
+- Flow confirm/approve/generate cần token và permission, test bằng user đủ quyền.
 - Enum/backend code phải map sang tiếng Việt trước khi render.
-- Với nghiệp vụ tồn kho, sau mutation nên reload từ backend để tránh state lệch.
+- Với nghiệp vụ tồn kho, sau mutation reload từ backend để tránh state lệch.

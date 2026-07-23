@@ -5,6 +5,7 @@ import {
   listGoodsReceipts,
   reverseGoodsReceipt,
   createGoodsReceipt,
+  getGoodsReceiptDetail,
 } from './goods-receipts.service';
 import {
   parseGoodsReceiptId,
@@ -21,6 +22,13 @@ export async function listGoodsReceiptsController(
   res.json({ data: await listGoodsReceipts(filters) });
 }
 
+export async function getGoodsReceiptDetailController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const receiptId = parseGoodsReceiptId(req.params.id);
+  res.json({ data: await getGoodsReceiptDetail(receiptId) });
+}
 export async function confirmGoodsReceiptController(
   req: Request,
   res: Response,

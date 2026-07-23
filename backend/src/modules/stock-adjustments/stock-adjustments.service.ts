@@ -13,6 +13,7 @@ import type {
 import {
   approveStockAdjustmentTransaction,
   cancelStockAdjustmentTransaction,
+  findStockAdjustmentDetail as findStockAdjustmentDetailRepository,
   findStockAdjustments as findStockAdjustmentsRepository,
   insertStockAdjustment,
   rejectStockAdjustmentTransaction,
@@ -77,6 +78,19 @@ export async function listStockAdjustments(
   return findStockAdjustmentsRepository(filters);
 }
 
+export async function getStockAdjustmentDetail(
+  id: number,
+): Promise<{ header: unknown; items: unknown[] }> {
+  const detail = await findStockAdjustmentDetailRepository(id);
+  if (!detail) {
+    throw new HttpError(
+      404,
+      'Stock adjustment not found',
+      'STOCK_ADJUSTMENT_NOT_FOUND',
+    );
+  }
+  return detail;
+}
 export async function approveStockAdjustment(
   input: ApproveStockAdjustmentInput,
 ): Promise<ApproveStockAdjustmentResult> {

@@ -1,5 +1,7 @@
 import { httpClient, unwrapData } from '@/shared/services/httpClient';
 
+export type UserRoleCode = 'ADMIN' | 'WAREHOUSE_MANAGER' | 'STAFF' | 'AUDITOR';
+
 export interface User {
     MaNguoiDung: number;
     HoTen: string;
@@ -8,6 +10,25 @@ export interface User {
     SoDienThoai: string;
     VaiTro: string;
     TrangThai: string;
+    roleCode: UserRoleCode;
+}
+
+
+export interface UpdateUserInput {
+    fullName: string;
+    email: string;
+    phone?: string;
+    employeeCode?: string;
+    roleCode: UserRoleCode;
+    status: 'ACTIVE' | 'LOCKED' | 'INACTIVE';
+}
+export interface CreateUserInput {
+    fullName: string;
+    email: string;
+    phone?: string;
+    employeeCode?: string;
+    password: string;
+    roleCode: UserRoleCode;
 }
 
 type UserRow = {
@@ -20,11 +41,16 @@ type UserRow = {
     role_code: string;
 };
 
-function roleLabel(code: string): string {
-    if (code === 'ADMIN') return 'Admin';
+export function roleLabel(code: string): string {
+    if (code === 'ADMIN') return 'Quản trị viên';
     if (code === 'WAREHOUSE_MANAGER') return 'Quản lý kho';
     if (code === 'AUDITOR') return 'Kiểm toán';
     return 'Nhân viên kho';
+}
+
+function normalizeRoleCode(code: string): UserRoleCode {
+    if (code === 'ADMIN' || code === 'WAREHOUSE_MANAGER' || code === 'AUDITOR') return code;
+    return 'STAFF';
 }
 
 export async function listUsers(): Promise<User[]> {
@@ -37,7 +63,34 @@ export async function listUsers(): Promise<User[]> {
         SoDienThoai: row.phone ?? '',
         VaiTro: roleLabel(row.role_code),
         TrangThai: row.status === 'ACTIVE' ? 'HoatDong' : 'TamKhoa',
+        roleCode: normalizeRoleCode(row.role_code),
     }));
 }
 
-export const userService = { listUsers };
+export async function createUser(input: CreateUserInput): Promise<void> {
+    await httpClient.post('/auth/users', {
+        email: input.email,
+        password: input.password,
+        fullName: input.fullName,
+        phone: input.phone || undefined,
+        employeeCode: input.employeeCode || undefined,
+        roleCode: input.roleCode,
+    });
+}
+
+
+export async function updateUser(id: number, input: UpdateUserInput): Promise<void> {
+    await httpClient.put(`/auth/users/${id}`, {
+        email: input.email,
+        fullName: input.fullName,
+        phone: input.phone || undefined,
+        employeeCode: input.employeeCode || undefined,
+        roleCode: input.roleCode,
+        status: input.status,
+    });
+}
+
+export async function deleteUser(id: number): Promise<void> {
+    await httpClient.delete(`/auth/users/${id}`);
+}
+export const userService = { listUsers, createUser, updateUser, deleteUser };

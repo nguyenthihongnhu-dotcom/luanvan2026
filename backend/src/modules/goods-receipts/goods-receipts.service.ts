@@ -10,6 +10,7 @@ import type {
 } from './goods-receipts.model';
 import {
   confirmGoodsReceiptTransaction,
+  findGoodsReceiptDetail as findGoodsReceiptDetailRepository,
   findGoodsReceipts as findGoodsReceiptsRepository,
   insertGoodsReceipt,
   reverseGoodsReceiptTransaction,
@@ -69,6 +70,19 @@ export async function listGoodsReceipts(
   return findGoodsReceiptsRepository(filters);
 }
 
+export async function getGoodsReceiptDetail(
+  id: number,
+): Promise<{ header: unknown; items: unknown[] }> {
+  const detail = await findGoodsReceiptDetailRepository(id);
+  if (!detail) {
+    throw new HttpError(
+      404,
+      'Goods receipt not found',
+      'GOODS_RECEIPT_NOT_FOUND',
+    );
+  }
+  return detail;
+}
 export async function confirmGoodsReceipt(
   input: ConfirmGoodsReceiptInput,
 ): Promise<ConfirmGoodsReceiptResult> {

@@ -17,19 +17,17 @@ export async function listSuppliers(
   return findSuppliersRepository(filters);
 }
 
-export async function createSupplier(
-  input: SupplierInput,
-): Promise<{ id: number }> {
+export function createSupplier(input: SupplierInput): Promise<{ id: number }> {
   return insertSupplier(input);
 }
 
-export async function updateSupplier(
+export function updateSupplier(
   id: number,
   input: SupplierInput,
-): Promise<MutationResult> {
+): MutationResult {
   return updateSupplierRepository(id, input);
 }
 
-export async function deleteSupplier(id: number): Promise<MutationResult> {
+export function deleteSupplier(id: number): MutationResult {
   return softDeleteSupplier(id);
 }

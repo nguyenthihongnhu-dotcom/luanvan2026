@@ -6,7 +6,10 @@ import {
   requestPasswordReset,
   resetPassword,
   register,
+  createManagedUser,
   listUsers,
+  updateUser,
+  deleteUser,
 } from './auth.service';
 import {
   parseLoginInput,
@@ -15,6 +18,8 @@ import {
   parseRequestPasswordResetInput,
   parseResetPasswordInput,
   parseRegisterInput,
+  parseCreateUserInput,
+  parseUpdateUserInput,
 } from './auth.validation';
 
 function getRequestMetadata(req: Request): {
@@ -86,4 +91,32 @@ export async function listUsersController(
   res: Response,
 ): Promise<void> {
   res.json({ data: await listUsers() });
+}
+
+export async function createUserController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const input = parseCreateUserInput(req.body);
+
+  res.status(201).json({ data: await createManagedUser(input) });
+}
+
+export async function updateUserController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const id = Number(req.params.id);
+  const input = parseUpdateUserInput(req.body);
+
+  res.json({ data: await updateUser(id, input) });
+}
+
+export async function deleteUserController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const id = Number(req.params.id);
+
+  res.json({ data: await deleteUser(id) });
 }

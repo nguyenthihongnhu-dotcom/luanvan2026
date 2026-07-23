@@ -41,7 +41,7 @@ export const config: AppConfig = {
   port: readNumberEnv('PORT', 3000),
   databaseUrl: readRequiredEnv('DATABASE_URL'),
   jwtSecret: readRequiredEnv('JWT_SECRET'),
-  corsOrigin: process.env.CORS_ORIGIN ?? '*',
+  corsOrigin: process.env.CORS_ORIGIN ?? 'http://localhost:5173',
   dbConnectionLimit: readNumberEnv('DB_CONNECTION_LIMIT', 10),
   accessTokenTtlSeconds: readNumberEnv('ACCESS_TOKEN_TTL_SECONDS', 900),
   refreshTokenTtlDays: readNumberEnv('REFRESH_TOKEN_TTL_DAYS', 30),

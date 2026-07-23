@@ -1,7 +1,17 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { asyncHandler } from '../../common/http';
-import { listSettingsController } from './settings.controller';
+import { requirePermission, verifyToken } from '../auth/auth.module';
+import {
+  listSettingsController,
+  updateSettingController,
+} from './settings.controller';
 
 export const settingsRouter = Router();
 
 settingsRouter.get('/', asyncHandler(listSettingsController));
+settingsRouter.put(
+  '/:id',
+  asyncHandler(verifyToken),
+  requirePermission('settings:update'),
+  asyncHandler(updateSettingController),
+);

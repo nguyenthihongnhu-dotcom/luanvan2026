@@ -24,6 +24,7 @@ export default function ProductsPage() {
         showModal,
         setShowModal,
         editingProduct,
+        setEditingProduct,
         formData,
         handleInputChange,
         resetForm,
@@ -125,6 +126,7 @@ export default function ProductsPage() {
                     <h1 className="text-xl font-bold text-gray-800">Danh mục sản phẩm Mẹ & Bé</h1>
                     <button
                         onClick={() => {
+                            setEditingProduct(null);
                             resetForm();
                             setShowModal(true);
                         }}

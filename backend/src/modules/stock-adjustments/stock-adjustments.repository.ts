@@ -59,6 +59,46 @@ export async function findStockAdjustments(
   return rows;
 }
 
+export async function findStockAdjustmentDetail(
+  id: number,
+): Promise<{ header: RowDataPacket; items: RowDataPacket[] } | undefined> {
+  const [headers] = await db.query<RowDataPacket[]>(
+    `
+      SELECT sa.*, w.code AS warehouse_code, w.name AS warehouse_name
+      FROM stock_adjustments sa
+      LEFT JOIN warehouses w ON w.id = sa.warehouse_id
+      WHERE sa.id = ?
+      LIMIT 1
+    `,
+    [id],
+  );
+
+  const header = headers[0];
+  if (!header) return undefined;
+
+  const [items] = await db.query<RowDataPacket[]>(
+    `
+      SELECT
+        sai.*,
+        pv.sku,
+        pv.name AS variant_name,
+        p.name AS product_name,
+        pb.lot_number,
+        pb.expiry_date,
+        wl.code AS location_code
+      FROM stock_adjustment_items sai
+      LEFT JOIN product_variants pv ON pv.id = sai.product_variant_id
+      LEFT JOIN products p ON p.id = pv.product_id
+      LEFT JOIN product_batches pb ON pb.id = sai.batch_id
+      LEFT JOIN warehouse_locations wl ON wl.id = sai.location_id
+      WHERE sai.stock_adjustment_id = ?
+      ORDER BY sai.id
+    `,
+    [id],
+  );
+
+  return { header, items };
+}
 async function lockAdjustment(
   connection: PoolConnection,
   adjustmentId: number,
@@ -516,24 +556,63 @@ export async function cancelStockAdjustmentTransaction(
 export async function insertStockAdjustment(
   input: CreateStockAdjustmentInput,
 ): Promise<{ id: number }> {
-  const [warehouseRows] = await db.query<Array<RowDataPacket & { id: number }>>(
-    'SELECT id FROM warehouses WHERE id = ? OR code = ? LIMIT 1',
-    [input.warehouseId ?? 0, 'KHO-HCM-01'],
-  );
-  const [userRows] = await db.query<Array<RowDataPacket & { id: number }>>(
-    'SELECT id FROM users WHERE id = ? OR employee_code = ? LIMIT 1',
-    [input.createdBy ?? 0, 'NV-KHO-01'],
-  );
-  const [result] = await db.query<ResultSetHeader>(
-    `INSERT INTO stock_adjustments (adjustment_code, warehouse_id, adjustment_type, status, reason_code, note, created_by)
-     VALUES (?, ?, 'MANUAL', 'DRAFT', ?, ?, ?)`,
-    [
-      input.adjustmentCode,
-      warehouseRows[0]?.id,
-      input.reasonCode ?? 'DIEU_CHINH_THU_CONG',
-      input.note ?? null,
-      userRows[0]?.id,
-    ],
-  );
-  return { id: result.insertId };
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    const [warehouseRows] = input.warehouseId
+      ? await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM warehouses WHERE id = ? LIMIT 1',
+          [input.warehouseId],
+        )
+      : await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM warehouses WHERE code = ? LIMIT 1',
+          ['KHO-HCM-01'],
+        );
+    const [userRows] = input.createdBy
+      ? await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM users WHERE id = ? LIMIT 1',
+          [input.createdBy],
+        )
+      : await connection.query<Array<RowDataPacket & { id: number }>>(
+          'SELECT id FROM users WHERE employee_code = ? LIMIT 1',
+          ['NV-KHO-01'],
+        );
+    const [result] = await connection.query<ResultSetHeader>(
+      `INSERT INTO stock_adjustments (adjustment_code, warehouse_id, adjustment_type, status, reason_code, note, created_by)
+       VALUES (?, ?, 'MANUAL', 'DRAFT', ?, ?, ?)`,
+      [
+        input.adjustmentCode,
+        warehouseRows[0]?.id,
+        input.reasonCode ?? 'DIEU_CHINH_THU_CONG',
+        input.note ?? null,
+        userRows[0]?.id,
+      ],
+    );
+
+    for (const item of input.items ?? []) {
+      await connection.query(
+        `INSERT INTO stock_adjustment_items (stock_adjustment_id, product_variant_id, batch_id, location_id, adjustment_direction, quantity, reason_code, note)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [
+          result.insertId,
+          item.productVariantId,
+          item.batchId ?? null,
+          item.locationId,
+          item.adjustmentDirection,
+          item.quantity,
+          item.reasonCode ?? input.reasonCode ?? 'DIEU_CHINH_THU_CONG',
+          item.note ?? null,
+        ],
+      );
+    }
+
+    await connection.commit();
+    return { id: result.insertId };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }

@@ -32,10 +32,10 @@ const Login: React.FC = () => {
     const validateRegister = () => {
         const { username, password, confirmPassword, sdt, email, diaChi } = registerData;
         if (!username || !password || !confirmPassword || !sdt || !email || !diaChi) {
-            return 'Vui long nhap day du tat ca cac truong.';
+            return 'Vui lòng nhập đầy đủ tất cả các trường.';
         }
         if (password !== confirmPassword) {
-            return 'Mat khau xac nhan khong trung khop.';
+            return 'Mật khẩu xác nhận không trùng khớp.';
         }
         return null;
     };
@@ -64,7 +64,7 @@ const Login: React.FC = () => {
             setRegisterData(emptyRegisterData);
             navigate('/');
         } catch (err: unknown) {
-            console.error('Loi dang ky:', err);
+            console.error('Lỗi đăng ký:', err);
             alert(getAuthErrorMessage(err, 'Đăng ký thất bại. Vui lòng thử lại.'));
         }
     };
@@ -93,7 +93,7 @@ const Login: React.FC = () => {
             const targetPath = redirectRoutes[result.role] || '/products';
             navigate(targetPath);
         } catch (err: unknown) {
-            console.error('Loi dang nhap:', err);
+            console.error('Lỗi đăng nhập:', err);
             setError(getAuthErrorMessage(err, 'Đăng nhập thất bại. Vui lòng kiểm tra lại tài khoản và mật khẩu.'));
         }
     };
@@ -105,14 +105,14 @@ const Login: React.FC = () => {
 
     return (
         <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#DB2777' }}>Đăng Nhập</h2>
+            <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#DB2777' }}>Đăng nhập</h2>
             {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
 
             <form onSubmit={handleLogin}>
                 <div style={{ marginBottom: '15px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px' }}>Username:</label>
+                    <label style={{ display: 'block', marginBottom: '5px' }}>Email:</label>
                     <input
-                        type="text"
+                        type="email"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         required
@@ -121,7 +121,7 @@ const Login: React.FC = () => {
                 </div>
 
                 <div style={{ marginBottom: '20px' }}>
-                    <label style={{ display: 'block', marginBottom: '5px' }}>Password:</label>
+                    <label style={{ display: 'block', marginBottom: '5px' }}>Mật khẩu:</label>
                     <input
                         type="password"
                         value={password}
@@ -136,14 +136,14 @@ const Login: React.FC = () => {
                         type="submit"
                         style={{ flex: 1, padding: '10px', backgroundColor: '#DB2777', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}
                     >
-                        Đăng Nhập
+                        Đăng nhập
                     </button>
                     <button
                         type="button"
                         style={{ flex: 1, padding: '10px', backgroundColor: '#16b423', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}
                         onClick={() => setShowRegisterModal(true)}
                     >
-                        Đăng Ký
+                        Đăng ký
                     </button>
                 </div>
             </form>
@@ -162,7 +162,3 @@ const Login: React.FC = () => {
 };
 
 export default Login;
-
-
-
-

@@ -7,8 +7,14 @@ const filtersSchema = z.object({
   search: z.string().trim().min(1).max(191).optional(),
 });
 
+const idSchema = z.coerce.number().int().positive();
+
 export function parseNotificationsFilters(
   input: unknown,
 ): NotificationsFilters {
   return validateInput(filtersSchema, input);
+}
+
+export function parseNotificationId(input: unknown): number {
+  return validateInput(idSchema, input);
 }

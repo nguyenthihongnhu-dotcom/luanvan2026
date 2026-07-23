@@ -1,5 +1,24 @@
-import { httpClient, unwrapData } from '@/shared/services/httpClient';
+import { HttpError, httpClient, unwrapData } from '@/shared/services/httpClient';
 import type { Layer, Shelf, ViTriKho } from '@/features/locations/hooks/useWarehouse';
+
+export interface LocationHistoryItem {
+    id: number;
+    transaction_code: string;
+    transaction_type: string;
+    direction: 'IN' | 'OUT';
+    quantity: string | number;
+    quantity_before: string | number | null;
+    quantity_after: string | number | null;
+    reference_type: string | null;
+    reference_id: number | null;
+    reason_code: string | null;
+    note: string | null;
+    created_at: string;
+    sku: string;
+    product_name: string;
+    variant_name: string;
+    performed_by_name: string | null;
+}
 
 type BackendLocation = {
     id: number;
@@ -52,17 +71,6 @@ export function deriveLayers(locations: ViTriKho[]): Layer[] {
         .map(code => ({ id: code, code, name: `Tầng ${code}` }));
 }
 
-export const warehouseService = {
-    listWarehouseLocations,
-    deriveShelves,
-    deriveLayers,
-    createLocation,
-    createShelf,
-    createZone,
-    deleteShelf,
-    deleteLayer,
-};
-
 export async function createLocation(input: { shelfId: number; code: string; layerNo: number; name?: string }): Promise<void> {
     await httpClient.post('/locations', input);
 }
@@ -74,9 +82,42 @@ export async function deleteShelf(shelfId: number): Promise<void> {
 export async function deleteLayer(shelfId: number, layerNo: number): Promise<void> {
     await httpClient.delete(`/locations/layer?shelfId=${shelfId}&layerNo=${layerNo}`);
 }
+
 export async function createShelf(input: { zoneCode: string; code?: string; name?: string; layerCount?: number }): Promise<void> {
     await httpClient.post('/locations/shelves', input);
 }
+
 export async function createZone(input: { code: string; name?: string; shelfCount?: number; layerCount?: number }): Promise<void> {
     await httpClient.post('/locations/zones', input);
 }
+
+export async function listLocationHistory(locationId: number): Promise<LocationHistoryItem[]> {
+    try {
+        const response = await httpClient.get<{ data: LocationHistoryItem[] }>(`/locations/${locationId}/history`);
+        return unwrapData(response);
+    } catch (error) {
+        if (error instanceof HttpError && error.status > 0) {
+            console.warn('Location history API returned an error; rendering empty history.', error);
+            return [];
+        }
+
+        throw error;
+    }
+}
+
+export async function reorderShelves(shelfIds: number[]): Promise<void> {
+    await httpClient.put('/locations/shelves/reorder', { shelfIds });
+}
+
+export const warehouseService = {
+    listWarehouseLocations,
+    deriveShelves,
+    deriveLayers,
+    createLocation,
+    createShelf,
+    createZone,
+    deleteShelf,
+    deleteLayer,
+    listLocationHistory,
+    reorderShelves,
+};

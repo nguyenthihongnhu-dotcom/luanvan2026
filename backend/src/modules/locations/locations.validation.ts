@@ -4,6 +4,7 @@ import type {
   CreateLocationInput,
   CreateShelfInput,
   CreateZoneInput,
+  ReorderShelvesInput,
   LocationFilters,
 } from './location.model';
 
@@ -83,4 +84,12 @@ export function parseCreateShelf(input: unknown): CreateShelfInput {
 }
 export function parseCreateZone(input: unknown): CreateZoneInput {
   return validateInput(createZoneSchema, input);
+}
+
+const reorderShelvesSchema = z.object({
+  shelfIds: z.array(z.coerce.number().int().positive()).min(1).max(100),
+});
+
+export function parseReorderShelves(input: unknown): ReorderShelvesInput {
+  return validateInput(reorderShelvesSchema, input);
 }

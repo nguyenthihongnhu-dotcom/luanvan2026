@@ -85,6 +85,28 @@ mysql -u root -p warehouse_management < warehouse_management_mysql.sql
 mysql -u root -p warehouse_management < warehouse_sample_data.sql
 ```
 
+## Chạy production
+
+Backend:
+
+```bash
+cd backend
+npm install --omit=dev
+npm run build
+NODE_ENV=production npm run start:prod
+```
+
+Frontend (build tĩnh, serve qua Nginx/static hosting bất kỳ):
+
+```bash
+cd frontend
+npm install
+npm run build
+# deploy thư mục frontend/dist
+```
+
+Checklist bảo mật/vận hành trước khi lên production: xem [Production readiness](backend/docs/overview.md#9-production-readiness-checklist-trước-khi-lên-production).
+
 ## Kiểm tra trước khi báo xong
 
 Backend:

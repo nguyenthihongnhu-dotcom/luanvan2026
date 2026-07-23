@@ -27,27 +27,27 @@ export default function RegisterModal({
                 width: '450px', maxWidth: '90%', boxShadow: '0 10px 25px rgba(0,0,0,0.2)',
                 maxHeight: '90vh', overflowY: 'auto'
             }}>
-                <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#DB2777' }}>Đăng Ký Thành Viên</h2>
+                <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#DB2777' }}>Đăng ký tài khoản</h2>
                 <form onSubmit={handleRegister}>
                     <div style={{ marginBottom: '10px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Username:</label>
+                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Họ và tên:</label>
                         <input type="text" name="username" value={registerData.username} onChange={handleRegisterInputChange} required
                             style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
                     </div>
 
                     <div style={{ display: 'flex', gap: '10px', marginBottom: '10px' }}>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Password:</label>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Mật khẩu:</label>
                             <input type="password" name="password" value={registerData.password} onChange={handleRegisterInputChange} required
                                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
                         </div>
                         <div style={{ flex: 1 }}>
-                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Confirm Password:</label>
+                            <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Nhập lại mật khẩu:</label>
                             <input type="password" name="confirmPassword" value={registerData.confirmPassword} onChange={handleRegisterInputChange} required
                                 style={{ width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }} />
                             {registerData.confirmPassword && (
                                 <span style={{ fontSize: '11px', marginTop: '4px', display: 'block', color: registerData.password === registerData.confirmPassword ? '#28a745' : '#dc3545' }}>
-                                    {registerData.password === registerData.confirmPassword ? 'Mat khau trung khop' : 'Mat khau chua khop'}
+                                    {registerData.password === registerData.confirmPassword ? 'Mật khẩu trùng khớp' : 'Mật khẩu chưa khớp'}
                                 </span>
                             )}
                         </div>
@@ -66,7 +66,7 @@ export default function RegisterModal({
                     </div>
 
                     <div style={{ marginBottom: '20px' }}>
-                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Dia chi:</label>
+                        <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Địa chỉ:</label>
                         <textarea name="diaChi" value={registerData.diaChi} onChange={handleRegisterInputChange} required
                             style={{
                                 width: '100%', padding: '8px', borderRadius: '4px', border: '1px solid #ccc',
@@ -86,7 +86,7 @@ export default function RegisterModal({
                                 fontWeight: 'bold'
                             }}
                         >
-                            Xác Nhận Đăng Ký
+                            Xác nhận đăng ký
                         </button>
                         <button
                             type="button"

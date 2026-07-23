@@ -60,10 +60,19 @@ export type ReverseGoodsIssueResult = {
   status: 'CANCELLED';
   reversalCount: number;
 };
+export type CreateGoodsIssueItemInput = {
+  productVariantId: number;
+  batchId?: number | null;
+  locationId?: number;
+  quantity: number;
+  note?: string;
+};
+
 export type CreateGoodsIssueInput = {
   issueCode: string;
   warehouseId?: number;
   referenceNo?: string;
   note?: string;
   createdBy?: number;
+  items?: CreateGoodsIssueItemInput[];
 };

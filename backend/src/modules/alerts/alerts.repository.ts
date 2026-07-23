@@ -1,5 +1,11 @@
+import type { ResultSetHeader } from 'mysql2';
 import { db } from '../../database/db';
-import type { AlertsFilters, AlertsRow, QueryParams } from './alerts.model';
+import type {
+  AlertMutationResult,
+  AlertsFilters,
+  AlertsRow,
+  QueryParams,
+} from './alerts.model';
 
 const tableName = 'alerts';
 
@@ -140,4 +146,39 @@ export async function generateInventoryAlerts(): Promise<{
   return {
     createdCount: lowStockCount + overMaxCount + nearExpiryCount,
   };
+}
+
+export async function resolveAlertRepository(
+  alertId: number,
+  resolvedBy: number,
+): Promise<AlertMutationResult> {
+  const [result] = await db.query<ResultSetHeader>({
+    sql: `
+      UPDATE alerts
+      SET status = 'RESOLVED',
+          resolved_by = :resolvedBy,
+          resolved_at = CURRENT_TIMESTAMP(3)
+      WHERE id = :alertId
+        AND status <> 'RESOLVED'
+    `,
+    values: { alertId, resolvedBy } satisfies QueryParams,
+  });
+
+  return { affectedRows: result.affectedRows };
+}
+
+export async function markAlertReadRepository(
+  alertId: number,
+): Promise<AlertMutationResult> {
+  const [result] = await db.query<ResultSetHeader>({
+    sql: `
+      UPDATE alerts
+      SET status = 'READ'
+      WHERE id = :alertId
+        AND status = 'OPEN'
+    `,
+    values: { alertId } satisfies QueryParams,
+  });
+
+  return { affectedRows: result.affectedRows };
 }

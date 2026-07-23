@@ -4,6 +4,7 @@ interface StructureSidebarProps {
     selectedZone: string;
     shelves: Shelf[];
     layers: Layer[];
+    isSaving?: boolean;
     handleAddShelf: () => void;
     handleAddLayer: () => void;
     handleDeleteShelf: (shelfId: string, shelfCode: string) => void;
@@ -14,6 +15,7 @@ export default function StructureSidebar({
     selectedZone,
     shelves,
     layers,
+    isSaving = false,
     handleAddShelf,
     handleAddLayer,
     handleDeleteShelf,
@@ -27,22 +29,25 @@ export default function StructureSidebar({
                     <button
                         type="button"
                         onClick={handleAddShelf}
-                        className="rounded-lg bg-pink-600 py-2 text-[11px] font-medium uppercase text-white shadow-sm transition hover:bg-pink-700"
+                        disabled={isSaving}
+                        className="rounded-lg bg-pink-600 py-2 text-[11px] font-medium uppercase text-white shadow-sm transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        + Thêm kệ
+                        {isSaving ? "Đang lưu" : "+ Thêm kệ"}
                     </button>
                     <button
                         type="button"
                         onClick={handleAddLayer}
-                        className="rounded-lg border border-pink-600 bg-white py-2 text-[11px] font-medium uppercase text-pink-600 shadow-sm transition hover:bg-pink-50"
+                        disabled={isSaving}
+                        className="rounded-lg border border-pink-600 bg-white py-2 text-[11px] font-medium uppercase text-pink-600 shadow-sm transition hover:bg-pink-50 disabled:cursor-not-allowed disabled:opacity-60"
                     >
-                        + Thêm tầng
+                        {isSaving ? "Đang lưu" : "+ Thêm tầng"}
                     </button>
                 </div>
 
                 <div className="rounded-lg border border-gray-100 bg-gray-50 p-2 text-sm">
                     <p className="font-bold text-pink-600">Khu vực {selectedZone}</p>
                     <div className="mt-2 space-y-2 pl-4">
+                        {shelves.length === 0 && <p className="text-xs text-gray-400">Chưa có kệ trong khu vực này.</p>}
                         {shelves.map((shelf) => (
                             <div key={shelf.id} className="border-l-2 border-gray-300 pl-2">
                                 <div className="group flex items-center justify-between">
@@ -66,7 +71,7 @@ export default function StructureSidebar({
                                                 type="button"
                                                 onClick={() => handleDeleteLayer(layer.id, layer.code)}
                                                 className="text-red-300 opacity-0 transition-opacity hover:text-red-500 group-hover/layer:opacity-100"
-                                                title="Xóa tang"
+                                                title="Xóa tầng"
                                             >
                                                 <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />

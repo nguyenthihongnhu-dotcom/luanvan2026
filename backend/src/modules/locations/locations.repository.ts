@@ -9,6 +9,7 @@ import type {
   CreateLocationResult,
   LocationFilters,
   LocationRow,
+  LocationHistoryRow,
   MutationResult,
   QueryParams,
 } from './location.model';
@@ -318,4 +319,70 @@ export async function insertZone(
   } finally {
     connection.release();
   }
+}
+
+export async function reorderShelvesRepository(
+  shelfIds: number[],
+): Promise<MutationResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+    let affectedRows = 0;
+
+    for (const [index, shelfId] of shelfIds.entries()) {
+      const [result] = await connection.query<ResultSetHeader>(
+        `UPDATE warehouse_shelves SET sort_order = ? WHERE id = ? AND deleted_at IS NULL`,
+        [index + 1, shelfId],
+      );
+      affectedRows += result.affectedRows;
+    }
+
+    await connection.commit();
+    return { affectedRows };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+export async function findLocationHistory(
+  locationId: number,
+): Promise<LocationHistoryRow[]> {
+  const [rows] = await db.query<LocationHistoryRow[]>({
+    sql: `
+      SELECT
+        it.id,
+        it.transaction_code,
+        it.transaction_type,
+        CASE
+          WHEN it.destination_location_id = :locationId THEN 'IN'
+          ELSE 'OUT'
+        END AS direction,
+        it.quantity,
+        it.quantity_before,
+        it.quantity_after,
+        it.reference_type,
+        it.reference_id,
+        it.reason_code,
+        it.note,
+        it.created_at,
+        pv.sku,
+        p.name AS product_name,
+        pv.name AS variant_name,
+        u.full_name AS performed_by_name
+      FROM inventory_transactions it
+      JOIN product_variants pv ON pv.id = it.product_variant_id
+      JOIN products p ON p.id = pv.product_id
+      LEFT JOIN users u ON u.id = it.performed_by
+      WHERE it.source_location_id = :locationId
+         OR it.destination_location_id = :locationId
+      ORDER BY it.created_at DESC, it.id DESC
+      LIMIT 100
+    `,
+    values: { locationId } satisfies QueryParams,
+  });
+
+  return rows;
 }

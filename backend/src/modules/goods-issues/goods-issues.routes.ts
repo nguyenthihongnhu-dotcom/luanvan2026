@@ -5,12 +5,14 @@ import {
   confirmGoodsIssueController,
   listGoodsIssuesController,
   createGoodsIssueController,
+  getGoodsIssueDetailController,
   reverseGoodsIssueController,
 } from './goods-issues.controller';
 
 export const goodsIssuesRouter = Router();
 
 goodsIssuesRouter.get('/', asyncHandler(listGoodsIssuesController));
+goodsIssuesRouter.get('/:id', asyncHandler(getGoodsIssueDetailController));
 goodsIssuesRouter.post('/', asyncHandler(createGoodsIssueController));
 goodsIssuesRouter.post(
   '/:id/confirm',

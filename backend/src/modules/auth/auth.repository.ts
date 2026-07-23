@@ -6,6 +6,7 @@ import type {
   PasswordResetTokenRow,
   SessionRow,
   UserListRow,
+  UpdateUserInput,
 } from './auth.model';
 
 type PasswordResetUserRow = RowDataPacket & { id: number };
@@ -360,4 +361,49 @@ export async function createUser(input: {
   );
 
   return result.insertId;
+}
+
+export async function updateUserRepository(
+  id: number,
+  input: UpdateUserInput,
+): Promise<number> {
+  const [result] = await db.query<ResultSetHeader>(
+    `
+      UPDATE users u
+      JOIN roles r ON r.code = ?
+      SET
+        u.role_id = r.id,
+        u.employee_code = ?,
+        u.full_name = ?,
+        u.email = ?,
+        u.phone = ?,
+        u.status = ?
+      WHERE u.id = ?
+        AND u.deleted_at IS NULL
+    `,
+    [
+      input.roleCode,
+      input.employeeCode ?? null,
+      input.fullName,
+      input.email,
+      input.phone ?? null,
+      input.status,
+      id,
+    ],
+  );
+
+  return result.affectedRows;
+}
+
+export async function deleteUserRepository(id: number): Promise<number> {
+  const [result] = await db.query<ResultSetHeader>(
+    `
+      UPDATE users
+      SET deleted_at = CURRENT_TIMESTAMP(3), status = 'INACTIVE'
+      WHERE id = ? AND deleted_at IS NULL
+    `,
+    [id],
+  );
+
+  return result.affectedRows;
 }

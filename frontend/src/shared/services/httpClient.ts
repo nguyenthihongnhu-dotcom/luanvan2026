@@ -1,6 +1,8 @@
+import axios from 'axios';
+import type { AxiosRequestConfig, Method } from 'axios';
 import { env } from '@/shared/config/env';
 
-interface RequestOptions extends Omit<RequestInit, 'body'> {
+interface RequestOptions extends Omit<AxiosRequestConfig, 'url' | 'data'> {
     body?: unknown;
 }
 
@@ -31,57 +33,66 @@ export class HttpError extends Error {
     }
 }
 
-async function parseResponse(response: Response): Promise<unknown> {
-    const contentType = response.headers.get('content-type') ?? '';
+const axiosClient = axios.create({
+    baseURL: env.apiBaseUrl,
+});
 
-    if (contentType.includes('application/json')) {
-        return response.json();
+axiosClient.interceptors.request.use((config) => {
+    const token = getAccessToken();
+
+    if (token && !config.headers.has('Authorization')) {
+        config.headers.set('Authorization', `Bearer ${token}`);
     }
 
-    return response.text();
-}
+    return config;
+});
 
-function buildUrl(path: string): string {
-    if (/^https?:\/\//i.test(path)) {
-        return path;
+function toHttpError(error: unknown): HttpError {
+    if (axios.isAxiosError<unknown>(error)) {
+        return new HttpError(
+            error.response?.status ?? 0,
+            error.response?.data ?? error.message,
+            error.message || 'HTTP request failed',
+        );
     }
 
-    return `${env.apiBaseUrl}${path.startsWith('/') ? path : `/${path}`}`;
+    if (error instanceof Error) {
+        return new HttpError(0, error.message, error.message);
+    }
+
+    return new HttpError(0, error);
 }
 
 export async function httpRequest<TResponse>(path: string, options: RequestOptions = {}): Promise<TResponse> {
-    const headers = new Headers(options.headers);
-    const token = getAccessToken();
+    const { body, ...axiosOptions } = options;
 
-    if (options.body !== undefined && !headers.has('content-type')) {
-        headers.set('content-type', 'application/json');
+    try {
+        const response = await axiosClient.request<TResponse>({
+            ...axiosOptions,
+            url: path,
+            data: body,
+        });
+
+        return response.data;
+    } catch (error) {
+        throw toHttpError(error);
+    }
+}
+
+function requestWithMethod<TResponse>(method: Method, path: string, bodyOrOptions?: unknown, options?: RequestOptions): Promise<TResponse> {
+    if (method === 'GET' || method === 'DELETE') {
+        return httpRequest<TResponse>(path, { ...(bodyOrOptions as RequestOptions | undefined), method });
     }
 
-    if (token && !headers.has('authorization')) {
-        headers.set('authorization', `Bearer ${token}`);
-    }
-
-    const response = await fetch(buildUrl(path), {
-        ...options,
-        headers,
-        body: options.body === undefined ? undefined : JSON.stringify(options.body),
-    });
-
-    const payload = await parseResponse(response);
-
-    if (!response.ok) {
-        throw new HttpError(response.status, payload);
-    }
-
-    return payload as TResponse;
+    return httpRequest<TResponse>(path, { ...options, method, body: bodyOrOptions });
 }
 
 export const httpClient = {
-    get: <TResponse>(path: string, options?: RequestOptions) => httpRequest<TResponse>(path, { ...options, method: 'GET' }),
-    post: <TResponse>(path: string, body?: unknown, options?: RequestOptions) => httpRequest<TResponse>(path, { ...options, method: 'POST', body }),
-    patch: <TResponse>(path: string, body?: unknown, options?: RequestOptions) => httpRequest<TResponse>(path, { ...options, method: 'PATCH', body }),
-    put: <TResponse>(path: string, body?: unknown, options?: RequestOptions) => httpRequest<TResponse>(path, { ...options, method: 'PUT', body }),
-    delete: <TResponse>(path: string, options?: RequestOptions) => httpRequest<TResponse>(path, { ...options, method: 'DELETE' }),
+    get: <TResponse>(path: string, options?: RequestOptions) => requestWithMethod<TResponse>('GET', path, options),
+    post: <TResponse>(path: string, body?: unknown, options?: RequestOptions) => requestWithMethod<TResponse>('POST', path, body, options),
+    patch: <TResponse>(path: string, body?: unknown, options?: RequestOptions) => requestWithMethod<TResponse>('PATCH', path, body, options),
+    put: <TResponse>(path: string, body?: unknown, options?: RequestOptions) => requestWithMethod<TResponse>('PUT', path, body, options),
+    delete: <TResponse>(path: string, options?: RequestOptions) => requestWithMethod<TResponse>('DELETE', path, options),
 };
 
 export function unwrapData<T>(response: { data: T }): T {

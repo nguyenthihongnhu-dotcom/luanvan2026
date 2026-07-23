@@ -10,6 +10,7 @@ import type {
 } from './goods-issues.model';
 import {
   confirmGoodsIssueTransaction,
+  findGoodsIssueDetail as findGoodsIssueDetailRepository,
   findGoodsIssues as findGoodsIssuesRepository,
   insertGoodsIssue,
   reverseGoodsIssueTransaction,
@@ -69,6 +70,15 @@ export async function listGoodsIssues(
   return findGoodsIssuesRepository(filters);
 }
 
+export async function getGoodsIssueDetail(
+  id: number,
+): Promise<{ header: unknown; items: unknown[] }> {
+  const detail = await findGoodsIssueDetailRepository(id);
+  if (!detail) {
+    throw new HttpError(404, 'Goods issue not found', 'GOODS_ISSUE_NOT_FOUND');
+  }
+  return detail;
+}
 export async function confirmGoodsIssue(
   input: ConfirmGoodsIssueInput,
 ): Promise<ConfirmGoodsIssueResult> {

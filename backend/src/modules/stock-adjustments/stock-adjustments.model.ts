@@ -72,10 +72,21 @@ export type CancelStockAdjustmentResult = {
   adjustmentCode: string;
   status: 'CANCELLED';
 };
+export type CreateStockAdjustmentItemInput = {
+  productVariantId: number;
+  batchId?: number | null;
+  locationId: number;
+  adjustmentDirection: 'IN' | 'OUT';
+  quantity: number;
+  reasonCode?: string;
+  note?: string;
+};
+
 export type CreateStockAdjustmentInput = {
   adjustmentCode: string;
   warehouseId?: number;
   reasonCode?: string;
   note?: string;
   createdBy?: number;
+  items?: CreateStockAdjustmentItemInput[];
 };

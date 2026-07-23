@@ -1,9 +1,10 @@
-import { Router } from 'express';
+﻿import { Router } from 'express';
 import { asyncHandler } from '../../common/http';
 import { requirePermission, verifyToken } from '../auth/auth.module';
 import {
   generateNotificationsController,
   listNotificationsController,
+  markNotificationReadController,
 } from './notifications.controller';
 
 export const notificationsRouter = Router();
@@ -14,4 +15,10 @@ notificationsRouter.post(
   asyncHandler(verifyToken),
   requirePermission('notifications:generate'),
   asyncHandler(generateNotificationsController),
+);
+notificationsRouter.patch(
+  '/:id/read',
+  asyncHandler(verifyToken),
+  requirePermission('notifications:read'),
+  asyncHandler(markNotificationReadController),
 );

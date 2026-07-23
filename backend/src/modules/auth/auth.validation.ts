@@ -6,7 +6,9 @@ import type {
   RefreshInput,
   RequestPasswordResetInput,
   ResetPasswordInput,
+  CreateUserInput,
   RegisterInput,
+  UpdateUserInput,
 } from './auth.model';
 
 const passwordSchema = z.string().min(8).max(128);
@@ -36,9 +38,10 @@ const registerSchema = z.object({
   fullName: z.string().trim().min(1).max(150),
   phone: z.string().trim().min(1).max(30).optional(),
   employeeCode: z.string().trim().min(1).max(50).optional(),
-  roleCode: z
-    .enum(['ADMIN', 'WAREHOUSE_MANAGER', 'STAFF', 'AUDITOR'])
-    .optional(),
+});
+
+const createUserSchema = registerSchema.extend({
+  roleCode: z.enum(['ADMIN', 'WAREHOUSE_MANAGER', 'STAFF', 'AUDITOR']),
 });
 
 export function parseLoginInput(
@@ -71,4 +74,21 @@ export function parseResetPasswordInput(input: unknown): ResetPasswordInput {
 
 export function parseRegisterInput(input: unknown): RegisterInput {
   return validateInput(registerSchema, input);
+}
+
+export function parseCreateUserInput(input: unknown): CreateUserInput {
+  return validateInput(createUserSchema, input);
+}
+
+const updateUserSchema = z.object({
+  email: z.string().trim().email().max(191).toLowerCase(),
+  fullName: z.string().trim().min(1).max(150),
+  phone: z.string().trim().min(1).max(30).optional(),
+  employeeCode: z.string().trim().min(1).max(50).optional(),
+  roleCode: z.enum(['ADMIN', 'WAREHOUSE_MANAGER', 'STAFF', 'AUDITOR']),
+  status: z.enum(['ACTIVE', 'LOCKED', 'INACTIVE']),
+});
+
+export function parseUpdateUserInput(input: unknown): UpdateUserInput {
+  return validateInput(updateUserSchema, input);
 }

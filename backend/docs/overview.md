@@ -1,4 +1,4 @@
-# Backend Overview - Bambi WMS
+﻿# Backend Overview - Bambi WMS
 
 Backend Bambi WMS dùng Express + TypeScript + MySQL, chia theo module nghiệp vụ trong `src/modules`. File này là docs tổng: kiến trúc, thứ tự phụ thuộc module, module index, quyền và checklist kiểm tra.
 
@@ -35,7 +35,7 @@ Foundation
   health, openapi, common/http, validation, config, database
 
 Identity
-  auth -> authorization -> require-permission
+  auth -> authorization -> require-permission -> rate-limit
 
 Master Data
   warehouses -> locations
@@ -129,9 +129,9 @@ Lỗi đi qua error handler chung:
 | --- | --- | --- | --- |
 | Health | `/health` | Kiểm tra service/database | [README](../src/modules/health/README.md) |
 | OpenAPI | `/openapi.json`, `/docs` | Tài liệu API runtime | [README](../src/modules/openapi/README.md) |
-| Auth | `/auth` | Login/register/token/session | [README](../src/modules/auth/README.md) |
+| Auth | `/auth` | Login/register/token/session/user admin | [README](../src/modules/auth/README.md) |
 | Authorization | `/authorization` | Role/permission | [README](../src/modules/authorization/README.md) |
-| Warehouses | `/warehouses` | Danh sách kho | [README](../src/modules/warehouses/README.md) |
+| Warehouses | `/warehouses` | CRUD kho master | [README](../src/modules/warehouses/README.md) |
 | Locations | `/locations` | Zone/kệ/vị trí | [README](../src/modules/locations/README.md) |
 | Catalog | `/catalog` | Category/product/SKU | [README](../src/modules/catalog/README.md) |
 | Suppliers | `/suppliers` | Nhà cung cấp | [README](../src/modules/suppliers/README.md) |
@@ -154,13 +154,15 @@ Lỗi đi qua error handler chung:
 
 Các endpoint đọc cơ bản hiện mở theo scope demo. Các endpoint thao tác nghiệp vụ nhạy cảm dùng `verifyToken` và `requirePermission`:
 
+- `users:read`, `users:create`, `users:update`, `users:delete`
+- `warehouses:create`, `warehouses:update`, `warehouses:delete`
 - `goods_receipts:confirm`, `goods_receipts:reverse`
 - `goods_issues:confirm`, `goods_issues:reverse`
 - `stock_transfers:confirm`, `stock_transfers:reverse`
 - `stock_adjustments:approve`, `stock_adjustments:reject`, `stock_adjustments:cancel`
 - `stock_counts:create`, `stock_counts:start`, `stock_counts:count`, `stock_counts:submit`, `stock_counts:approve`
-- `alerts:generate`
-- `notifications:generate`
+- `alerts:generate`, `alerts:read`, `alerts:resolve`
+- `notifications:generate`, `notifications:read`
 
 ## 7. Database files
 
@@ -186,3 +188,18 @@ npm run test:integration
 ```
 
 Integration test yêu cầu MySQL đang chạy và đã import sample data.
+
+## 9. Production readiness
+
+Rà soát ngày 2026-07-23. Giữ bảng này để intern biết mục nào đã xử lý và mục nào phụ thuộc hạ tầng deploy.
+
+| Trạng thái | Hạng mục | Chi tiết |
+| --- | --- | --- |
+| ✅ Đã fix | `PUT/DELETE /auth/users/:id` đã có `verifyToken`/`requirePermission` | Route quản lý user yêu cầu token và quyền `users:update`/`users:delete`; `GET/POST /auth/users` dùng `users:read`/`users:create`. |
+| ✅ Đã fix | `POST /auth/register` không còn nhận `roleCode` từ client | Endpoint public luôn tạo user role `STAFF`; quản trị tạo user theo role dùng `POST /auth/users` có `users:create`. |
+| ✅ Đã fix | `CORS_ORIGIN` không còn mặc định `*` | Mặc định là `http://localhost:5173`; có thể cấu hình nhiều origin bằng dấu phẩy. |
+| ✅ Đã fix | Có rate limiting trên `login` và `password-reset/request` | Middleware in-memory theo IP + email: login 10 lần/15 phút, reset password 5 lần/15 phút. Production nhiều instance nên đổi sang Redis/shared store. |
+| ✅ Đã fix | `alerts` resolve/read đã có permission riêng | `PATCH /alerts/:id/read` dùng `alerts:read`, `PATCH /alerts/:id/resolve` dùng `alerts:resolve`, notification read dùng `notifications:read`. |
+| ✅ Đã fix | Fallback resolve warehouse/user theo `id OR code` | Các flow tạo receipt/issue/transfer/adjustment đã tách query: có id thì tìm theo id, không có id mới fallback code demo. |
+| ✅ Đã có | Dockerfile/docker-compose và CI pipeline cơ bản | `backend/Dockerfile`, `docker-compose.yml`, `.github/workflows/ci.yml`. |
+| ⚠️ Phụ thuộc hạ tầng | Log tập trung/monitoring | App đã log JSON theo request id ra stdout; production cần collector ngoài repo như ELK/CloudWatch/Grafana Agent đọc stdout container. |

@@ -5,6 +5,7 @@ import {
   createGoodsIssue,
   listGoodsIssues,
   reverseGoodsIssue,
+  getGoodsIssueDetail,
 } from './goods-issues.service';
 import {
   parseConfirmGoodsIssueBody,
@@ -22,6 +23,13 @@ export async function listGoodsIssuesController(
   res.json({ data: await listGoodsIssues(filters) });
 }
 
+export async function getGoodsIssueDetailController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const issueId = parseGoodsIssueId(req.params.id);
+  res.json({ data: await getGoodsIssueDetail(issueId) });
+}
 export async function confirmGoodsIssueController(
   req: Request,
   res: Response,

@@ -20,16 +20,15 @@ ui/Table/types.ts
 
 ## httpClient
 
-`shared/services/httpClient.ts` là nơi duy nhất wrap `fetch` dùng chung.
+`shared/services/httpClient.ts` là nơi duy nhất wrap Axios dùng chung.
 
 Nó xử lý:
 
-- Ghép `VITE_API_BASE_URL` với path.
-- JSON stringify body.
-- Gắn bearer token từ sessionStorage.
-- Parse JSON/text response.
-- Throw `HttpError` nếu status không OK.
-- `unwrapData` cho response `{ data }`.
+- Tạo Axios instance với `baseURL = VITE_API_BASE_URL`.
+- Gắn bearer token từ sessionStorage bằng request interceptor.
+- Trả trực tiếp `response.data` để service nhận đúng wrapper `{ data }` từ backend.
+- Convert lỗi Axios thành `HttpError` chung của frontend.
+- Giữ helper `unwrapData` cho response `{ data }`.
 
 Feature service nên dùng:
 

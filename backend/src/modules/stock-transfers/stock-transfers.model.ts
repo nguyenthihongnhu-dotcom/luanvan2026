@@ -58,3 +58,27 @@ export type ReverseStockTransferResult = {
   status: 'CANCELLED';
   reversalCount: number;
 };
+
+export type CreateStockTransferItemInput = {
+  productVariantId: number;
+  batchId?: number | null;
+  sourceLocationId: number;
+  destinationLocationId: number;
+  quantity: number;
+  note?: string;
+};
+
+export type CreateStockTransferInput = {
+  transferCode?: string;
+  sourceWarehouseId?: number;
+  destinationWarehouseId?: number;
+  note?: string;
+  createdBy?: number;
+  items: CreateStockTransferItemInput[];
+};
+
+export type CreateStockTransferResult = {
+  id: number;
+  transferCode: string;
+  itemCount: number;
+};

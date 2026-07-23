@@ -9,7 +9,7 @@ export class AuthServiceError extends Error {
 }
 
 type BackendAuthUser = {
-    id: string;
+    id: number | string;
     role: string;
     permissions: string[];
 };
@@ -26,7 +26,7 @@ function mapBackendAuth(result: BackendLoginResult): AuthResponse {
 
     return {
         result: {
-            maTK: result.user.id,
+            maTK: String(result.user.id),
             role: result.user.role,
             ten: result.user.role,
             permissions: result.user.permissions,
@@ -59,8 +59,18 @@ async function login(credentials: LoginCredentials): Promise<AuthResponse> {
 }
 
 async function register(payload: RegisterPayload): Promise<AuthResponse> {
-    void payload;
-    throw new AuthServiceError('Backend hiện chưa có API đăng ký tài khoản. Vui lòng tạo user trong database.');
+    const response = await httpClient.post<{ data: BackendLoginResult }>('/auth/register', {
+        email: payload.email,
+        password: payload.password,
+        fullName: payload.username,
+        phone: payload.sdt || undefined,
+        roleCode: 'STAFF',
+    });
+
+    return {
+        ...mapBackendAuth(unwrapData(response)),
+        message: 'Đăng ký tài khoản thành công!',
+    };
 }
 
 function logout(): void {

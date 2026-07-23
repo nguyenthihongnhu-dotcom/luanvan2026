@@ -19,7 +19,7 @@ User action
 Không đi tắt:
 
 ```text
-Page -> fetch/backend API
+Page -> gọi axios/fetch trực tiếp
 ```
 
 ## 2. Tầng nền cần hiểu trước
@@ -41,7 +41,7 @@ Files quan trọng:
 - `src/app/providers/AppProviders.tsx`: bọc providers.
 - `src/app/router/AppRouter.tsx`: định nghĩa route.
 - `src/shared/config/env.ts`: đọc `VITE_API_BASE_URL`.
-- `src/shared/services/httpClient.ts`: wrapper fetch, token, error, unwrap response.
+- `src/shared/services/httpClient.ts`: wrapper Axios, token, error, unwrap response.
 
 ## 3. Thứ tự đọc feature
 
@@ -86,6 +86,8 @@ Vì sao thứ tự này quan trọng:
 | `/categories` | `CategoriesPage` | products | Danh mục |
 | `/locations` | `LocationsPage` | locations | Sơ đồ kho |
 | `/transactions` | `TransactionsPage` | transactions | Giao dịch kho |
+| `/transfers` | `TransfersPage` | transfers | Chuyển kho giữa vị trí |
+| `/stock-counts` | `StockCountsPage` | stock-counts | Kiểm kê kho |
 | `/partners` | `PartnersPage` | partners | Đối tác/nhà cung cấp |
 | `/employees` | `EmployeesPage` | staff | Nhân viên |
 
@@ -93,11 +95,13 @@ Vì sao thứ tự này quan trọng:
 
 | Feature | Service | Backend API |
 | --- | --- | --- |
-| auth | `authService.ts` | `POST /auth/login`; register hiện chưa gọi API trong code hiện tại |
+| auth | `authService.ts` | `POST /auth/login`, `POST /auth/register`; quản lý nhân viên dùng `/auth/users` |
 | products | `productService.ts` | `GET /reports/product-stock`, `GET /reports/near-expiry`, `POST/PUT/DELETE /catalog/products` |
 | products/categories | `categoryService.ts` | `GET/POST/PUT/DELETE /catalog/categories` |
 | locations | `warehouseService.ts` | `GET /locations`, `POST /locations`, `POST /locations/zones`, `POST /locations/shelves`, `DELETE /locations/shelf/:id`, `DELETE /locations/layer` |
 | transactions | `transactionService.ts` | `GET /goods-receipts`, `GET /goods-issues`, `GET /stock-adjustments`, `POST /goods-receipts`, `POST /goods-issues`, `POST /stock-adjustments` |
+| transfers | `transferService.ts` | `GET/POST /stock-transfers`, `POST /stock-transfers/:id/confirm`, `POST /stock-transfers/:id/reverse`, `GET /stock/current`, `GET /locations` |
+| stock-counts | `stockCountService.ts` | `GET/POST /stock-counts`, `GET /stock-counts/:id/items`, `POST /start`, `PATCH /count`, `POST /submit`, `POST /approve` |
 | partners | `partnerService.ts` | `GET/POST/PUT/DELETE /suppliers` |
 | staff | `userService.ts` | `GET /auth/users` |
 
@@ -122,8 +126,7 @@ return unwrapData(response);
 
 - Ghép base URL từ `VITE_API_BASE_URL`.
 - Gắn `Authorization: Bearer <token>` nếu có token trong `sessionStorage`.
-- JSON stringify body.
-- Throw `HttpError` nếu response không OK.
+- Convert lỗi Axios thành `HttpError` nếu request fail.
 
 ## 7. Thứ tự debug màn hình trống
 

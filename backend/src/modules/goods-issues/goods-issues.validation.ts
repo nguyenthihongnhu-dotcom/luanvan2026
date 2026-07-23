@@ -30,12 +30,21 @@ export function parseConfirmGoodsIssueBody(input: unknown): {
   return validateInput(confirmGoodsIssueSchema, input);
 }
 
+const createGoodsIssueItemSchema = z.object({
+  productVariantId: z.coerce.number().int().positive(),
+  batchId: z.coerce.number().int().positive().nullable().optional(),
+  locationId: z.coerce.number().int().positive().optional(),
+  quantity: z.coerce.number().positive(),
+  note: z.string().trim().max(500).optional(),
+});
+
 const createGoodsIssueSchema = z.object({
   issueCode: z.string().trim().min(1).max(80),
   warehouseId: z.coerce.number().int().positive().optional(),
   referenceNo: z.string().trim().max(100).optional(),
   note: z.string().trim().max(500).optional(),
   createdBy: z.coerce.number().int().positive().optional(),
+  items: z.array(createGoodsIssueItemSchema).min(1).optional(),
 });
 
 export function parseCreateGoodsIssue(input: unknown): CreateGoodsIssueInput {

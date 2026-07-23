@@ -37,12 +37,23 @@ export function parseRejectStockAdjustment(
     ...validateInput(rejectStockAdjustmentSchema, input),
   };
 }
+const createStockAdjustmentItemSchema = z.object({
+  productVariantId: z.coerce.number().int().positive(),
+  batchId: z.coerce.number().int().positive().nullable().optional(),
+  locationId: z.coerce.number().int().positive(),
+  adjustmentDirection: z.enum(['IN', 'OUT']),
+  quantity: z.coerce.number().positive(),
+  reasonCode: z.string().trim().min(1).max(100).optional(),
+  note: z.string().trim().max(500).optional(),
+});
+
 const createStockAdjustmentSchema = z.object({
   adjustmentCode: z.string().trim().min(1).max(80),
   warehouseId: z.coerce.number().int().positive().optional(),
   reasonCode: z.string().trim().min(1).max(100).optional(),
   note: z.string().trim().max(500).optional(),
   createdBy: z.coerce.number().int().positive().optional(),
+  items: z.array(createStockAdjustmentItemSchema).min(1).optional(),
 });
 
 export function parseCreateStockAdjustment(

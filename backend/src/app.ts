@@ -35,7 +35,20 @@ export function createApp(): express.Express {
   app.use(requestContext);
   app.use(requestLogger);
   app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', config.corsOrigin);
+    const allowedOrigins = config.corsOrigin
+      .split(',')
+      .map((origin) => origin.trim())
+      .filter(Boolean);
+    const requestOrigin = req.header('origin');
+    const responseOrigin =
+      requestOrigin && allowedOrigins.includes(requestOrigin)
+        ? requestOrigin
+        : allowedOrigins[0];
+
+    if (responseOrigin) {
+      res.header('Access-Control-Allow-Origin', responseOrigin);
+      res.header('Vary', 'Origin');
+    }
     res.header(
       'Access-Control-Allow-Methods',
       'GET,POST,PUT,PATCH,DELETE,OPTIONS',
