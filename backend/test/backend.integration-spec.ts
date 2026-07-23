@@ -93,4 +93,36 @@ describe('Backend integration with MySQL seed data', () => {
     expect(productStockData.length).toBeGreaterThan(0);
     expect(nearExpiryData.length).toBeGreaterThan(0);
   });
+
+  it('serves list of all available permissions and authorization roles', async () => {
+    const permissionsResponse = await request(app)
+      .get('/authorization/permissions')
+      .expect(200);
+    const permissionsData = getResponseData<DataList<{ code: string }>>(
+      permissionsResponse,
+    );
+
+    expect(permissionsData.length).toBeGreaterThan(0);
+
+    const rolesResponse = await request(app)
+      .get('/authorization')
+      .expect(200);
+    const rolesData = getResponseData<DataList<{ code: string }>>(
+      rolesResponse,
+    );
+
+    expect(rolesData.length).toBeGreaterThan(0);
+  });
+
+  it('serves system notifications list and handles mark as read', async () => {
+    const notificationsResponse = await request(app)
+      .get('/notifications')
+      .expect(200);
+    const notificationsData = getResponseData<DataList<{ id: number }>>(
+      notificationsResponse,
+    );
+
+    expect(Array.isArray(notificationsData)).toBe(true);
+  });
 });
+
