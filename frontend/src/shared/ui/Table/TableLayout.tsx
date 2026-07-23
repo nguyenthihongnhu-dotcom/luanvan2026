@@ -7,8 +7,6 @@ export default function Tablelayout<T>({
     isLoading = false,
     className = "",
 }: TableProps<T>) {
-
-    // Hàm lấy ra key cho từng dòng (row) dữ liệu dựa trên thuộc tính rowKey truyền vào
     const getRowKey = (record: T, index: number): string | number => {
         if (!rowKey) return index;
         if (typeof rowKey === "function") return rowKey(record);
@@ -16,17 +14,15 @@ export default function Tablelayout<T>({
     };
 
     return (
-        <div className={`w-full overflow-x-auto rounded-lg border border-gray-200 shadow-sm ${className}`}>
-            <table className="w-full border-collapse bg-white text-left text-sm text-gray-500">
-
-                {/* Tiêu đề bảng (Header) */}
-                <thead className="bg-gray-50 text-xs font-semibold uppercase text-gray-700">
+        <div className={`w-full overflow-x-auto rounded-lg border border-slate-200 bg-white shadow-2xs ${className}`}>
+            <table className="w-full border-collapse bg-white text-left text-sm text-slate-600">
+                <thead className="border-b border-slate-200 bg-slate-50 text-[11px] font-bold tracking-wider uppercase text-slate-500">
                     <tr>
                         {columns.map((col, index) => (
                             <th
                                 key={String(col.key) + index}
                                 scope="col"
-                                className={`px-6 py-4 font-semibold ${col.className || ""}`}
+                                className={`px-5 py-3.5 ${col.className || ""}`}
                             >
                                 {col.title}
                             </th>
@@ -34,42 +30,39 @@ export default function Tablelayout<T>({
                     </tr>
                 </thead>
 
-                {/* Nội dung bảng (Body) */}
-                <tbody className="divide-y divide-gray-200 border-t border-gray-200">
+                <tbody className="divide-y divide-slate-100">
                     {isLoading ? (
-                        // Trạng thái đang tải dữ liệu (Loading)
                         <tr>
-                            <td colSpan={columns.length} className="px-6 py-10 text-center text-gray-400">
+                            <td colSpan={columns.length} className="px-6 py-12 text-center text-slate-400">
                                 <div className="flex items-center justify-center space-x-2">
-                                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
-                                    <span>Đang tải dữ liệu kho...</span>
+                                    <div className="h-5 w-5 animate-spin rounded-full border-2 border-pink-600 border-t-transparent"></div>
+                                    <span className="text-sm font-medium text-slate-500">Đang tải dữ liệu kho...</span>
                                 </div>
                             </td>
                         </tr>
                     ) : dataSource.length === 0 ? (
-                        // Trạng thái không có dữ liệu (Empty)
                         <tr>
-                            <td colSpan={columns.length} className="px-6 py-10 text-center text-gray-400">
-                                Không có dữ liệu hiển thị
+                            <td colSpan={columns.length} className="px-6 py-12 text-center text-slate-400">
+                                <div className="flex flex-col items-center justify-center space-y-1">
+                                    <span className="text-base font-semibold text-slate-500">Không có dữ liệu</span>
+                                    <span className="text-xs text-slate-400">Thử thay đổi bộ lọc hoặc thêm bản ghi mới</span>
+                                </div>
                             </td>
                         </tr>
                     ) : (
-                        // Hiển thị danh sách dữ liệu thực tế
                         dataSource.map((record, rowIndex) => (
                             <tr
                                 key={getRowKey(record, rowIndex)}
-                                className="hover:bg-gray-50 transition-colors"
+                                className="table-row-hover transition-colors"
                             >
                                 {columns.map((col, colIndex) => {
-                                    // Lấy giá trị thô từ object tương ứng với key của cột
                                     const cellValue = record[col.key as keyof T];
 
                                     return (
                                         <td
                                             key={String(col.key) + colIndex}
-                                            className={`px-6 py-4 whitespace-nowrap text-gray-600 ${col.className || ""}`}
+                                            className={`px-5 py-3.5 whitespace-nowrap text-slate-700 ${col.className || ""}`}
                                         >
-                                            {/* Nếu cột có cấu hình hàm render custom thì chạy hàm render, ngược lại hiển thị text thô */}
                                             {col.render
                                                 ? col.render(cellValue, record, rowIndex)
                                                 : (cellValue as React.ReactNode)}
