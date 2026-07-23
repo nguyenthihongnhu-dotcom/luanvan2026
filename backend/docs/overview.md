@@ -1,4 +1,4 @@
-﻿# Backend Overview - Bambi WMS
+# Backend Overview - Bambi WMS
 
 Backend Bambi WMS dùng Express + TypeScript + MySQL, chia theo module nghiệp vụ trong `src/modules`. File này là docs tổng: kiến trúc, thứ tự phụ thuộc module, module index, quyền và checklist kiểm tra.
 
@@ -155,7 +155,9 @@ Lỗi đi qua error handler chung:
 Các endpoint đọc cơ bản hiện mở theo scope demo. Các endpoint thao tác nghiệp vụ nhạy cảm dùng `verifyToken` và `requirePermission`:
 
 - `users:read`, `users:create`, `users:update`, `users:delete`
+- `authorization:read`, `authorization:update`
 - `warehouses:create`, `warehouses:update`, `warehouses:delete`
+
 - `goods_receipts:confirm`, `goods_receipts:reverse`
 - `goods_issues:confirm`, `goods_issues:reverse`
 - `stock_transfers:confirm`, `stock_transfers:reverse`

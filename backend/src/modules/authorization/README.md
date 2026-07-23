@@ -19,6 +19,9 @@ Module `authorization` đọc role/permission để hệ thống biết quyền 
 | Method | Path | Mô tả |
 | --- | --- | --- |
 | GET | `/authorization` | Danh sách role/authorization data |
+| GET | `/authorization/permissions` | Danh sách tất cả permissions có sẵn trong hệ thống |
+| PUT | `/authorization/roles/:id/permissions` | Cập nhật danh sách permissions cấp cho vai trò (role) |
+
 
 ## Vai trò trong request protected
 
