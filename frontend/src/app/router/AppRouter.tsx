@@ -18,6 +18,7 @@ import InventoryTransactionsPage from '@/features/inventory-transactions/pages/I
 import ReportsPage from '@/features/reports/pages/ReportsPage';
 import AuditLogsPage from '@/features/audit-logs/pages/AuditLogsPage';
 import AttachmentsPage from '@/features/attachments/pages/AttachmentsPage';
+import NotificationsPage from '@/features/notifications/pages/NotificationsPage';
 import SettingsPage from '@/features/settings/pages/SettingsPage';
 
 export default function AppRouter() {
@@ -36,6 +37,7 @@ export default function AppRouter() {
       <Route path="/inventory-transactions" element={<InventoryTransactionsPage />} />
       <Route path="/batches" element={<BatchesPage />} />
       <Route path="/alerts" element={<AlertsPage />} />
+      <Route path="/notifications" element={<NotificationsPage />} />
       <Route path="/transfers" element={<TransfersPage />} />
       <Route path="/stock-counts" element={<StockCountsPage />} />
       <Route path="/partners" element={<PartnersPage />} />
@@ -51,3 +53,4 @@ export default function AppRouter() {
     </Routes>
   );
 }
+

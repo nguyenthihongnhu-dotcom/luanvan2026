@@ -1,4 +1,4 @@
-﻿import type { ReactNode } from 'react';
+import type { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 
 const navbarItems = [
@@ -8,7 +8,9 @@ const navbarItems = [
     { label: 'Log tồn', path: '/inventory-transactions' },
     { label: 'Lô hàng', path: '/batches' },
     { label: 'Cảnh báo', path: '/alerts' },
+    { label: 'Thông báo', path: '/notifications' },
     { label: 'Hàng hoá', path: '/products' },
+
     { label: 'Giao dịch', path: '/transactions' },
     { label: 'Chuyển kho', path: '/transfers' },
     { label: 'Kiểm kê', path: '/stock-counts' },
