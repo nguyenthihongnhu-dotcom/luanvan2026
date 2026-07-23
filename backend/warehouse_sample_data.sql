@@ -5,7 +5,7 @@ SET FOREIGN_KEY_CHECKS = 0;
 
 -- =========================================================
 -- BAMBI WMS - SAMPLE DATA
--- Import sau backend/warehouse_management_mysql.sql
+-- Optional standalone sample data; already merged into backend/warehouse_management_mysql.sql
 -- Tai khoan mau: admin@bambi.test / 123456
 -- Mat khau hash bcrypt tuong ung voi 123456.
 -- =========================================================
