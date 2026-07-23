@@ -1,7 +1,8 @@
-﻿import { db } from '../../database/db';
+import { db } from '../../database/db';
 import type {
   AuthorizationFilters,
   AuthorizationRow,
+  PermissionRow,
   QueryParams,
 } from './authorization.model';
 
@@ -48,3 +49,58 @@ export async function findAuthorization(
 
   return rows;
 }
+
+export async function findAllPermissions(): Promise<PermissionRow[]> {
+  const [rows] = await db.query<PermissionRow[]>(
+    'SELECT id, code, name, module, description FROM permissions ORDER BY module, code',
+  );
+  return rows;
+}
+
+export async function updateRolePermissionsInDb(
+  roleId: number,
+  permissionCodes: string[],
+): Promise<boolean> {
+  const conn = await db.getConnection();
+  try {
+    await conn.beginTransaction();
+
+    // Verify role exists
+    const [roles] = await conn.query<AuthorizationRow[]>(
+      'SELECT id FROM roles WHERE id = ?',
+      [roleId],
+    );
+    if (!roles[0]) {
+      await conn.rollback();
+      return false;
+    }
+
+    // Delete existing permissions for role
+    await conn.query('DELETE FROM role_permissions WHERE role_id = ?', [roleId]);
+
+    // Insert new permissions if any
+    if (permissionCodes.length > 0) {
+      const [permissionRows] = await conn.query<PermissionRow[]>(
+        'SELECT id, code FROM permissions WHERE code IN (?)',
+        [permissionCodes],
+      );
+
+      if (permissionRows.length > 0) {
+        const values = permissionRows.map((p) => [roleId, p.id]);
+        await conn.query(
+          'INSERT INTO role_permissions (role_id, permission_id) VALUES ?',
+          [values],
+        );
+      }
+    }
+
+    await conn.commit();
+    return true;
+  } catch (error) {
+    await conn.rollback();
+    throw error;
+  } finally {
+    conn.release();
+  }
+}
+

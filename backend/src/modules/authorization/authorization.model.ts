@@ -8,3 +8,16 @@ export type AuthorizationFilters = {
 };
 
 export type AuthorizationRow = RowDataPacket & Record<string, unknown>;
+
+export type PermissionRow = RowDataPacket & {
+  id: number;
+  code: string;
+  name: string;
+  module: string;
+  description: string | null;
+};
+
+export type UpdateRolePermissionsInput = {
+  permissionCodes: string[];
+};
+
