@@ -19,14 +19,19 @@ export async function findInventoryTransactions(
   }
 
   if (filters.search) {
-    where.push('transaction_code LIKE :search');
+    where.push(
+      '(' +
+        'transaction_code LIKE :search OR transaction_type LIKE :search OR ' +
+        'reference_type LIKE :search OR reason_code LIKE :search' +
+        ')',
+    );
     params.search = `%${filters.search}%`;
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
   const [rows] = await db.query<InventoryTransactionsRow[]>({
-    sql: `SELECT * FROM ${tableName} ${whereSql} LIMIT 100`,
+    sql: `SELECT * FROM ${tableName} ${whereSql} ORDER BY created_at DESC, id DESC LIMIT 100`,
     values: params,
   });
 

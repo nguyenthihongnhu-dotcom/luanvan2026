@@ -3,6 +3,7 @@ import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
 import { inventoryTransactionService } from '@/features/inventory-transactions/services/inventoryTransactionService';
+import { HttpError } from '@/shared/services/httpClient';
 import type { InventoryTransaction } from '@/features/inventory-transactions/services/inventoryTransactionService';
 
 function formatNumber(value: unknown): string {
@@ -13,6 +14,23 @@ function formatDateTime(value: string): string {
     return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
 }
 
+function inventoryTransactionsErrorMessage(error: unknown): string {
+    if (error instanceof HttpError) {
+        if (error.status === 0) {
+            return 'Không kết nối được backend. Kiểm tra backend đang chạy và VITE_API_BASE_URL.';
+        }
+
+        const payload = error.payload as { error?: { code?: string; message?: string; requestId?: string } } | undefined;
+        const backendError = payload?.error;
+        const detail = backendError?.message ?? error.message;
+        const requestId = backendError?.requestId ? ` Request ID: ${backendError.requestId}.` : '';
+        const code = backendError?.code ? ` (${backendError.code})` : '';
+
+        return `Không tải được log giao dịch tồn kho từ backend: HTTP ${error.status}${code} - ${detail}.${requestId}`;
+    }
+
+    return 'Không tải được log giao dịch tồn kho từ backend.';
+}
 function typeLabel(type: string): string {
     const labels: Record<string, string> = {
         RECEIPT: 'Nhập kho',
@@ -44,7 +62,7 @@ export default function InventoryTransactionsPage() {
             setRows(await inventoryTransactionService.listInventoryTransactions(search));
         } catch (err) {
             console.error(err);
-            setError('Không tải được log giao dịch tồn kho từ backend.');
+            setError(inventoryTransactionsErrorMessage(err));
         } finally {
             setIsLoading(false);
         }
