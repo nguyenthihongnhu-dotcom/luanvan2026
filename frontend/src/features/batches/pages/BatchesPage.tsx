@@ -78,6 +78,7 @@ export default function BatchesPage() {
         }
     }
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     useEffect(() => { void loadBatches("", ""); }, []);
 
     const summary = useMemo(() => {

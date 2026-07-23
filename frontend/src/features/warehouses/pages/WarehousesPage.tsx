@@ -1,4 +1,4 @@
-﻿import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
@@ -84,6 +84,7 @@ export default function WarehousesPage() {
         }
     }
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     useEffect(() => { void loadWarehouses('', ''); }, []);
 
     const summary = useMemo(() => ({

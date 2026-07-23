@@ -26,7 +26,29 @@ const tableName = 'stock_adjustments';
 type StockLocationRow = RowDataPacket & {
   id: number;
   quantity: number;
+  reserved_quantity: number;
 };
+
+async function lockStockLocation(
+  connection: PoolConnection,
+  productVariantId: number,
+  locationId: number,
+  batchId: number | null,
+): Promise<StockLocationRow | undefined> {
+  const [rows] = await connection.query<StockLocationRow[]>(
+    `
+      SELECT id, quantity, reserved_quantity
+      FROM stock_locations
+      WHERE product_variant_id = ?
+        AND location_id = ?
+        AND (batch_id <=> ?)
+      FOR UPDATE
+    `,
+    [productVariantId, locationId, batchId],
+  );
+
+  return rows[0];
+}
 
 export async function findStockAdjustments(
   filters: StockAdjustmentsFilters,
@@ -141,27 +163,6 @@ async function lockAdjustmentItems(
   );
 
   return rows;
-}
-
-async function lockStockLocation(
-  connection: PoolConnection,
-  productVariantId: number,
-  locationId: number,
-  batchId: number | null,
-): Promise<StockLocationRow | undefined> {
-  const [rows] = await connection.query<StockLocationRow[]>(
-    `
-      SELECT id, quantity
-      FROM stock_locations
-      WHERE product_variant_id = ?
-        AND location_id = ?
-        AND (batch_id <=> ?)
-      FOR UPDATE
-    `,
-    [productVariantId, locationId, batchId],
-  );
-
-  return rows[0];
 }
 
 async function assertLocationInWarehouse(
@@ -295,6 +296,11 @@ export async function approveStockAdjustmentTransaction(
 
         if (!stockLocation) {
           throw new Error('STOCK_LOCATION_NOT_FOUND');
+        }
+
+        const reserved = Number(stockLocation.reserved_quantity ?? 0);
+        if (Number(stockLocation.quantity) - reserved < Number(item.quantity)) {
+          throw new Error('INSUFFICIENT_STOCK');
         }
 
         stockLocationId = stockLocation.id;

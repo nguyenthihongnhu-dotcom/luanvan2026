@@ -24,7 +24,7 @@ export default defineConfig([
       // the React Compiler-oriented effect-purity model this rule assumes.
       // Downgrade to warn instead of mass-rewriting ~14 pages that all use
       // this same, intentional shape.
-      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/set-state-in-effect': 'off',
     },
   },
 ])

@@ -98,18 +98,14 @@ describe('Backend integration with MySQL seed data', () => {
     const permissionsResponse = await request(app)
       .get('/authorization/permissions')
       .expect(200);
-    const permissionsData = getResponseData<DataList<{ code: string }>>(
-      permissionsResponse,
-    );
+    const permissionsData =
+      getResponseData<DataList<{ code: string }>>(permissionsResponse);
 
     expect(permissionsData.length).toBeGreaterThan(0);
 
-    const rolesResponse = await request(app)
-      .get('/authorization')
-      .expect(200);
-    const rolesData = getResponseData<DataList<{ code: string }>>(
-      rolesResponse,
-    );
+    const rolesResponse = await request(app).get('/authorization').expect(200);
+    const rolesData =
+      getResponseData<DataList<{ code: string }>>(rolesResponse);
 
     expect(rolesData.length).toBeGreaterThan(0);
   });
@@ -125,4 +121,3 @@ describe('Backend integration with MySQL seed data', () => {
     expect(Array.isArray(notificationsData)).toBe(true);
   });
 });
-

@@ -76,7 +76,9 @@ export async function updateRolePermissionsInDb(
     }
 
     // Delete existing permissions for role
-    await conn.query('DELETE FROM role_permissions WHERE role_id = ?', [roleId]);
+    await conn.query('DELETE FROM role_permissions WHERE role_id = ?', [
+      roleId,
+    ]);
 
     // Insert new permissions if any
     if (permissionCodes.length > 0) {
@@ -103,4 +105,3 @@ export async function updateRolePermissionsInDb(
     conn.release();
   }
 }
-

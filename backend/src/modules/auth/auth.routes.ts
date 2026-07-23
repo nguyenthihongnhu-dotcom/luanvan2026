@@ -4,7 +4,8 @@ import {
   passwordResetRateLimit,
   loginRateLimit,
 } from '../../common/middleware/rate-limit.middleware';
-import { requirePermission, verifyToken } from './auth.module';
+import { requirePermission } from '../../common/middleware/require-permission.middleware';
+import { verifyToken } from './auth.middleware';
 import {
   createUserController,
   deleteUserController,

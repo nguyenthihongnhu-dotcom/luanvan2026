@@ -20,4 +20,3 @@ export type PermissionRow = RowDataPacket & {
 export type UpdateRolePermissionsInput = {
   permissionCodes: string[];
 };
-

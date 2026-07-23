@@ -48,6 +48,7 @@ export default function AuthorizationPage() {
     useEffect(() => {
         void loadRoles('');
         void loadAllPermissions();
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     }, []);
 
     const totalPermissions = useMemo(() => new Set(roles.flatMap(permissionsOf)).size, [roles]);
@@ -75,7 +76,7 @@ export default function AuthorizationPage() {
         setSelectedPerms(next);
     }
 
-    function toggleModulePermissions(moduleCode: string, permsInModule: PermissionItem[]) {
+    function toggleModulePermissions(permsInModule: PermissionItem[]) {
         const next = new Set(selectedPerms);
         const allSelected = permsInModule.every((p) => next.has(p.code));
         if (allSelected) {
@@ -253,7 +254,7 @@ export default function AuthorizationPage() {
                                                     </span>
                                                     <button
                                                         type="button"
-                                                        onClick={() => toggleModulePermissions(moduleName, perms)}
+                                                        onClick={() => toggleModulePermissions(perms)}
                                                         className="text-xs text-pink-600 hover:underline font-medium"
                                                     >
                                                         {allInModSelected ? 'Bỏ chọn tất cả' : 'Chọn tất cả module'}

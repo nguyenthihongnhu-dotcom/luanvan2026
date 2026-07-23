@@ -29,4 +29,3 @@ export function parseUpdateRolePermissions(
 ): UpdateRolePermissionsInput {
   return validateInput(updateRolePermissionsSchema, input);
 }
-

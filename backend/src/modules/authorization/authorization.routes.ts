@@ -9,6 +9,11 @@ import {
 export const authorizationRouter = Router();
 
 authorizationRouter.get('/', asyncHandler(listAuthorizationController));
-authorizationRouter.get('/permissions', asyncHandler(listAllPermissionsController));
-authorizationRouter.put('/roles/:id/permissions', asyncHandler(updateRolePermissionsController));
-
+authorizationRouter.get(
+  '/permissions',
+  asyncHandler(listAllPermissionsController),
+);
+authorizationRouter.put(
+  '/roles/:id/permissions',
+  asyncHandler(updateRolePermissionsController),
+);

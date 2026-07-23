@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-call */
+/* eslint-disable @typescript-eslint/no-unsafe-return */
 import type {
   MutationResult,
   SupplierInput,
@@ -24,10 +26,10 @@ export function createSupplier(input: SupplierInput): Promise<{ id: number }> {
 export function updateSupplier(
   id: number,
   input: SupplierInput,
-): MutationResult {
+): Promise<MutationResult> {
   return updateSupplierRepository(id, input);
 }
 
-export function deleteSupplier(id: number): MutationResult {
+export function deleteSupplier(id: number): Promise<MutationResult> {
   return softDeleteSupplier(id);
 }

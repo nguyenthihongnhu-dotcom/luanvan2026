@@ -32,6 +32,7 @@ export default function NotificationsPage() {
 
     useEffect(() => {
         void loadNotifications('');
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     }, []);
 
     const filteredNotifications = useMemo(() => {

@@ -107,6 +107,7 @@ export default function AlertsPage() {
         }
     }
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     useEffect(() => { void loadData("", "OPEN"); }, []);
 
     async function runAction(action: () => Promise<void>, successMessage: string) {

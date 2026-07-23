@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
@@ -35,6 +35,7 @@ export default function AttachmentsPage() {
         }
     }
 
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     useEffect(() => { void loadRows(''); }, []);
 
     const columns: ColumnProps<AttachmentItem>[] = [

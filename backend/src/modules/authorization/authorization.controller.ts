@@ -37,4 +37,3 @@ export async function updateRolePermissionsController(
 
   res.json({ data: result });
 }
-
