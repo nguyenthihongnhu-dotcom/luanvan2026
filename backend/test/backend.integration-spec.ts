@@ -15,6 +15,7 @@ type LoginResponse = {
 };
 type StockRow = { sku: string };
 type InventoryTransactionRow = { transaction_type: string };
+type WarehouseRow = { code: string; status: string };
 
 type DataList<T> = T[];
 
@@ -66,6 +67,17 @@ describe('Backend integration with MySQL seed data', () => {
     );
   });
 
+  it('serves seeded warehouses for warehouse master screens', async () => {
+    const response = await request(app).get('/warehouses').expect(200);
+    const data = getResponseData<DataList<WarehouseRow>>(response);
+
+    expect(data.length).toBeGreaterThan(0);
+    expect(data).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ code: 'KHO-HCM-01', status: 'ACTIVE' }),
+      ]),
+    );
+  });
   it('serves seeded inventory transactions for reporting screens', async () => {
     const response = await request(app)
       .get('/inventory-transactions')

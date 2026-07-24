@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import DashboardLayout from "@/layouts/dashboard/DashboardLayout";
 import Tablelayout from "@/shared/ui/Table/TableLayout";
 import type { ColumnProps } from "@/shared/ui/Table/types";
-import { HttpError } from "@/shared/services/httpClient";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 import { alertService } from "@/features/alerts/services/alertService";
 import type { AlertSeverity, AlertStatus, AlertType, InventoryAlert, NotificationItem } from "@/features/alerts/services/alertService";
 
@@ -71,13 +71,6 @@ function statusClass(status: AlertStatus): string {
     return classes[status] ?? "border-gray-200 bg-gray-50 text-gray-700";
 }
 
-function actionErrorMessage(error: unknown): string {
-    if (error instanceof HttpError && (error.status === 401 || error.status === 403)) {
-        return "Tài khoản hiện tại chưa đăng nhập hoặc chưa có quyền thao tác.";
-    }
-    return "Không thực hiện được thao tác. Kiểm tra backend rồi thử lại.";
-}
-
 export default function AlertsPage() {
     const [activeTab, setActiveTab] = useState<ActiveTab>("alerts");
     const [alerts, setAlerts] = useState<InventoryAlert[]>([]);
@@ -101,7 +94,7 @@ export default function AlertsPage() {
             setNotifications(notificationRows);
         } catch (err) {
             console.error(err);
-            setError("Không tải được cảnh báo/thông báo từ backend.");
+            setError(getHttpErrorMessage(err, "Không tải được cảnh báo/thông báo từ backend"));
         } finally {
             setIsLoading(false);
         }
@@ -120,7 +113,7 @@ export default function AlertsPage() {
             await loadData();
         } catch (err) {
             console.error(err);
-            setError(actionErrorMessage(err));
+            setError(getHttpErrorMessage(err, "Không thực hiện được thao tác. Kiểm tra backend rồi thử lại."));
         } finally {
             setIsGenerating(false);
         }

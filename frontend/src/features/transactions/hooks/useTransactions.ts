@@ -4,6 +4,7 @@ import { useForm } from "@/shared/hooks/useForm";
 import { transactionService } from "@/features/transactions/services/transactionService";
 import type { AllocationPreviewResult, AllocationStrategy } from "@/features/transactions/services/transactionService";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
 export interface TransactionItem {
     productVariantId: string;
@@ -100,7 +101,7 @@ export function useTransactions() {
                 }
             } catch (err) {
                 console.error("Failed to load transactions from backend:", err);
-                if (isMounted) setError("Không tải được giao dịch từ backend.");
+                if (isMounted) setError(getHttpErrorMessage(err, "Không tải được giao dịch từ backend"));
             } finally {
                 if (isMounted) setIsLoading(false);
             }
@@ -182,7 +183,7 @@ export function useTransactions() {
             await reloadTransactions();
         } catch (err) {
             console.error(errorMessage, err);
-            setError(errorMessage);
+            setError(getHttpErrorMessage(err, errorMessage));
         }
     };
 
@@ -263,7 +264,7 @@ export function useTransactions() {
             }
         } catch (err) {
             console.error("Failed to preview stock allocation:", err);
-            setError("Không xem được phân bổ tồn kho. Kiểm tra Variant ID, tồn kho và kết nối backend.");
+            setError(getHttpErrorMessage(err, "Không xem được phân bổ tồn kho. Kiểm tra Variant ID, tồn kho và kết nối backend."));
             setAllocationPreview(null);
         } finally {
             setPreviewingItemIndex(null);

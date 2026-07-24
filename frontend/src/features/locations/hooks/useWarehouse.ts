@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { warehouseService } from "@/features/locations/services/warehouseService";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
 export interface ViTriKho {
     MaViTri: number;
@@ -22,11 +23,6 @@ export interface Layer {
     id: string;
     code: string;
     name: string;
-}
-
-function getErrorMessage(error: unknown, fallback: string): string {
-    if (error instanceof Error && error.message) return error.message;
-    return fallback;
 }
 
 export function useWarehouse() {
@@ -53,7 +49,7 @@ export function useWarehouse() {
             setLocations(result);
         } catch (err) {
             console.error('Failed to load locations from backend:', err);
-            setError('Không tải được vị trí kho từ backend.');
+            setError(getHttpErrorMessage(err, 'Không tải được vị trí kho từ backend'));
         } finally {
             setIsLoading(false);
         }
@@ -70,7 +66,7 @@ export function useWarehouse() {
             await loadLocations();
         } catch (err) {
             console.error(fallback, err);
-            setError(getErrorMessage(err, fallback));
+            setError(getHttpErrorMessage(err, fallback));
             window.alert(fallback);
         } finally {
             setIsSaving(false);

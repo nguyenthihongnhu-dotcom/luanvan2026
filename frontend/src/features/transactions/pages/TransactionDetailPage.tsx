@@ -6,6 +6,7 @@ import type { ColumnProps } from '@/shared/ui/Table/types';
 import { transactionService } from '@/features/transactions/services/transactionService';
 import type { TransactionDetail, TransactionDetailLine } from '@/features/transactions/services/transactionService';
 import type { Transaction } from '@/features/transactions/hooks/useTransactions';
+import { getHttpErrorMessage } from '@/shared/services/httpClient';
 
 type DetailRouteType = 'receipts' | 'issues' | 'adjustments';
 
@@ -77,7 +78,7 @@ export default function TransactionDetailPage() {
                 if (isMounted) setDetail(result);
             } catch (err) {
                 console.error(err);
-                if (isMounted) setError('Không tải được chi tiết chứng từ từ backend.');
+                if (isMounted) setError(getHttpErrorMessage(err, 'Không tải được chi tiết chứng từ từ backend'));
             } finally {
                 if (isMounted) setIsLoading(false);
             }

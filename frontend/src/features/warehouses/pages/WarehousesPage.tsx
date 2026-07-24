@@ -4,6 +4,7 @@ import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
 import { warehouseService } from '@/features/warehouses/services/warehouseService';
+import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { Warehouse, WarehouseInput, WarehouseStatus } from '@/features/warehouses/services/warehouseService';
 
 const initialFormState: WarehouseInput = {
@@ -78,7 +79,7 @@ export default function WarehousesPage() {
             setWarehouses(await warehouseService.listWarehouses({ search: nextSearch, status: nextStatus }));
         } catch (err) {
             console.error(err);
-            setError('Không tải được danh sách kho từ backend. Kiểm tra đăng nhập, quyền và API.');
+            setError(getHttpErrorMessage(err, 'Không tải được danh sách kho từ backend'));
         } finally {
             setIsLoading(false);
         }
@@ -122,7 +123,7 @@ export default function WarehousesPage() {
             await loadWarehouses();
         } catch (err) {
             console.error(err);
-            setError('Không lưu được kho. Kiểm tra dữ liệu, quyền thao tác và mã kho không được trùng.');
+            setError(getHttpErrorMessage(err, 'Không lưu được kho. Kiểm tra dữ liệu, quyền thao tác và mã kho không được trùng.'));
         } finally {
             setIsSaving(false);
         }
@@ -136,7 +137,7 @@ export default function WarehousesPage() {
             await loadWarehouses();
         } catch (err) {
             console.error(err);
-            setError('Không xóa được kho. Kho có thể không tồn tại hoặc bạn thiếu quyền thao tác.');
+            setError(getHttpErrorMessage(err, 'Không xóa được kho. Kho có thể không tồn tại hoặc bạn thiếu quyền thao tác.'));
         }
     }
 

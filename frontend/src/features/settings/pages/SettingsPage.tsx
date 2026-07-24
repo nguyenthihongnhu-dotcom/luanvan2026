@@ -6,6 +6,7 @@ import type { ColumnProps } from '@/shared/ui/Table/types';
 import { settingService } from '@/features/settings/services/settingService';
 import type { AppSetting } from '@/features/settings/services/settingService';
 import { usePermissions } from '@/shared/auth/usePermissions';
+import { getHttpErrorMessage } from '@/shared/services/httpClient';
 
 function formatDateTime(value: string): string {
     return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
@@ -35,7 +36,7 @@ export default function SettingsPage() {
             setRows(await settingService.listSettings(search));
         } catch (err) {
             console.error(err);
-            setError('Không tải được cấu hình hệ thống từ backend.');
+            setError(getHttpErrorMessage(err, 'Không tải được cấu hình hệ thống từ backend'));
         } finally {
             setIsLoading(false);
         }
@@ -74,7 +75,7 @@ export default function SettingsPage() {
             await loadRows();
         } catch (err) {
             console.error(err);
-            setError('Không cập nhật được cấu hình. Kiểm tra quyền settings:update và dữ liệu JSON.');
+            setError(getHttpErrorMessage(err, 'Không cập nhật được cấu hình. Kiểm tra quyền settings:update và dữ liệu JSON.'));
         } finally {
             setIsSaving(false);
         }

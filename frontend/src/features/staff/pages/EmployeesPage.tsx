@@ -5,6 +5,7 @@ import Tablelayout from "@/shared/ui/Table/TableLayout";
 import { useSidebar } from "@/app/providers/useSidebar";
 import type { ColumnProps } from "@/shared/ui/Table/types";
 import { roleLabel, userService } from "@/features/staff/services/userService";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 import type { User, UserRoleCode } from "@/features/staff/services/userService";
 
 const roleOptions: Array<{ code: UserRoleCode; label: string }> = [
@@ -42,7 +43,7 @@ export default function EmployeesPage() {
             setData(await userService.listUsers());
         } catch (err) {
             console.error(err);
-            setError("Không tải được danh sách nhân viên từ backend.");
+            setError(getHttpErrorMessage(err, "Không tải được danh sách nhân viên từ backend"));
         } finally {
             setIsLoading(false);
         }

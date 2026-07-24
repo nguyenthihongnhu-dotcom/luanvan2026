@@ -7,6 +7,7 @@ import type { WarehouseOption } from "@/features/warehouses/services/warehouseSe
 import { stockService } from "@/features/stock/services/stockService";
 import type { CurrentStockItem, NearExpiryStockItem } from "@/features/stock/services/stockService";
 import type { AllocationPreviewResult, AllocationStrategy } from "@/features/transactions/services/transactionService";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
 function formatNumber(value: unknown): string {
     return Number(value ?? 0).toLocaleString("vi-VN");
@@ -58,7 +59,7 @@ export default function StockPage() {
             setNearExpiryStock(expiryRows);
         } catch (err) {
             console.error(err);
-            setError("Không tải được dữ liệu tồn kho từ backend.");
+            setError(getHttpErrorMessage(err, "Không tải được dữ liệu tồn kho từ backend"));
         } finally {
             setIsLoading(false);
         }
@@ -87,7 +88,7 @@ export default function StockPage() {
                 }
             } catch (err) {
                 console.error(err);
-                if (isMounted) setError("Không tải được dữ liệu tồn kho từ backend.");
+                if (isMounted) setError(getHttpErrorMessage(err, "Không tải được dữ liệu tồn kho từ backend"));
             } finally {
                 if (isMounted) setIsLoading(false);
             }
@@ -123,7 +124,7 @@ export default function StockPage() {
             }));
         } catch (err) {
             console.error(err);
-            setError("Không xem được phân bổ tồn kho. Kiểm tra dữ liệu tồn và backend.");
+            setError(getHttpErrorMessage(err, "Không xem được phân bổ tồn kho. Kiểm tra dữ liệu tồn và backend."));
             setAllocationPreview(null);
         } finally {
             setIsPreviewing(false);

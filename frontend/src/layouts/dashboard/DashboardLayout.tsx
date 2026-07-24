@@ -16,7 +16,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             {/* 2. KHỐI CHỨA NỘI DUNG CHÍNH (Gồm Navbar trên cùng và Main Content dưới) */}
             {/* Sử dụng pl-64 để đẩy toàn bộ khối này sang phải, không bị Sidebar đè lên */}
-            <div className="flex-1 pl-64 flex flex-col min-h-screen">
+            <div className="flex-1 min-w-0 pl-64 flex flex-col min-h-screen">
 
                 {/* NAVBAR PHÍA TRÊN */}
                 {/* Nên thêm class sticky top-0 z-30 để thanh cuộn dọc không làm trôi mất Navbar */}

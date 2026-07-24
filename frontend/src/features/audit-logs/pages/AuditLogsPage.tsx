@@ -3,6 +3,7 @@ import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
 import { auditLogService } from '@/features/audit-logs/services/auditLogService';
+import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { AuditLog } from '@/features/audit-logs/services/auditLogService';
 
 function formatDateTime(value: string): string {
@@ -22,7 +23,7 @@ export default function AuditLogsPage() {
             setRows(await auditLogService.listAuditLogs(search));
         } catch (err) {
             console.error(err);
-            setError('Không tải được audit log từ backend.');
+            setError(getHttpErrorMessage(err, 'Không tải được audit log từ backend'));
         } finally {
             setIsLoading(false);
         }

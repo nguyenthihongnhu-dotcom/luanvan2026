@@ -7,6 +7,7 @@ import { stockCountService } from "@/features/stock-counts/services/stockCountSe
 import type { StockCount, StockCountItem, StockCountScopeType, StockCountStatus } from "@/features/stock-counts/services/stockCountService";
 import { warehouseService } from "@/features/warehouses/services/warehouseService";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
 const initialFormState = {
     warehouseId: "",
@@ -79,7 +80,7 @@ export default function StockCountsPage() {
             }));
         } catch (err) {
             console.error(err);
-            setError("Không tải được danh sách kiểm kê từ backend.");
+            setError(getHttpErrorMessage(err, "Không tải được danh sách kiểm kê từ backend"));
         } finally {
             setIsLoading(false);
         }
@@ -101,7 +102,7 @@ export default function StockCountsPage() {
             }])));
         } catch (err) {
             console.error(err);
-            setError("Không tải được chi tiết kiểm kê.");
+            setError(getHttpErrorMessage(err, "Không tải được chi tiết kiểm kê"));
         }
     }
 
@@ -127,7 +128,7 @@ export default function StockCountsPage() {
             await loadCounts();
         } catch (err) {
             console.error(err);
-            setError("Không tạo được phiếu kiểm kê. Kiểm tra kho có tồn để snapshot chưa.");
+            setError(getHttpErrorMessage(err, "Không tạo được phiếu kiểm kê. Kiểm tra kho có tồn để snapshot chưa."));
         } finally {
             setIsSaving(false);
         }
@@ -142,7 +143,7 @@ export default function StockCountsPage() {
             if (selectedCount) await openItems(selectedCount);
         } catch (err) {
             console.error(err);
-            setError("Không thực hiện được thao tác kiểm kê.");
+            setError(getHttpErrorMessage(err, "Không thực hiện được thao tác kiểm kê"));
         } finally {
             setIsSaving(false);
         }

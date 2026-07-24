@@ -3,6 +3,7 @@ import type { FormEvent } from "react";
 import { useForm } from "@/shared/hooks/useForm";
 import { productService } from "@/features/products/services/productService";
 import { getProductCategoryLabel, getProductNameLabel } from "@/features/products/utils/productDisplay";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
 export interface ProductItem {
     id: number;
@@ -57,7 +58,7 @@ export function useProducts() {
                 if (isMounted) setProducts(result);
             } catch (err) {
                 console.error('Failed to load products from backend:', err);
-                if (isMounted) setError('Không tải được sản phẩm từ backend.');
+                if (isMounted) setError(getHttpErrorMessage(err, 'Không tải được sản phẩm từ backend'));
             } finally {
                 if (isMounted) setIsLoading(false);
             }

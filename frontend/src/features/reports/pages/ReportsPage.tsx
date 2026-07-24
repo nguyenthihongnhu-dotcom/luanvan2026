@@ -3,6 +3,7 @@ import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
 import { reportService } from '@/features/reports/services/reportService';
+import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { ReportFilters, ReportRow } from '@/features/reports/services/reportService';
 
 type ReportTab = 'product-stock' | 'near-expiry' | 'inventory-movements' | 'inventory-transactions';
@@ -80,7 +81,7 @@ export default function ReportsPage() {
             setRows(await loader(nextFilters));
         } catch (err) {
             console.error(err);
-            setError('Không tải được báo cáo từ backend.');
+            setError(getHttpErrorMessage(err, 'Không tải được báo cáo từ backend'));
         } finally {
             setIsLoading(false);
         }

@@ -3,6 +3,7 @@ import DashboardLayout from "@/layouts/dashboard/DashboardLayout";
 import Tablelayout from "@/shared/ui/Table/TableLayout";
 import type { ColumnProps } from "@/shared/ui/Table/types";
 import { batchService } from "@/features/batches/services/batchService";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 import type { BatchStatus, ProductBatch } from "@/features/batches/services/batchService";
 
 const statusOptions: Array<{ value: BatchStatus | ""; label: string }> = [
@@ -72,7 +73,7 @@ export default function BatchesPage() {
             setBatches(await batchService.listBatches({ search: nextSearch, status: nextStatus }));
         } catch (err) {
             console.error(err);
-            setError("Không tải được danh sách lô hàng từ backend.");
+            setError(getHttpErrorMessage(err, "Không tải được danh sách lô hàng từ backend"));
         } finally {
             setIsLoading(false);
         }

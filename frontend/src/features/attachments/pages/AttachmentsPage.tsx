@@ -3,6 +3,7 @@ import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
 import { attachmentService } from '@/features/attachments/services/attachmentService';
+import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { AttachmentItem } from '@/features/attachments/services/attachmentService';
 
 function formatDateTime(value: string): string {
@@ -29,7 +30,7 @@ export default function AttachmentsPage() {
             setRows(await attachmentService.listAttachments(search));
         } catch (err) {
             console.error(err);
-            setError('Không tải được metadata file đính kèm từ backend.');
+            setError(getHttpErrorMessage(err, 'Không tải được metadata file đính kèm từ backend'));
         } finally {
             setIsLoading(false);
         }

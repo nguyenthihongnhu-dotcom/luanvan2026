@@ -3,6 +3,7 @@ import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
 import { authorizationService } from '@/features/authorization/services/authorizationService';
+import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { AuthorizationRole, PermissionItem } from '@/features/authorization/services/authorizationService';
 
 function permissionsOf(role: AuthorizationRole): string[] {
@@ -30,7 +31,7 @@ export default function AuthorizationPage() {
             setRoles(await authorizationService.listAuthorization(search));
         } catch (err) {
             console.error(err);
-            setError('Không tải được danh sách vai trò và quyền từ backend.');
+            setError(getHttpErrorMessage(err, 'Không tải được danh sách vai trò và quyền từ backend'));
         } finally {
             setIsLoading(false);
         }
@@ -104,7 +105,7 @@ export default function AuthorizationPage() {
             }, 1200);
         } catch (err) {
             console.error(err);
-            setError('Không lưu được quyền cho vai trò.');
+            setError(getHttpErrorMessage(err, 'Không lưu được quyền cho vai trò'));
         } finally {
             setIsSaving(false);
         }

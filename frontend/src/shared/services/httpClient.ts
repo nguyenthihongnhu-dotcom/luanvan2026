@@ -33,6 +33,39 @@ export class HttpError extends Error {
     }
 }
 
+/**
+ * Shared formatter for turning a caught error from an API call into a
+ * user-facing Vietnamese message. Distinguishes network failure, expired
+ * session and permission errors from other backend errors, and surfaces the
+ * backend's own error code/message/requestId when available instead of a
+ * generic message that hides what actually failed.
+ */
+export function getHttpErrorMessage(error: unknown, fallback: string): string {
+    if (error instanceof HttpError) {
+        if (error.status === 0) {
+            return 'Không kết nối được backend. Kiểm tra backend đang chạy và VITE_API_BASE_URL.';
+        }
+
+        if (error.status === 401) {
+            return 'Phiên đăng nhập đã hết hạn. Vui lòng đăng nhập lại.';
+        }
+
+        if (error.status === 403) {
+            return 'Tài khoản hiện tại không có quyền thực hiện thao tác này.';
+        }
+
+        const payload = error.payload as { error?: { code?: string; message?: string; requestId?: string } } | undefined;
+        const backendError = payload?.error;
+        const detail = backendError?.message ?? error.message;
+        const requestId = backendError?.requestId ? ` Request ID: ${backendError.requestId}.` : '';
+        const code = backendError?.code ? ` (${backendError.code})` : '';
+
+        return `${fallback}: HTTP ${error.status}${code} - ${detail}.${requestId}`;
+    }
+
+    return fallback;
+}
+
 const axiosClient = axios.create({
     baseURL: env.apiBaseUrl,
 });
@@ -46,6 +79,32 @@ axiosClient.interceptors.request.use((config) => {
 
     return config;
 });
+
+const authEndpointsExemptFromSessionExpiry = ['/auth/login', '/auth/register', '/auth/refresh'];
+
+function isAuthEndpoint(url?: string): boolean {
+    return authEndpointsExemptFromSessionExpiry.some((path) => url?.includes(path));
+}
+
+let redirectingToLogin = false;
+
+axiosClient.interceptors.response.use(
+    (response) => response,
+    (error: unknown) => {
+        if (
+            axios.isAxiosError(error) &&
+            error.response?.status === 401 &&
+            !isAuthEndpoint(error.config?.url) &&
+            !redirectingToLogin
+        ) {
+            redirectingToLogin = true;
+            setAccessToken(null);
+            window.location.assign('/login');
+        }
+
+        return Promise.reject(error);
+    },
+);
 
 function toHttpError(error: unknown): HttpError {
     if (axios.isAxiosError<unknown>(error)) {

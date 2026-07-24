@@ -5,6 +5,7 @@ import Tablelayout from "@/shared/ui/Table/TableLayout";
 import type { ColumnProps } from "@/shared/ui/Table/types";
 import { transferService } from "@/features/transfers/services/transferService";
 import type { CurrentStockItem, StockTransfer, TransferStatus, WarehouseLocationOption } from "@/features/transfers/services/transferService";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
 const initialFormState = {
     transferCode: "",
@@ -63,7 +64,7 @@ export default function TransfersPage() {
             setLocations(locationRows);
         } catch (err) {
             console.error(err);
-            setError("Không tải được dữ liệu chuyển kho từ backend.");
+            setError(getHttpErrorMessage(err, "Không tải được dữ liệu chuyển kho từ backend"));
         } finally {
             setIsLoading(false);
         }
@@ -127,7 +128,7 @@ export default function TransfersPage() {
             await loadData();
         } catch (err) {
             console.error(err);
-            setError("Không tạo được phiếu chuyển kho.");
+            setError(getHttpErrorMessage(err, "Không tạo được phiếu chuyển kho"));
         } finally {
             setIsSaving(false);
         }

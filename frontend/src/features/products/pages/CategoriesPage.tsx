@@ -5,6 +5,7 @@ import Tablelayout from "@/shared/ui/Table/TableLayout";
 import type { ColumnProps } from "@/shared/ui/Table/types";
 import { useForm } from "@/shared/hooks/useForm";
 import { categoryService } from "@/features/products/services/categoryService";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 import type { Category } from "@/features/products/services/categoryService";
 
 const initialFormState = { name: "" };
@@ -22,7 +23,7 @@ export default function Categories() {
             setCategories(await categoryService.listCategories());
         } catch (err) {
             console.error(err);
-            setError("Không tải được danh mục từ backend.");
+            setError(getHttpErrorMessage(err, "Không tải được danh mục từ backend"));
         }
     }
 

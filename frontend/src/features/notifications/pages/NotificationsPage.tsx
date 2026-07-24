@@ -4,6 +4,7 @@ import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
 import { useDateFormatter } from '@/shared/hooks';
 import { notificationService } from '@/features/notifications/services/notificationService';
+import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { NotificationItem } from '@/features/notifications/services/notificationService';
 
 type ReadStatusFilter = 'ALL' | 'UNREAD' | 'READ';
@@ -24,7 +25,7 @@ export default function NotificationsPage() {
             setNotifications(await notificationService.listNotifications(search));
         } catch (err) {
             console.error(err);
-            setError('Không tải được danh sách thông báo từ backend.');
+            setError(getHttpErrorMessage(err, 'Không tải được danh sách thông báo từ backend'));
         } finally {
             setIsLoading(false);
         }
@@ -56,7 +57,7 @@ export default function NotificationsPage() {
             await loadNotifications();
         } catch (err) {
             console.error(err);
-            setError('Không thể cập nhật trạng thái thông báo.');
+            setError(getHttpErrorMessage(err, 'Không thể cập nhật trạng thái thông báo'));
         } finally {
             setIsProcessing(false);
         }
@@ -70,7 +71,7 @@ export default function NotificationsPage() {
             await loadNotifications();
         } catch (err) {
             console.error(err);
-            setError('Không thể đánh dấu tất cả thông báo là đã đọc.');
+            setError(getHttpErrorMessage(err, 'Không thể đánh dấu tất cả thông báo là đã đọc'));
         } finally {
             setIsProcessing(false);
         }
@@ -85,7 +86,7 @@ export default function NotificationsPage() {
             alert(`Đã sinh thành công ${result.createdCount} thông báo từ cảnh báo.`);
         } catch (err) {
             console.error(err);
-            setError('Không thể sinh thông báo từ cảnh báo.');
+            setError(getHttpErrorMessage(err, 'Không thể sinh thông báo từ cảnh báo'));
         } finally {
             setIsProcessing(false);
         }

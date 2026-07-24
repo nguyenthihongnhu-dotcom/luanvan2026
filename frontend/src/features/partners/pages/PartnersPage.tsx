@@ -5,6 +5,7 @@ import Tablelayout from "@/shared/ui/Table/TableLayout";
 import { useSidebar } from "@/app/providers/useSidebar";
 import type { ColumnProps } from "@/shared/ui/Table/types";
 import { partnerService } from "@/features/partners/services/partnerService";
+import { getHttpErrorMessage } from "@/shared/services/httpClient";
 import type { Partner } from "@/features/partners/services/partnerService";
 
 type PartnerFilter = "All" | "NCC" | "KH";
@@ -33,7 +34,7 @@ export default function Partners() {
             setData(await partnerService.listPartners());
         } catch (err) {
             console.error(err);
-            setError("Không tải được danh sách đối tác từ backend.");
+            setError(getHttpErrorMessage(err, "Không tải được danh sách đối tác từ backend"));
         } finally {
             setIsLoading(false);
         }
