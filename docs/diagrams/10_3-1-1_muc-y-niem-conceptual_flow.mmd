@@ -1,0 +1,13 @@
+flowchart LR
+    A[Xác thực<br/>và Phân quyền]
+    B[Cấu trúc kho]
+    C[Danh mục<br/>và Lô hàng]
+    D[Tồn kho lõi]
+    E[Chứng từ<br/>nghiệp vụ]
+    F[Vận hành<br/>và Hệ thống]
+
+    B --> D
+    C --> D
+    A --> E
+    E --> D
+    D --> F

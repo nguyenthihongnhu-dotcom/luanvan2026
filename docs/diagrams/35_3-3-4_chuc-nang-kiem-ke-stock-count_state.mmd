@@ -1,0 +1,12 @@
+stateDiagram-v2
+    [*] --> DRAFT: tạo
+    DRAFT --> IN_PROGRESS: bắt đầu
+    IN_PROGRESS --> IN_PROGRESS: ghi số đếm
+    IN_PROGRESS --> SUBMITTED: nộp kết quả
+    SUBMITTED --> APPROVED: duyệt
+    SUBMITTED --> REJECTED: từ chối
+    DRAFT --> CANCELLED: hủy
+    IN_PROGRESS --> CANCELLED: hủy
+    APPROVED --> [*]
+    REJECTED --> [*]
+    CANCELLED --> [*]

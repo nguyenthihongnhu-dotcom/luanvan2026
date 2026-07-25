@@ -1,0 +1,10 @@
+flowchart TD
+    A([Bắt đầu]) --> B[Chọn/ tạo danh mục + nhãn hiệu]
+    B --> C[Nhập thông tin sản phẩm]
+    C --> D[Tạo biến thể SKU: đơn vị, lô/hạn, min/max]
+    D --> E{SKU/barcode trùng?}
+    E -- Trùng --> F[Báo lỗi UNIQUE]:::err
+    E -- Không --> G[Lưu sản phẩm/SKU]
+    G --> H([Kết thúc])
+    F --> C
+    classDef err fill:#fee,stroke:#c00;

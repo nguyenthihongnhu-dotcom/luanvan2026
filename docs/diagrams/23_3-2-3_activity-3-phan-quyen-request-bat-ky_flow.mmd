@@ -1,0 +1,15 @@
+flowchart TD
+    Start([HTTP request]) --> A[app.ts định tuyến]
+    A --> B{Route cần quyền?}
+    B -- Không --> F[Vào controller]
+    B -- Có --> C[verifyToken: giải mã JWT]
+    C --> D{Token hợp lệ?}
+    D -- Không --> E1[401 TOKEN_INVALID]:::err
+    D -- Có --> G[requirePermission: tra role_permissions]
+    G --> H{Role có quyền?}
+    H -- Không --> E2[403 Forbidden]:::err
+    H -- Có --> F[Vào controller → service → repository]
+    F --> I[Trả JSON wrapper data]
+    I --> End([Kết thúc])
+
+    classDef err fill:#fee,stroke:#c00;

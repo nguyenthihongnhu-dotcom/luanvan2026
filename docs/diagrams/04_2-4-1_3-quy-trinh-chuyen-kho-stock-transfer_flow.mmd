@@ -1,0 +1,10 @@
+flowchart TD
+    Start([Bắt đầu]) --> S1[Tạo phiếu chuyển:<br/>vị trí nguồn → vị trí đích]
+    S1 --> S2[Thêm dòng SKU + số lượng]
+    S2 --> S3[Xác nhận phiếu<br/>stock_transfers:confirm]
+    S3 --> S4{Tồn nguồn đủ?}
+    S4 -- Không --> S5[Lỗi, ROLLBACK]
+    S4 -- Có --> S6[Giảm tồn vị trí nguồn<br/>ghi TRANSFER_OUT]
+    S6 --> S7[Tăng tồn vị trí đích<br/>ghi TRANSFER_IN]
+    S7 --> S8[Phiếu CONFIRMED, COMMIT]
+    S8 --> End([Kết thúc])

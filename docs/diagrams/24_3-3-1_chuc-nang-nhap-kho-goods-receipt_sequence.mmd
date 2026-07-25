@@ -1,0 +1,30 @@
+sequenceDiagram
+    actor M as Quản lý kho
+    participant MW as Middleware auth+perm
+    participant C as goods-receipts.controller
+    participant S as goods-receipts.service
+    participant Repo as repository
+    participant DB as MySQL
+
+    M->>MW: POST /goods-receipts/:id/confirm
+    MW->>MW: verifyToken + requirePermission(goods_receipts:confirm)
+    MW->>C: confirmGoodsReceiptController
+    C->>S: confirmGoodsReceipt(id)
+    S->>S: Kiểm tra phiếu tồn tại, đang DRAFT/PENDING, có dòng hàng
+    S->>Repo: confirmTransaction(id)
+    Repo->>DB: BEGIN
+    loop Mỗi dòng hàng
+        alt SKU tracking lô và thiếu batch_id
+            Repo->>DB: ROLLBACK
+            Repo-->>S: LOT_TRACKING_REQUIRES_BATCH
+        else Hợp lệ
+            Repo->>DB: INSERT/UPDATE product_batches
+            Repo->>DB: UPSERT stock_locations (quantity += SL)
+            Repo->>DB: INSERT inventory_transactions (RECEIPT)
+        end
+    end
+    Repo->>DB: UPDATE goods_receipts SET status='CONFIRMED'
+    Repo->>DB: COMMIT
+    Repo-->>S: ok
+    S-->>C: ok
+    C-->>M: 200 CONFIRMED

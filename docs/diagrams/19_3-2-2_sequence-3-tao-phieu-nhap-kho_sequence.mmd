@@ -1,0 +1,25 @@
+sequenceDiagram
+    actor St as Nhân viên kho
+    participant FE as Frontend
+    participant C as goods-receipts.controller
+    participant V as validation (Zod)
+    participant S as goods-receipts.service
+    participant Repo as goods-receipts.repository
+    participant DB as MySQL
+
+    St->>FE: Nhập phiếu (kho, NCC, dòng hàng)
+    FE->>C: POST /goods-receipts
+    C->>V: validate body
+    alt Dữ liệu sai
+        V-->>C: 400 VALIDATION_ERROR
+        C-->>FE: error
+    else Hợp lệ
+        C->>S: createGoodsReceipt(input)
+        S->>Repo: insertGoodsReceipt + items
+        Repo->>DB: INSERT goods_receipts (status=DRAFT)
+        Repo->>DB: INSERT goods_receipt_items
+        DB-->>Repo: id
+        Repo-->>S: { id }
+        S-->>C: { id }
+        C-->>FE: 201 Created (DRAFT)
+    end

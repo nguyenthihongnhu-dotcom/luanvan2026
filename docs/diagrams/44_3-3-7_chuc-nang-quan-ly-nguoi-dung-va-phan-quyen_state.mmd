@@ -1,0 +1,6 @@
+stateDiagram-v2
+    [*] --> ACTIVE: tạo / đăng ký
+    ACTIVE --> INACTIVE: khóa tài khoản
+    INACTIVE --> ACTIVE: mở khóa
+    ACTIVE --> [*]: xóa mềm (deleted_at)
+    INACTIVE --> [*]: xóa mềm (deleted_at)

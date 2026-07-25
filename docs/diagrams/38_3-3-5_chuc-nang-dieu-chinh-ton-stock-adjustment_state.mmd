@@ -1,0 +1,10 @@
+stateDiagram-v2
+    [*] --> DRAFT: tạo
+    DRAFT --> PENDING: gửi duyệt
+    PENDING --> APPROVED: duyệt
+    PENDING --> REJECTED: từ chối
+    DRAFT --> CANCELLED: hủy
+    PENDING --> CANCELLED: hủy
+    APPROVED --> [*]
+    REJECTED --> [*]
+    CANCELLED --> [*]

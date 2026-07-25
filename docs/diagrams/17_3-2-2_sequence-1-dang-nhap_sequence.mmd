@@ -1,0 +1,29 @@
+sequenceDiagram
+    actor U as Người dùng
+    participant FE as Frontend
+    participant R as auth.routes
+    participant C as auth.controller
+    participant S as auth.service
+    participant Repo as auth.repository
+    participant DB as MySQL
+
+    U->>FE: Nhập email + mật khẩu
+    FE->>R: POST /auth/login
+    R->>C: loginController
+    C->>S: login(input)
+    S->>Repo: findActiveAuthUserByEmail(email)
+    Repo->>DB: SELECT users WHERE email
+    DB-->>Repo: user + password_hash
+    Repo-->>S: user
+    S->>S: bcrypt.compare(password, hash)
+    alt Mật khẩu sai
+        S-->>C: 401 Invalid credentials
+        C-->>FE: error
+    else Đúng
+        S->>S: jwt.sign access + tạo refresh token
+        S->>Repo: lưu user_sessions
+        Repo->>DB: INSERT user_sessions
+        S-->>C: { accessToken, refreshToken, user }
+        C-->>FE: 200 tokens
+        FE-->>U: Vào dashboard
+    end

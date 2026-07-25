@@ -1,0 +1,14 @@
+flowchart TD
+    Start([Bắt đầu]) --> S1[Nhân viên tạo phiếu nhập<br/>chọn kho + nhà cung cấp]
+    S1 --> S2[Thêm dòng: SKU, số lượng,<br/>lô/hạn sử dụng, vị trí nhập]
+    S2 --> S3{SKU có<br/>tracking lô/hạn?}
+    S3 -- Có --> S4[Bắt buộc nhập lô + hạn dùng]
+    S3 -- Không --> S5[Bỏ qua lô]
+    S4 --> S6[Lưu phiếu DRAFT]
+    S5 --> S6
+    S6 --> S7[Người quản lý xác nhận phiếu<br/>quyền goods_receipts:confirm]
+    S7 --> S8[Tạo/khớp product_batches]
+    S8 --> S9[Tăng quantity ở stock_locations]
+    S9 --> S10[Ghi inventory_transactions<br/>type = RECEIPT]
+    S10 --> S11[Phiếu chuyển CONFIRMED]
+    S11 --> End([Kết thúc])

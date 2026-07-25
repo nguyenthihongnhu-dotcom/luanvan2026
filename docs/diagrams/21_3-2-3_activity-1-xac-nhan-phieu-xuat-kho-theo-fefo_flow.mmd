@@ -1,0 +1,21 @@
+flowchart TD
+    Start([Bắt đầu confirm]) --> A[Xác thực token và quyền]
+    A --> B{Có quyền confirm?}
+    B -- Không --> R1[Trả 403]:::err
+    B -- Có --> C[BEGIN TRANSACTION]
+    C --> D[Đọc các dòng của phiếu]
+    D --> E[Chọn dòng hàng tiếp theo]
+    E --> F[Khóa các lô tồn FOR UPDATE<br/>sắp xếp hết hạn sớm trước]
+    F --> G{Tổng tồn khả dụng<br/>≥ số cần xuất?}
+    G -- Không --> H[ROLLBACK]:::err --> R2[Trả INSUFFICIENT_STOCK]:::err
+    G -- Có --> I[Phân bổ số lượng vào từng lô]
+    I --> J[UPDATE giảm quantity từng lô]
+    J --> K[INSERT inventory_transactions ISSUE]
+    K --> L{Còn dòng hàng?}
+    L -- Còn --> E
+    L -- Hết --> M[UPDATE phiếu = CONFIRMED]
+    M --> N[COMMIT]
+    N --> O[Sinh alert nếu tồn dưới min]
+    O --> End([Kết thúc])
+
+    classDef err fill:#fee,stroke:#c00;

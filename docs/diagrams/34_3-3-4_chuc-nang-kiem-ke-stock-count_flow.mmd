@@ -1,0 +1,18 @@
+flowchart TD
+    A([Tạo phiếu DRAFT]) --> B[start: chốt danh sách SKU]
+    B --> C[Đếm và ghi số thực tế]
+    C --> D{Đếm xong?}
+    D -- Chưa --> C
+    D -- Rồi --> E[submit: SUBMITTED]
+    E --> F{Duyệt?}
+    F -- Từ chối --> G[REJECTED]:::err
+    F -- Duyệt --> H[So sánh đếm vs hệ thống]
+    H --> I{Chênh lệch?}
+    I -- Không --> K[APPROVED]
+    I -- Dương --> J1[COUNT_ADJUSTMENT_IN]
+    I -- Âm --> J2[COUNT_ADJUSTMENT_OUT]
+    J1 --> K
+    J2 --> K
+    K --> L([Kết thúc])
+    G --> L
+    classDef err fill:#fee,stroke:#c00;

@@ -1,0 +1,24 @@
+sequenceDiagram
+    actor Ad as Quản trị viên
+    participant FE as Frontend
+    participant C as catalog.controller
+    participant V as validation (Zod)
+    participant S as catalog.service
+    participant Repo as repository
+    participant DB as MySQL
+
+    Ad->>FE: Nhập thông tin SKU
+    FE->>C: POST /catalog/products (hoặc variants)
+    C->>V: validate
+    alt Sai dữ liệu / trùng SKU
+        V-->>C: 400 / 409 DUPLICATE
+        C-->>FE: error
+    else Hợp lệ
+        C->>S: createProduct/Variant
+        S->>Repo: insert
+        Repo->>DB: INSERT products / product_variants
+        DB-->>Repo: id
+        Repo-->>S: { id }
+        S-->>C: { id }
+        C-->>FE: 201 Created
+    end

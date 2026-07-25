@@ -1,0 +1,35 @@
+flowchart TD
+    ROOT[BAMBI WMS]
+
+    ROOT --> A[1. Quản trị hệ thống]
+    ROOT --> B[2. Danh mục hàng hóa]
+    ROOT --> C[3. Cấu trúc kho]
+    ROOT --> D[4. Nghiệp vụ tồn kho]
+    ROOT --> E[5. Báo cáo và vận hành]
+
+    A --> A1[Đăng nhập/Đăng xuất]
+    A --> A2[Quản lý người dùng]
+    A --> A3[Quản lý vai trò và quyền]
+    A --> A4[Cấu hình ứng dụng]
+
+    B --> B1[Danh mục/Nhãn hiệu/Đơn vị]
+    B --> B2[Sản phẩm và biến thể SKU]
+    B --> B3[Nhà cung cấp]
+    B --> B4[Lô và hạn sử dụng]
+
+    C --> C1[Quản lý kho]
+    C --> C2[Khu vực - Kệ - Vị trí]
+
+    D --> D1[Xem tồn hiện tại]
+    D --> D2[Phiếu nhập kho]
+    D --> D3[Phiếu xuất kho]
+    D --> D4[Phiếu chuyển kho]
+    D --> D5[Kiểm kê]
+    D --> D6[Điều chỉnh tồn]
+    D --> D7[Lịch sử giao dịch tồn]
+
+    E --> E1[Báo cáo tồn/near-expiry]
+    E --> E2[Cảnh báo - Alerts]
+    E --> E3[Thông báo - Notifications]
+    E --> E4[Nhật ký thao tác - Audit logs]
+    E --> E5[Tệp đính kèm]

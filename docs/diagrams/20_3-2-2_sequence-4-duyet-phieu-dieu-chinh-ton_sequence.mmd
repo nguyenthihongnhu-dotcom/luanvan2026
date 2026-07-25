@@ -1,0 +1,23 @@
+sequenceDiagram
+    actor M as Quản lý duyệt
+    participant MW as Middleware
+    participant S as stock-adjustments.service
+    participant Repo as repository
+    participant DB as MySQL
+
+    M->>MW: POST /stock-adjustments/:id/approve
+    MW->>MW: requirePermission(stock_adjustments:approve)
+    MW->>S: approveStockAdjustment
+    S->>S: Kiểm tra người duyệt ≠ người tạo
+    alt Tự duyệt
+        S-->>M: 403 SELF_APPROVAL_FORBIDDEN
+    else Hợp lệ
+        S->>Repo: approveTransaction
+        Repo->>DB: BEGIN
+        Repo->>DB: UPDATE stock_locations (tăng/giảm)
+        Repo->>DB: INSERT inventory_transactions (MANUAL_ADJUSTMENT_IN/OUT)
+        Repo->>DB: UPDATE status='APPROVED'
+        Repo->>DB: COMMIT
+        Repo-->>S: ok
+        S-->>M: 200 APPROVED
+    end

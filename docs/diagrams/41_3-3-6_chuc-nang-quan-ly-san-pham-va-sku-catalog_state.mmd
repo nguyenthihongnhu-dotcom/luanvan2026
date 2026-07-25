@@ -1,0 +1,8 @@
+stateDiagram-v2
+    [*] --> ACTIVE: tạo
+    ACTIVE --> INACTIVE: tạm ngừng
+    INACTIVE --> ACTIVE: kích hoạt lại
+    ACTIVE --> DISCONTINUED: ngừng kinh doanh
+    INACTIVE --> DISCONTINUED: ngừng kinh doanh
+    ACTIVE --> [*]: xóa mềm (deleted_at)
+    DISCONTINUED --> [*]

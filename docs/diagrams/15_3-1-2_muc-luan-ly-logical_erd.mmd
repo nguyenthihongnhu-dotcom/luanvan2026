@@ -1,0 +1,34 @@
+erDiagram
+    warehouses ||--o{ inventory_transactions : warehouse_id
+    product_variants ||--o{ inventory_transactions : product_variant_id
+    product_batches ||--o{ inventory_transactions : batch_id
+    users ||--o{ inventory_transactions : performed_by
+
+    warehouses {
+        bigint id PK
+        string code
+    }
+    product_variants {
+        bigint id PK
+        string sku
+    }
+    product_batches {
+        bigint id PK
+        string lot_number
+    }
+    users {
+        bigint id PK
+        string full_name
+    }
+    inventory_transactions {
+        bigint id PK
+        string transaction_code
+        enum transaction_type
+        bigint warehouse_id FK
+        bigint product_variant_id FK
+        bigint batch_id FK
+        decimal quantity
+        string reference_type
+        bigint reference_id
+        bigint performed_by FK
+    }

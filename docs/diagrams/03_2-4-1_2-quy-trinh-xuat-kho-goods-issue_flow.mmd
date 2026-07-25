@@ -1,0 +1,13 @@
+flowchart TD
+    Start([Bắt đầu]) --> S1[Tạo phiếu xuất, chọn kho,<br/>lý do xuất, chiến lược FEFO/FIFO]
+    S1 --> S2[Thêm dòng: SKU + số lượng cần xuất]
+    S2 --> S3[Lưu phiếu DRAFT]
+    S3 --> S4[Người có quyền xác nhận<br/>goods_issues:confirm]
+    S4 --> S5[Khóa các bản ghi tồn FOR UPDATE]
+    S5 --> S6{Tồn khả dụng<br/>đủ không?}
+    S6 -- Không đủ --> S7[Lỗi INSUFFICIENT_STOCK<br/>ROLLBACK]
+    S6 -- Đủ --> S8[Phân bổ theo FEFO:<br/>lô hết hạn sớm xuất trước]
+    S8 --> S9[Giảm quantity theo từng lô/vị trí]
+    S9 --> S10[Ghi inventory_transactions<br/>type = ISSUE cho từng dòng phân bổ]
+    S10 --> S11[Phiếu CONFIRMED, COMMIT]
+    S11 --> End([Kết thúc])

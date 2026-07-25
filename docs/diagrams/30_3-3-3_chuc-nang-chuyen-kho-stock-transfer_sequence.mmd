@@ -1,0 +1,27 @@
+sequenceDiagram
+    actor M as Quản lý kho
+    participant MW as Middleware
+    participant S as stock-transfers.service
+    participant Repo as repository
+    participant DB as MySQL
+
+    M->>MW: POST /stock-transfers/:id/confirm
+    MW->>MW: requirePermission(stock_transfers:confirm)
+    MW->>S: confirmStockTransfer(id)
+    S->>Repo: confirmTransaction
+    Repo->>DB: BEGIN
+    loop Mỗi dòng
+        Repo->>DB: SELECT stock_locations nguồn FOR UPDATE
+        alt Không đủ
+            Repo->>DB: ROLLBACK
+            Repo-->>S: INSUFFICIENT_STOCK
+        else Đủ
+            Repo->>DB: UPDATE tồn nguồn (quantity -= ?)
+            Repo->>DB: INSERT inventory_transactions (TRANSFER_OUT)
+            Repo->>DB: UPSERT tồn đích (quantity += ?)
+            Repo->>DB: INSERT inventory_transactions (TRANSFER_IN)
+        end
+    end
+    Repo->>DB: UPDATE status='CONFIRMED'
+    Repo->>DB: COMMIT
+    S-->>M: 200 CONFIRMED

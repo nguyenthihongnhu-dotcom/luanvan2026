@@ -1,0 +1,28 @@
+erDiagram
+    product_variants ||--o{ stock_locations : product_variant_id
+    warehouse_locations ||--o{ stock_locations : location_id
+    product_batches ||--o{ stock_locations : batch_id
+
+    product_variants {
+        bigint id PK
+        string sku
+    }
+    warehouse_locations {
+        bigint id PK
+        string code
+    }
+    product_batches {
+        bigint id PK
+        string lot_number
+        date expiry_date
+    }
+    stock_locations {
+        bigint id PK
+        bigint product_variant_id FK
+        bigint location_id FK
+        bigint batch_id FK
+        decimal quantity
+        decimal reserved_quantity
+        decimal available_quantity
+        bigint version
+    }

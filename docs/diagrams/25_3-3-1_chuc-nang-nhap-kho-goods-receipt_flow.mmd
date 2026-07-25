@@ -1,0 +1,18 @@
+flowchart TD
+    A([Bắt đầu]) --> B[Tạo phiếu: kho + NCC]
+    B --> C[Thêm dòng hàng]
+    C --> D{SKU cần lô/hạn?}
+    D -- Có --> E[Nhập lô + hạn dùng]
+    D -- Không --> F[Bỏ qua lô]
+    E --> G[Lưu DRAFT]
+    F --> G
+    G --> H[Quản lý xác nhận]
+    H --> I{Đủ quyền và hợp lệ?}
+    I -- Không --> J[Báo lỗi / 403]:::err
+    I -- Có --> K[BEGIN]
+    K --> L[Tạo/khớp lô]
+    L --> M[Tăng tồn stock_locations]
+    M --> N[Ghi giao dịch RECEIPT]
+    N --> O[status = CONFIRMED, COMMIT]
+    O --> P([Kết thúc])
+    classDef err fill:#fee,stroke:#c00;

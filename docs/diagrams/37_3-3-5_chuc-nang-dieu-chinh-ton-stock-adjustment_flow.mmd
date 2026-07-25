@@ -1,0 +1,15 @@
+flowchart TD
+    A([Tạo DRAFT]) --> B[submit: PENDING]
+    B --> C{Người duyệt = người tạo?}
+    C -- Đúng --> D[403 từ chối tự duyệt]:::err
+    C -- Khác --> E{Quyết định}
+    E -- Reject --> F[REJECTED]:::err
+    E -- Cancel --> G[CANCELLED]
+    E -- Approve --> H[BEGIN]
+    H --> I[Cập nhật tồn]
+    I --> J[Ghi MANUAL_ADJUSTMENT_IN/OUT]
+    J --> K[APPROVED, COMMIT]
+    K --> L([Kết thúc])
+    F --> L
+    G --> L
+    classDef err fill:#fee,stroke:#c00;

@@ -1,0 +1,26 @@
+sequenceDiagram
+    actor M as Quản lý kho
+    participant MW as Middleware
+    participant S as goods-issues.service
+    participant Repo as repository
+    participant DB as MySQL
+
+    M->>MW: POST /goods-issues/:id/confirm
+    MW->>MW: requirePermission(goods_issues:confirm)
+    MW->>S: confirmGoodsIssue(id)
+    S->>Repo: confirmGoodsIssueTransaction
+    Repo->>DB: BEGIN
+    loop Mỗi dòng hàng
+        Repo->>DB: SELECT stock_locations ORDER BY expiry ASC FOR UPDATE
+        alt Tồn khả dụng không đủ
+            Repo->>DB: ROLLBACK
+            Repo-->>S: INSUFFICIENT_STOCK
+        else Đủ
+            Repo->>DB: UPDATE quantity -= ? WHERE available >= ?
+            Repo->>DB: INSERT inventory_transactions (ISSUE)
+        end
+    end
+    Repo->>DB: UPDATE goods_issues SET status='CONFIRMED'
+    Repo->>DB: COMMIT
+    Repo-->>S: ok
+    S-->>M: 200 CONFIRMED

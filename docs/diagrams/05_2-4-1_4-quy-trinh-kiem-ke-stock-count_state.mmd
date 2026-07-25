@@ -1,0 +1,9 @@
+stateDiagram-v2
+    [*] --> DRAFT: tạo phiếu kiểm kê
+    DRAFT --> IN_PROGRESS: bắt đầu (chốt danh sách SKU cần đếm)
+    IN_PROGRESS --> IN_PROGRESS: ghi số đếm từng dòng
+    IN_PROGRESS --> SUBMITTED: nộp kết quả
+    SUBMITTED --> APPROVED: duyệt (sinh điều chỉnh chênh lệch)
+    SUBMITTED --> REJECTED: từ chối
+    APPROVED --> [*]
+    REJECTED --> [*]

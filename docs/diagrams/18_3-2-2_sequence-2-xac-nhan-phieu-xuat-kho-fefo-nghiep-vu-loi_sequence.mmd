@@ -1,0 +1,38 @@
+sequenceDiagram
+    actor M as Quản lý kho
+    participant FE as Frontend
+    participant MW as Middleware auth+permission
+    participant C as goods-issues.controller
+    participant S as goods-issues.service
+    participant Repo as goods-issues.repository
+    participant DB as MySQL
+
+    M->>FE: Bấm "Xác nhận" phiếu xuất
+    FE->>MW: POST /goods-issues/:id/confirm (Bearer token)
+    MW->>MW: verifyToken + requirePermission(goods_issues:confirm)
+    alt Thiếu quyền
+        MW-->>FE: 403 Forbidden
+    else Đủ quyền
+        MW->>C: confirmGoodsIssueController
+        C->>S: confirmGoodsIssue(input)
+        S->>Repo: confirmGoodsIssueTransaction(input)
+        Repo->>DB: BEGIN TRANSACTION
+        Repo->>DB: SELECT items phiếu
+        loop Mỗi dòng hàng
+            Repo->>DB: SELECT stock_locations ... ORDER BY expiry_date ASC FOR UPDATE
+            DB-->>Repo: các lô khả dụng (FEFO)
+            alt Tồn không đủ
+                Repo->>DB: ROLLBACK
+                Repo-->>S: INSUFFICIENT_STOCK
+                S-->>C: 409 error
+            else Đủ
+                Repo->>DB: UPDATE stock_locations SET quantity-=? WHERE available>=?
+                Repo->>DB: INSERT inventory_transactions (type=ISSUE)
+            end
+        end
+        Repo->>DB: UPDATE goods_issues SET status='CONFIRMED'
+        Repo->>DB: COMMIT
+        Repo-->>S: result
+        S-->>C: ok
+        C-->>FE: 200 phiếu CONFIRMED
+    end

@@ -1,0 +1,11 @@
+flowchart LR
+    A[Người dùng nhập email/mật khẩu] --> B[POST /auth/login]
+    B --> C[bcrypt.compare mật khẩu]
+    C -- Sai --> D[401 Invalid credentials]
+    C -- Đúng --> E[Sinh access token JWT<br/>+ refresh token]
+    E --> F[Lưu phiên user_sessions]
+    F --> G[Trả token cho client]
+    G --> H[Client gắn Bearer token mỗi request]
+    H --> I[Middleware verifyToken + requirePermission]
+    I -- Thiếu quyền --> J[403 Forbidden]
+    I -- Đủ quyền --> K[Vào controller nghiệp vụ]

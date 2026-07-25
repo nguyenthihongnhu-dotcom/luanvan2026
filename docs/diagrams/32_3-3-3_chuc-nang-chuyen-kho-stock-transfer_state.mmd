@@ -1,0 +1,10 @@
+stateDiagram-v2
+    [*] --> DRAFT: tạo
+    DRAFT --> PENDING: gửi duyệt
+    DRAFT --> CONFIRMED: xác nhận
+    PENDING --> CONFIRMED: xác nhận
+    DRAFT --> CANCELLED: hủy
+    PENDING --> CANCELLED: hủy
+    CONFIRMED --> CONFIRMED: đảo (REVERSAL)
+    CONFIRMED --> [*]
+    CANCELLED --> [*]

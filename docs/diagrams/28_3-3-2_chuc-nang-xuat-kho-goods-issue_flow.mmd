@@ -1,0 +1,16 @@
+flowchart TD
+    A([Bắt đầu]) --> B[Tạo phiếu + chọn FEFO/FIFO]
+    B --> C[Thêm dòng SKU + SL]
+    C --> D[Lưu DRAFT]
+    D --> E[Xác nhận]
+    E --> F[BEGIN + khóa tồn FOR UPDATE]
+    F --> G{Tồn khả dụng đủ?}
+    G -- Không --> H[INSUFFICIENT_STOCK, ROLLBACK]:::err
+    G -- Có --> I[Phân bổ lô hết hạn sớm trước]
+    I --> J[Giảm tồn từng lô]
+    J --> K[Ghi giao dịch ISSUE]
+    K --> L{Còn dòng?}
+    L -- Còn --> F
+    L -- Hết --> M[CONFIRMED, COMMIT]
+    M --> N([Kết thúc])
+    classDef err fill:#fee,stroke:#c00;

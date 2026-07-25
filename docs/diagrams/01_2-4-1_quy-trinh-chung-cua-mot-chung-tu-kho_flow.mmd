@@ -1,0 +1,12 @@
+flowchart LR
+    A[Tạo phiếu nháp<br/>DRAFT] --> B[Nhập chi tiết dòng hàng]
+    B --> C{Người có quyền<br/>xác nhận?}
+    C -- Không --> X[Từ chối 403]
+    C -- Có --> D[Kiểm tra nghiệp vụ:<br/>tồn, lô, hạn, vị trí]
+    D -- Không hợp lệ --> E[Báo lỗi<br/>INSUFFICIENT_STOCK...]
+    D -- Hợp lệ --> F[BEGIN TRANSACTION]
+    F --> G[Cập nhật stock_locations]
+    G --> H[Ghi inventory_transactions]
+    H --> I[Đổi trạng thái phiếu<br/>CONFIRMED/APPROVED]
+    I --> J[COMMIT]
+    J --> K[Sinh alert/notification nếu cần]

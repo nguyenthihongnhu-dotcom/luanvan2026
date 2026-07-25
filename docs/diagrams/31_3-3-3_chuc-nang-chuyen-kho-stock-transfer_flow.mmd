@@ -1,0 +1,12 @@
+flowchart TD
+    A([Bắt đầu]) --> B[Chọn vị trí nguồn và đích]
+    B --> C[Thêm dòng SKU + SL]
+    C --> D[Lưu DRAFT]
+    D --> E[Xác nhận]
+    E --> F{Tồn nguồn đủ?}
+    F -- Không --> G[Lỗi, ROLLBACK]:::err
+    F -- Có --> H[Giảm tồn nguồn + ghi TRANSFER_OUT]
+    H --> I[Tăng tồn đích + ghi TRANSFER_IN]
+    I --> J[CONFIRMED, COMMIT]
+    J --> K([Kết thúc])
+    classDef err fill:#fee,stroke:#c00;

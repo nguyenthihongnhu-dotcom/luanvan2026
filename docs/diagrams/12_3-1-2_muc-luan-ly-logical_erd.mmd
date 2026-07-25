@@ -1,0 +1,32 @@
+erDiagram
+    warehouses ||--o{ warehouse_zones : warehouse_id
+    warehouse_zones ||--o{ warehouse_shelves : zone_id
+    warehouse_shelves ||--o{ warehouse_locations : shelf_id
+    warehouses ||--o{ user_warehouses : warehouse_id
+    users ||--o{ user_warehouses : user_id
+
+    warehouses {
+        bigint id PK
+        string code
+        string name
+    }
+    warehouse_zones {
+        bigint id PK
+        bigint warehouse_id FK
+        string code
+    }
+    warehouse_shelves {
+        bigint id PK
+        bigint zone_id FK
+        string code
+    }
+    warehouse_locations {
+        bigint id PK
+        bigint shelf_id FK
+        string code
+        enum status
+    }
+    user_warehouses {
+        bigint user_id FK
+        bigint warehouse_id FK
+    }

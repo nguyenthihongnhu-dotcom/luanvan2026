@@ -1,0 +1,12 @@
+flowchart TD
+    A([Bắt đầu]) --> B[Nhập thông tin user + chọn role]
+    B --> C[verifyToken + requirePermission users:create]
+    C --> D{Đủ quyền?}
+    D -- Không --> E[403]:::err
+    D -- Có --> F[Hash mật khẩu bcrypt]
+    F --> G{Email trùng?}
+    G -- Trùng --> H[Lỗi DUPLICATE_EMAIL]:::err
+    G -- Không --> I[Lưu user + gán role]
+    I --> J[Cấu hình role_permissions nếu cần]
+    J --> K([Kết thúc])
+    classDef err fill:#fee,stroke:#c00;

@@ -1,0 +1,27 @@
+sequenceDiagram
+    actor St as Nhân viên
+    actor M as Quản lý
+    participant S as stock-counts.service
+    participant Repo as repository
+    participant DB as MySQL
+
+    St->>S: POST /:id/start
+    S->>Repo: startCount
+    Repo->>DB: chốt danh sách dòng (snapshot tồn hệ thống)
+    loop Đếm từng dòng
+        St->>S: PATCH /:id/items/:itemId/count
+        S->>Repo: recordCount(counted_qty)
+        Repo->>DB: UPDATE stock_count_items
+    end
+    St->>S: POST /:id/submit
+    S->>Repo: UPDATE status='SUBMITTED'
+    M->>S: POST /:id/approve
+    S->>Repo: approveCount
+    Repo->>DB: BEGIN
+    loop Mỗi dòng chênh lệch
+        Repo->>DB: UPDATE stock_locations theo số đếm
+        Repo->>DB: INSERT inventory_transactions (COUNT_ADJUSTMENT_IN/OUT)
+    end
+    Repo->>DB: UPDATE status='APPROVED'
+    Repo->>DB: COMMIT
+    S-->>M: 200 APPROVED

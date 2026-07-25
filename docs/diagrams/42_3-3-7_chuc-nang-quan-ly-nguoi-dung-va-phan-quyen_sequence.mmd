@@ -1,0 +1,24 @@
+sequenceDiagram
+    actor Ad as Quản trị viên
+    participant MW as Middleware
+    participant C as auth.controller
+    participant S as auth.service
+    participant Repo as repository
+    participant DB as MySQL
+
+    Ad->>MW: POST /auth/users (Bearer token)
+    MW->>MW: requirePermission(users:create)
+    MW->>C: createUserController
+    C->>S: createUser(input)
+    S->>S: bcrypt.hash(password)
+    S->>Repo: insertUser + gán role_id
+    alt Email trùng
+        Repo->>DB: INSERT users → lỗi UNIQUE
+        Repo-->>S: 409 DUPLICATE_EMAIL
+    else Hợp lệ
+        Repo->>DB: INSERT users
+        DB-->>Repo: id
+        Repo-->>S: user
+        S-->>C: user
+        C-->>Ad: 201 Created
+    end
