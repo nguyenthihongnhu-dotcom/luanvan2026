@@ -19,6 +19,8 @@ Module `notifications` đọc và sinh thông báo cho user từ các cảnh bá
 | --- | --- | --- | --- |
 | GET | `/notifications` | Danh sách thông báo | Không trong demo |
 | POST | `/notifications/generate` | Sinh thông báo từ alert OPEN | `notifications:generate` |
+| POST | `/notifications/read-all` | Đánh dấu tất cả thông báo của user hiện tại là đã đọc | `notifications:read` |
+| PATCH | `/notifications/:id/read` | Đánh dấu một thông báo là đã đọc | `notifications:read` |
 
 ## Luồng generate từ alerts
 

@@ -1,19 +1,16 @@
 import { httpClient, unwrapData } from '@/shared/services/httpClient';
 import type { ProductItem } from '@/features/products/hooks/useProducts';
 
-type ProductStockRow = {
-    warehouse_id?: number;
+type CatalogProductRow = {
+    id?: number;
     sku?: string;
     product_name?: string;
     variant_name?: string;
-    product_variant_id?: number;
-    total_available_quantity?: string | number;
+    category_name?: string;
+    stock?: string | number;
     min_stock_level?: string | number;
-};
-
-type NearExpiryRow = {
-    product_variant_id?: number;
-    expiry_date?: string;
+    expiry_date?: string | null;
+    locations?: string | null;
 };
 
 function toNumber(value: unknown): number {
@@ -28,40 +25,27 @@ function calculateStatus(stock: number, minStock: number): ProductItem['status']
 }
 
 export async function listProducts(): Promise<ProductItem[]> {
-    const [stockResponse, expiryResponse] = await Promise.all([
-        httpClient.get<{ data: ProductStockRow[] }>('/reports/product-stock'),
-        httpClient.get<{ data: NearExpiryRow[] }>('/reports/near-expiry'),
-    ]);
-    const stockRows = unwrapData(stockResponse);
-    const expiryRows = unwrapData(expiryResponse);
-    const expiryByVariant = new Map<number, string>();
+    const response = await httpClient.get<{ data: CatalogProductRow[] }>('/catalog/products');
+    const rows = unwrapData(response);
 
-    for (const row of expiryRows) {
-        if (!row.product_variant_id || !row.expiry_date) continue;
-        const current = expiryByVariant.get(row.product_variant_id);
-        if (!current || row.expiry_date < current) {
-            expiryByVariant.set(row.product_variant_id, row.expiry_date);
-        }
-    }
-
-    return stockRows.map((row, index) => {
-        const stock = toNumber(row.total_available_quantity);
+    return rows.map((row, index) => {
+        const variantId = row.id ?? index + 1;
+        const stock = toNumber(row.stock);
         const minStock = toNumber(row.min_stock_level);
-        const variantId = row.product_variant_id ?? index + 1;
 
         return {
             id: variantId,
             sku: row.sku ?? `SKU-${variantId}`,
             name: row.variant_name || row.product_name || 'San pham',
-            category: 'Chua phan loai',
+            category: row.category_name || 'Chua phan loai',
             stock,
             minStock,
-            expiryDate: expiryByVariant.get(variantId) ?? '',
+            expiryDate: row.expiry_date ?? '',
+            locations: row.locations ?? '',
             status: calculateStatus(stock, minStock),
         };
     });
 }
-
 
 export async function createProduct(input: ProductItem): Promise<void> {
     await httpClient.post('/catalog/products', {

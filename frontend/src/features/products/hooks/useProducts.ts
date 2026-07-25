@@ -13,6 +13,7 @@ export interface ProductItem {
     stock: number;
     minStock: number;
     expiryDate: string;
+    locations: string;
     status: "In Stock" | "Low Stock" | "Out of Stock";
 }
 
@@ -81,6 +82,7 @@ export function useProducts() {
             stock: stockNum,
             minStock: minStockNum,
             expiryDate: formData.expiryDate,
+            locations: editingProduct?.locations ?? "",
             status: calculateStatus(stockNum, minStockNum),
         };
 

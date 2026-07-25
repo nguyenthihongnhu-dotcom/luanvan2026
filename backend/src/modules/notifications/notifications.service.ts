@@ -6,6 +6,7 @@ import type {
 import {
   findNotifications as findNotificationsRepository,
   generateNotificationsFromAlerts,
+  markAllNotificationsReadRepository,
   markNotificationReadRepository,
 } from './notifications.repository';
 
@@ -26,4 +27,10 @@ export async function markNotificationRead(
   userId: number,
 ): Promise<NotificationMutationResult> {
   return markNotificationReadRepository(notificationId, userId);
+}
+
+export function markAllNotificationsRead(
+  userId: number,
+): Promise<NotificationMutationResult> {
+  return markAllNotificationsReadRepository(userId);
 }

@@ -103,3 +103,20 @@ export async function markNotificationReadRepository(
 
   return { affectedRows: result.affectedRows };
 }
+
+export async function markAllNotificationsReadRepository(
+  userId: number,
+): Promise<NotificationMutationResult> {
+  const [result] = await db.query<ResultSetHeader>({
+    sql: `
+      UPDATE notifications
+      SET is_read = TRUE,
+          read_at = CURRENT_TIMESTAMP(3)
+      WHERE user_id = :userId
+        AND is_read = FALSE
+    `,
+    values: { userId } satisfies QueryParams,
+  });
+
+  return { affectedRows: result.affectedRows };
+}

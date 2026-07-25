@@ -31,6 +31,8 @@ export default function ProductsPage() {
         handleSubmit,
         handleEdit,
         handleDelete,
+        isLoading,
+        error,
     } = useProducts();
 
     useEffect(() => {
@@ -95,6 +97,27 @@ export default function ProductsPage() {
             },
         },
         {
+            key: "locations",
+            title: "Vị trí",
+            render: (value) => {
+                const locations = String(value ?? "").split(",").map((location) => location.trim()).filter(Boolean);
+
+                if (locations.length === 0) {
+                    return <span className="text-xs text-slate-400">Chưa có</span>;
+                }
+
+                return (
+                    <div className="flex max-w-56 flex-wrap gap-1">
+                        {locations.map((location) => (
+                            <span key={location} className="rounded border border-pink-200 bg-pink-50 px-1.5 py-0.5 text-xs font-semibold text-pink-700">
+                                {location}
+                            </span>
+                        ))}
+                    </div>
+                );
+            },
+        },
+        {
             key: "actions",
             title: "Thao tác",
             className: "text-right",
@@ -105,7 +128,6 @@ export default function ProductsPage() {
                 </div>
             ),
         },
-        { key: "locations", title: "Vị trí" },
     ];
 
     const normalizedSearch = searchTerm.toLowerCase();
@@ -145,7 +167,9 @@ export default function ProductsPage() {
                     />
                 </div>
 
-                <Tablelayout columns={columns} dataSource={filteredProducts} rowKey="id" />
+                {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
+
+                <Tablelayout columns={columns} dataSource={filteredProducts} rowKey="id" isLoading={isLoading} />
             </div>
 
             {showModal && createPortal(

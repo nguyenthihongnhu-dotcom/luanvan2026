@@ -10,6 +10,13 @@ import type {
 } from './catalog.model';
 
 type IdRow = RowDataPacket & { id: number };
+type StockLocationRow = RowDataPacket & {
+  id: number;
+  location_id: number;
+  batch_id: number | null;
+  quantity: string | number;
+  reserved_quantity: string | number;
+};
 
 function slugCode(value: string, prefix: string): string {
   return `${prefix}-${value
@@ -113,11 +120,13 @@ export async function findProducts(
     sql: `
       SELECT pv.id, pv.sku, pv.variant_name, p.name AS product_name, c.name AS category_name,
         pv.min_stock_level, COALESCE(SUM(sl.quantity), 0) AS stock,
-        MIN(pb.expiry_date) AS expiry_date
+        MIN(pb.expiry_date) AS expiry_date,
+        GROUP_CONCAT(DISTINCT CASE WHEN sl.quantity > 0 THEN wl.code END ORDER BY wl.code SEPARATOR ', ') AS locations
       FROM product_variants pv
       JOIN products p ON p.id = pv.product_id
       JOIN categories c ON c.id = p.category_id
       LEFT JOIN stock_locations sl ON sl.product_variant_id = pv.id
+      LEFT JOIN warehouse_locations wl ON wl.id = sl.location_id
       LEFT JOIN product_batches pb ON pb.id = sl.batch_id
       WHERE ${where.join(' AND ')}
       GROUP BY pv.id, pv.sku, pv.variant_name, p.name, c.name, pv.min_stock_level
@@ -206,13 +215,106 @@ export async function updateProduct(
   input: ProductInput,
 ): Promise<MutationResult> {
   const categoryId = await ensureCategoryId(input.category);
-  const [result] = await db.query<ResultSetHeader>(
-    `UPDATE product_variants pv JOIN products p ON p.id = pv.product_id
-     SET pv.sku = ?, pv.variant_name = ?, pv.min_stock_level = ?, p.name = ?, p.category_id = ?
-     WHERE pv.id = ? AND pv.deleted_at IS NULL`,
-    [input.sku, input.name, input.minStock ?? 0, input.name, categoryId, id],
-  );
-  return { affectedRows: result.affectedRows };
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [result] = await connection.query<ResultSetHeader>(
+      `UPDATE product_variants pv JOIN products p ON p.id = pv.product_id
+       SET pv.sku = ?, pv.variant_name = ?, pv.min_stock_level = ?, p.name = ?, p.category_id = ?
+       WHERE pv.id = ? AND pv.deleted_at IS NULL`,
+      [input.sku, input.name, input.minStock ?? 0, input.name, categoryId, id],
+    );
+
+    if (input.stock !== undefined) {
+      const [stockRows] = await connection.query<StockLocationRow[]>(
+        `
+          SELECT id, location_id, batch_id, quantity, reserved_quantity
+          FROM stock_locations
+          WHERE product_variant_id = ?
+          ORDER BY quantity DESC, id
+          FOR UPDATE
+        `,
+        [id],
+      );
+      const currentTotal = stockRows.reduce(
+        (sum, row) => sum + Number(row.quantity ?? 0),
+        0,
+      );
+      const delta = input.stock - currentTotal;
+
+      if (stockRows[0]) {
+        const target = stockRows[0];
+
+        if (delta > 0) {
+          await connection.query(
+            `UPDATE stock_locations SET quantity = quantity + ?, version = version + 1 WHERE id = ?`,
+            [delta, target.id],
+          );
+        } else if (delta < 0) {
+          let remainingReduction = Math.abs(delta);
+
+          for (const row of stockRows) {
+            if (remainingReduction <= 0) break;
+
+            const quantity = Number(row.quantity ?? 0);
+            const reservedQuantity = Number(row.reserved_quantity ?? 0);
+            const reducibleQuantity = Math.max(quantity - reservedQuantity, 0);
+            const reduction = Math.min(reducibleQuantity, remainingReduction);
+
+            if (reduction > 0) {
+              await connection.query(
+                `UPDATE stock_locations SET quantity = quantity - ?, version = version + 1 WHERE id = ?`,
+                [reduction, row.id],
+              );
+              remainingReduction -= reduction;
+            }
+          }
+
+          if (remainingReduction > 0) {
+            throw new Error('STOCK_BELOW_RESERVED');
+          }
+        }
+
+        if (input.expiryDate && target.batch_id) {
+          await connection.query(
+            `UPDATE product_batches SET expiry_date = ? WHERE id = ?`,
+            [input.expiryDate, target.batch_id],
+          );
+        }
+      } else if (input.stock > 0) {
+        const [locationRows] = await connection.query<IdRow[]>(
+          `SELECT id FROM warehouse_locations WHERE deleted_at IS NULL AND status = 'ACTIVE' ORDER BY id LIMIT 1`,
+        );
+        const locationId = locationRows[0]?.id;
+
+        if (locationId) {
+          let batchId: number | null = null;
+          if (input.expiryDate) {
+            const [batchResult] = await connection.query<ResultSetHeader>(
+              `INSERT INTO product_batches (product_variant_id, lot_number, expiry_date, received_date, status) VALUES (?, ?, ?, CURRENT_DATE, 'ACTIVE')`,
+              [id, `LOT-${input.sku}-${Date.now()}`, input.expiryDate],
+            );
+            batchId = batchResult.insertId;
+          }
+
+          await connection.query(
+            `INSERT INTO stock_locations (product_variant_id, location_id, batch_id, quantity) VALUES (?, ?, ?, ?)`,
+            [id, locationId, batchId, input.stock],
+          );
+        }
+      }
+    }
+
+    await connection.commit();
+    return { affectedRows: result.affectedRows };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function softDeleteProduct(id: number): Promise<MutationResult> {
