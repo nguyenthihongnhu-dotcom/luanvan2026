@@ -12,6 +12,7 @@ import {
     FileSearchOutlined,
     HistoryOutlined,
     InboxOutlined,
+    ScanOutlined,
     NotificationOutlined,
     PartitionOutlined,
     RetweetOutlined,
@@ -32,6 +33,7 @@ const navbarGroups = [
             { label: 'Sơ đồ kho', path: '/locations', icon: PartitionOutlined },
             { label: 'Kho master', path: '/warehouses', icon: DatabaseOutlined },
             { label: 'Tồn kho', path: '/stock', icon: InboxOutlined },
+            { label: 'Nhap nhanh', path: '/quick-receive', icon: ScanOutlined },
             { label: 'Log tồn', path: '/inventory-transactions', icon: HistoryOutlined },
             { label: 'Lô hàng', path: '/batches', icon: TagsOutlined },
         ],
@@ -117,9 +119,9 @@ export default function Navbar(): ReactNode {
     }, [openGroup]);
 
     return (
-        <nav ref={navRef} className="relative border-b border-slate-200 bg-white px-4 py-2 shadow-xs">
-            <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-2">
-                <div className="flex items-center gap-1">
+        <nav ref={navRef} className="relative overflow-hidden border-b border-slate-200 bg-white px-3 py-2 shadow-xs sm:px-4">
+            <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-2 overflow-hidden">
+                <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
                     {navbarGroups.map((group) => {
                         const isOpen = openGroup === group.name;
                         const isGroupActive = group.items.some((item) => item.path === location.pathname);
@@ -167,7 +169,7 @@ export default function Navbar(): ReactNode {
                     })}
                 </div>
 
-                <div className="flex items-center gap-1">
+                <div className="hidden shrink-0 items-center gap-1 sm:flex">
                     {headerActions.map((item) => {
                         const isActive = location.pathname === item.path;
                         const Icon = item.icon;

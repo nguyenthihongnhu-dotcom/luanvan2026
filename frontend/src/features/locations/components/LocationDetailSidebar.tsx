@@ -48,6 +48,31 @@ function formatDateTime(value: string): string {
     return new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
+function getStoredProductText(location: ViTriKho): string {
+    const value = location.SanPhamLuuTru?.trim();
+    if (!value) return "";
+
+    const normalizedValue = value.toLocaleLowerCase("vi-VN").replace(/\s+/g, " ");
+    const shelfCode = location.Ke.toLocaleLowerCase("vi-VN");
+    const layerNo = Number(location.Tang);
+    const locationNamePatterns = [
+        `${shelfCode} t\u1ea7ng ${layerNo}`,
+        `${shelfCode} tang ${layerNo}`,
+        `t\u1ea7ng ${layerNo}`,
+        `tang ${layerNo}`,
+    ];
+
+    if (locationNamePatterns.includes(normalizedValue)) return "";
+    return value;
+}
+
+function parseStoredProducts(value: string): string[] {
+    return value
+        .split(";")
+        .map((item) => item.trim())
+        .filter(Boolean);
+}
+
 export default function LocationDetailSidebar({
     activeLocation,
     setActiveLocation,
@@ -59,6 +84,8 @@ export default function LocationDetailSidebar({
     const [historyError, setHistoryError] = useState<string | null>(null);
     const zoneCode = activeLocation.KhuVuc || selectedZone;
     const locationCode = `${zoneCode}-${activeLocation.Ke}-${activeLocation.Tang}`;
+    const storedProductText = getStoredProductText(activeLocation);
+    const storedProducts = parseStoredProducts(storedProductText);
 
     const handleShowHistory = async () => {
         setIsHistoryOpen(true);
@@ -91,7 +118,7 @@ export default function LocationDetailSidebar({
 
         const safeLocationCode = escapeHtml(locationCode);
         const safeStatus = escapeHtml(getStatusLabel(activeLocation.TrangThai));
-        const safeProduct = escapeHtml(activeLocation.SanPhamLuuTru || "Chưa có hàng hóa");
+        const safeProduct = escapeHtml(storedProductText || "Chưa có hàng hóa");
 
         printWindow.document.write(`
             <!doctype html>
@@ -147,7 +174,15 @@ export default function LocationDetailSidebar({
                         </div>
                         <div>
                             <label className="block text-xs font-medium text-gray-400">Sản phẩm lưu trữ hiện tại</label>
-                            <p className="mt-0.5 font-semibold text-gray-700">{activeLocation.SanPhamLuuTru || "Chưa có hàng hóa"}</p>
+                            {storedProducts.length > 0 ? (
+                                <ul className="mt-1 space-y-1 text-sm font-semibold text-gray-700">
+                                    {storedProducts.map((product) => (
+                                        <li key={product} className="rounded-md bg-gray-50 px-2 py-1 leading-snug">{product}</li>
+                                    ))}
+                                </ul>
+                            ) : (
+                                <p className="mt-0.5 font-semibold text-gray-700">Chưa có hàng hóa</p>
+                            )}
                         </div>
                     </div>
                 </div>
@@ -175,7 +210,19 @@ export default function LocationDetailSidebar({
                             ) : historyError ? (
                                 <div className="rounded-md border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{historyError}</div>
                             ) : history.length === 0 ? (
-                                <div className="rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">Chưa có dữ liệu lịch sử cho vị trí này.</div>
+                                <div className="space-y-2 rounded-md border border-gray-200 bg-gray-50 px-4 py-3 text-sm text-gray-600">
+                                    <p>Chưa có dữ liệu lịch sử nhập/xuất cho vị trí này.</p>
+                                    {storedProducts.length > 0 && (
+                                        <div className="space-y-2 text-gray-800">
+                                            <p className="font-semibold">Hiện đang chứa:</p>
+                                            <ul className="space-y-1">
+                                                {storedProducts.map((product) => (
+                                                    <li key={product} className="rounded-md bg-white px-3 py-2 font-semibold leading-snug shadow-sm ring-1 ring-gray-100">{product}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
                             ) : (
                                 <table className="w-full text-left text-sm">
                                     <thead className="border-b border-gray-200 text-xs uppercase text-gray-500">

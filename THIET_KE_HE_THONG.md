@@ -1535,3 +1535,305 @@ stateDiagram-v2
     ACTIVE --> [*]: xóa mềm (deleted_at)
     INACTIVE --> [*]: xóa mềm (deleted_at)
 ```
+---
+
+# CHƯƠNG 4: SƠ ĐỒ NGHIỆP VỤ VÀ KIẾN TRÚC MỞ RỘNG (GÓC NHÌN BA / SA / SOLUTION ARCHITECT)
+
+Chương 2 và 3 đã phủ nhóm sơ đồ cốt lõi (Use case, Activity, Sequence, State, ERD). Chương này bổ sung các sơ đồ mà một Business Analyst / System Analyst / Solution Architect chuyên nghiệp thường dùng, áp dụng trực tiếp cho Bambi WMS: Context, BPMN, DFD, Class, Component, Deployment, C4 và User Flow.
+
+## Bản đồ vai trò và loại sơ đồ trong tài liệu này
+
+| Vai trò | Loại sơ đồ | Vị trí trong tài liệu |
+| --- | --- | --- |
+| Business Analyst (BA) | BPMN, Use Case, Activity | 2.4.1, 4.2, 2.4.3, 3.3, 3.2.3 |
+| System Analyst (SA) | Sequence, Class, ERD | 3.2.2, 4.4, 3.1 |
+| Solution Architect | C4, Component, Deployment | 4.1, 4.5, 4.6, 4.7 |
+| Product Owner | User Flow | 4.9 |
+| Data / phân tích luồng | DFD, Context | 4.1, 4.3 |
+
+## 4.1 Sơ đồ ngữ cảnh (Context Diagram — C4 Level 1)
+
+Hệ thống nhìn như một hộp đen, cho biết ai/ cái gì tương tác với nó.
+
+```mermaid
+flowchart TB
+    Staff([Nhân viên kho])
+    Manager([Quản lý kho])
+    Admin([Quản trị viên])
+    WMS[Hệ thống Bambi WMS]
+    DB[(CSDL MySQL)]
+
+    Staff -->|Nhập, xuất, chuyển, kiểm kê| WMS
+    Manager -->|Xác nhận, duyệt, xem báo cáo| WMS
+    Admin -->|Quản trị danh mục, người dùng, cấu hình| WMS
+    WMS -->|Đọc/ghi tồn kho, chứng từ| DB
+    DB -->|Dữ liệu tồn, lịch sử, báo cáo| WMS
+```
+
+## 4.2 Sơ đồ BPMN (Business Process — quy trình nhập kho, dạng lane)
+
+Trình bày quy trình nghiệp vụ theo làn trách nhiệm (swimlane): ai làm bước nào.
+
+```mermaid
+flowchart TB
+    subgraph LNV[Làn: Nhân viên kho]
+        direction LR
+        A[Tạo phiếu nhập] --> B[Thêm dòng hàng, lô/hạn]
+        B --> C[Lưu phiếu DRAFT]
+    end
+    subgraph LQL[Làn: Quản lý kho]
+        direction LR
+        D{Xác nhận phiếu?}
+    end
+    subgraph LHT[Làn: Hệ thống]
+        direction LR
+        E[Tạo/khớp lô] --> F[Tăng tồn stock_locations]
+        F --> G[Ghi inventory_transactions RECEIPT]
+        G --> H[Phiếu chuyển CONFIRMED]
+    end
+
+    C --> D
+    D -->|Đồng ý| E
+    D -->|Từ chối| C
+```
+
+## 4.3 Sơ đồ luồng dữ liệu (Data Flow Diagram — DFD)
+
+Cho biết dữ liệu tồn kho di chuyển giữa tác nhân, tiến trình và kho dữ liệu.
+
+**DFD mức 0 (tổng quát)**
+
+```mermaid
+flowchart LR
+    Staff([Nhân viên kho])
+    Manager([Quản lý kho])
+    P1((1.0 Xử lý nhập kho))
+    P2((2.0 Xử lý xuất kho))
+    P3((3.0 Tổng hợp báo cáo))
+    D1[(stock_locations)]
+    D2[(inventory_transactions)]
+
+    Staff -->|Phiếu nhập| P1
+    Staff -->|Phiếu xuất| P2
+    P1 -->|Tăng tồn| D1
+    P2 -->|Giảm tồn| D1
+    P1 -->|Ghi biến động| D2
+    P2 -->|Ghi biến động| D2
+    D1 -->|Tồn hiện tại| P3
+    D2 -->|Lịch sử biến động| P3
+    P3 -->|Báo cáo tồn, near-expiry| Manager
+```
+
+## 4.4 Sơ đồ lớp (Class Diagram — mô hình miền)
+
+Mô hình miền (domain model) suy ra từ các `*.model.ts` và service. Thuộc tính/phương thức đặt theo tên miền; giá trị enum giữ tiếng Anh.
+
+```mermaid
+classDiagram
+    class Product {
+        +bigint id
+        +string code
+        +string name
+        +ProductStatus status
+    }
+    class ProductVariant {
+        +bigint id
+        +string sku
+        +bool requiresLotTracking
+        +bool requiresExpiryTracking
+        +decimal minStockLevel
+    }
+    class ProductBatch {
+        +bigint id
+        +string lotNumber
+        +date expiryDate
+        +BatchStatus status
+    }
+    class WarehouseLocation {
+        +bigint id
+        +string code
+        +LocationStatus status
+    }
+    class StockLocation {
+        +bigint id
+        +decimal quantity
+        +decimal reservedQuantity
+        +availableQuantity() decimal
+    }
+    class InventoryTransaction {
+        +bigint id
+        +string transactionCode
+        +TransactionType type
+        +decimal quantity
+    }
+    class GoodsReceipt {
+        +bigint id
+        +GoodsReceiptStatus status
+        +confirm()
+        +reverse()
+    }
+    class GoodsReceiptItem {
+        +bigint id
+        +decimal quantity
+    }
+
+    Product "1" --> "*" ProductVariant : có
+    ProductVariant "1" --> "*" ProductBatch : chia lô
+    ProductVariant "1" --> "*" StockLocation : tồn tại
+    WarehouseLocation "1" --> "*" StockLocation : chứa
+    ProductBatch "0..1" --> "*" StockLocation : theo lô
+    ProductVariant "1" --> "*" InventoryTransaction : biến động
+    GoodsReceipt "1" --> "*" GoodsReceiptItem : gồm
+```
+
+> Ghi chú: khi `GoodsReceipt` được xác nhận (`confirm()`), hệ thống sinh các `InventoryTransaction` loại `RECEIPT` và cập nhật `StockLocation` — quan hệ này được thể hiện ở sơ đồ tuần tự 3.2.2 và 3.3.1, không vẽ vào sơ đồ lớp để tránh đường cắt nhau.
+
+## 4.5 Sơ đồ thành phần (Component Diagram)
+
+Các thành phần phần mềm và quan hệ phụ thuộc.
+
+```mermaid
+flowchart TB
+    subgraph FEc[Frontend React + Vite]
+        direction LR
+        UI[Feature UI Components]
+        SVC[Service layer httpClient]
+    end
+    subgraph BEc[Backend Express + TypeScript]
+        direction LR
+        RT[Routes]
+        MW[Middleware auth + permission]
+        CTRL[Controller]
+        SRV[Service]
+        REPO[Repository]
+    end
+    DB[(MySQL)]
+
+    UI --> SVC
+    SVC -->|REST + JWT| RT
+    RT --> MW
+    MW --> CTRL
+    CTRL --> SRV
+    SRV --> REPO
+    REPO -->|mysql2/promise| DB
+```
+
+## 4.6 Sơ đồ triển khai (Deployment Diagram)
+
+Ánh xạ phần mềm lên hạ tầng chạy thật (theo `docker-compose.yml` và `Dockerfile`).
+
+```mermaid
+flowchart TB
+    subgraph Client[Máy người dùng]
+        Browser[Trình duyệt web]
+    end
+    subgraph Host[Máy chủ / Docker host]
+        subgraph N1[Static host - Nginx]
+            SPA[frontend/dist React SPA]
+        end
+        subgraph N2[Container Node 22 - Express]
+            API[API :3000]
+        end
+        subgraph N3[Container MySQL 8.4]
+            DB[(warehouse_management :3306)]
+        end
+    end
+
+    Browser -->|HTTPS tải SPA| SPA
+    Browser -->|REST JSON + JWT| API
+    API -->|mysql2/promise :3306| DB
+```
+
+## 4.7 C4 Model
+
+**C4 mức 2 — Container**
+
+```mermaid
+flowchart TB
+    User([Người dùng])
+    subgraph WMS[Hệ thống Bambi WMS]
+        SPA[Web: React + Vite<br/>SPA tĩnh]
+        API[Ứng dụng: Express + TS<br/>REST API]
+        DB[(CSDL: MySQL 8)]
+    end
+
+    User -->|HTTPS| SPA
+    SPA -->|JSON/REST + JWT| API
+    API -->|SQL| DB
+```
+
+**C4 mức 3 — Component (bên trong API)**
+
+```mermaid
+flowchart TB
+    Gateway[Express App / Router]
+    Guard[Middleware verifyToken + requirePermission]
+    subgraph Mods[Các module nghiệp vụ]
+        direction LR
+        Auth[auth]
+        Cat[catalog]
+        Stk[stock]
+        GR[goods-receipts]
+        GI[goods-issues]
+        Rep[reports]
+        Auth ~~~ Cat ~~~ Stk ~~~ GR ~~~ GI ~~~ Rep
+    end
+    RepoL[Repository layer]
+    DB[(MySQL)]
+
+    Gateway --> Guard
+    Guard --> Mods
+    Mods --> RepoL
+    RepoL --> DB
+```
+
+## 4.8 Sơ đồ gói (Package Diagram — cấu trúc mã nguồn)
+
+```mermaid
+flowchart TB
+    subgraph BE[backend/src/modules]
+        direction LR
+        b1[auth, authorization]
+        b2[catalog, batches, suppliers]
+        b3[warehouses, locations]
+        b4[stock, inventory-transactions]
+        b5[goods-receipts, goods-issues,<br/>stock-transfers, stock-counts,<br/>stock-adjustments]
+        b6[reports, alerts, notifications,<br/>audit-logs, attachments, settings]
+        b1 ~~~ b2 ~~~ b3 ~~~ b4 ~~~ b5 ~~~ b6
+    end
+    subgraph FE[frontend/src/features]
+        direction LR
+        f1[auth, authorization, staff]
+        f2[products, batches, partners]
+        f3[locations, warehouses]
+        f4[stock, transactions, stock-counts]
+        f5[reports, alerts, notifications,<br/>audit-logs, settings]
+        f1 ~~~ f2 ~~~ f3 ~~~ f4 ~~~ f5
+    end
+
+    FE -->|REST API| BE
+```
+
+## 4.9 Sơ đồ luồng người dùng (User Flow)
+
+Hành trình điển hình của nhân viên kho từ khi đăng nhập đến khi hoàn tất một nghiệp vụ.
+
+```mermaid
+flowchart TB
+    A[Mở ứng dụng] --> B[Đăng nhập]
+    B --> C{Xác thực hợp lệ?}
+    C -->|Không| B
+    C -->|Có| D[Trang tổng quan Dashboard]
+    D --> E[Chọn chức năng từ menu]
+    E --> F[Sản phẩm / SKU]
+    E --> G[Cấu trúc kho]
+    E --> H[Nhập / Xuất / Chuyển]
+    E --> I[Kiểm kê / Điều chỉnh]
+    E --> J[Báo cáo]
+    H --> K[Soạn phiếu, thêm dòng hàng]
+    K --> L[Lưu phiếu DRAFT]
+    L --> M[Quản lý xác nhận/duyệt]
+    M --> N[Xem kết quả cập nhật tồn]
+    N --> D
+```
+

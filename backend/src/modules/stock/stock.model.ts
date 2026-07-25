@@ -88,3 +88,30 @@ export type NearExpiryStockRow = RowDataPacket & {
   quantity: number;
   available_quantity: number;
 };
+
+export type QuickReceiveInput = {
+  productScan: string;
+  locationScan: string;
+  quantity: number;
+  lotNumber?: string;
+  expiryDate?: string;
+  note?: string;
+};
+
+export type QuickReceiveResult = {
+  transactionId: number;
+  transactionCode: string;
+  productVariantId: number;
+  sku: string;
+  productName: string;
+  variantName: string;
+  locationId: number;
+  locationCode: string;
+  warehouseId: number;
+  warehouseCode: string;
+  quantity: number;
+  quantityBefore: number;
+  quantityAfter: number;
+  batchId: number | null;
+  lotNumber: string | null;
+};

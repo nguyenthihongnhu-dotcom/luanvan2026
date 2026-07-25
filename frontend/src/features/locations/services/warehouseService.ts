@@ -31,6 +31,7 @@ type BackendLocation = {
     shelf_code: string;
     shelf_name: string;
     current_quantity: string | number;
+    stored_products?: string | null;
 };
 
 function toLocationStatus(row: BackendLocation): ViTriKho['TrangThai'] {
@@ -51,7 +52,7 @@ export async function listWarehouseLocations(): Promise<ViTriKho[]> {
         MaViTriCha: null,
         MaKe: row.shelf_id,
         TrangThai: toLocationStatus(row),
-        SanPhamLuuTru: row.name ?? row.code,
+        SanPhamLuuTru: row.stored_products ?? "",
     }));
 }
 

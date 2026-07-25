@@ -22,6 +22,7 @@ export type ProductInput = {
   stock?: number;
   minStock?: number;
   expiryDate?: string;
+  locationId?: number;
 };
 
 export type CatalogRow = RowDataPacket & Record<string, unknown>;

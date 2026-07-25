@@ -24,7 +24,7 @@ export default function Sidebar(): ReactNode {
     };
 
     return (
-        <aside className="fixed top-0 left-0 z-40 w-64 h-screen bg-white border-r border-gray-200 shadow-sm flex flex-col justify-between">
+        <aside className="fixed left-0 top-0 z-40 hidden h-screen w-64 flex-col justify-between border-r border-gray-200 bg-white shadow-sm md:flex">
             <div className="flex-1 flex flex-col min-h-0">
                 <div className="h-16 flex items-center px-6 border-b border-gray-200 flex-shrink-0">
                     <span className="text-xl font-bold text-pink-600 tracking-wider">Bambi WMS</span>

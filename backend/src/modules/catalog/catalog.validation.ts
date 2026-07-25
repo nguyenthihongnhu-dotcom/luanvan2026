@@ -26,6 +26,7 @@ const productSchema = z.object({
   stock: z.coerce.number().nonnegative().optional(),
   minStock: z.coerce.number().nonnegative().optional(),
   expiryDate: z.string().trim().min(1).max(20).optional(),
+  locationId: z.coerce.number().int().positive().optional(),
 });
 
 export function parseCatalogFilters(input: unknown): CatalogFilters {

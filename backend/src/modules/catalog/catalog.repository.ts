@@ -121,12 +121,17 @@ export async function findProducts(
       SELECT pv.id, pv.sku, pv.variant_name, p.name AS product_name, c.name AS category_name,
         pv.min_stock_level, COALESCE(SUM(sl.quantity), 0) AS stock,
         MIN(pb.expiry_date) AS expiry_date,
+        MIN(CASE WHEN sl.quantity > 0 THEN w.id END) AS warehouse_id,
+        MIN(CASE WHEN sl.quantity > 0 THEN wl.id END) AS location_id,
         GROUP_CONCAT(DISTINCT CASE WHEN sl.quantity > 0 THEN wl.code END ORDER BY wl.code SEPARATOR ', ') AS locations
       FROM product_variants pv
       JOIN products p ON p.id = pv.product_id
       JOIN categories c ON c.id = p.category_id
       LEFT JOIN stock_locations sl ON sl.product_variant_id = pv.id
       LEFT JOIN warehouse_locations wl ON wl.id = sl.location_id
+      LEFT JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+      LEFT JOIN warehouse_zones wz ON wz.id = ws.zone_id
+      LEFT JOIN warehouses w ON w.id = wz.warehouse_id
       LEFT JOIN product_batches pb ON pb.id = sl.batch_id
       WHERE ${where.join(' AND ')}
       GROUP BY pv.id, pv.sku, pv.variant_name, p.name, c.name, pv.min_stock_level
@@ -177,11 +182,21 @@ export async function insertProduct(
       ],
     );
     if ((input.stock ?? 0) > 0) {
+      if (!input.locationId) {
+        throw new Error('LOCATION_REQUIRED');
+      }
+
       const [locationRows] = await connection.query<IdRow[]>(
-        `SELECT id FROM warehouse_locations WHERE deleted_at IS NULL AND status = 'ACTIVE' ORDER BY id LIMIT 1`,
+        `SELECT id FROM warehouse_locations WHERE id = ? AND deleted_at IS NULL AND status = 'ACTIVE' LIMIT 1`,
+        [input.locationId],
       );
       const locationId = locationRows[0]?.id;
-      if (locationId) {
+
+      if (!locationId) {
+        throw new Error('LOCATION_NOT_FOUND');
+      }
+
+      {
         let batchId: number | null = null;
         if (input.expiryDate) {
           const [batchResult] = await connection.query<ResultSetHeader>(
@@ -284,12 +299,21 @@ export async function updateProduct(
           );
         }
       } else if (input.stock > 0) {
+        if (!input.locationId) {
+          throw new Error('LOCATION_REQUIRED');
+        }
+
         const [locationRows] = await connection.query<IdRow[]>(
-          `SELECT id FROM warehouse_locations WHERE deleted_at IS NULL AND status = 'ACTIVE' ORDER BY id LIMIT 1`,
+          `SELECT id FROM warehouse_locations WHERE id = ? AND deleted_at IS NULL AND status = 'ACTIVE' LIMIT 1`,
+          [input.locationId],
         );
         const locationId = locationRows[0]?.id;
 
-        if (locationId) {
+        if (!locationId) {
+          throw new Error('LOCATION_NOT_FOUND');
+        }
+
+        {
           let batchId: number | null = null;
           if (input.expiryDate) {
             const [batchResult] = await connection.query<ResultSetHeader>(

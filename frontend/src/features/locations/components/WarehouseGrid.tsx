@@ -20,6 +20,18 @@ function getLocationStyle(status: ViTriKho["TrangThai"]) {
     }
     return "bg-green-50 border-green-300 hover:bg-green-100 text-green-800";
 }
+function parseStoredProducts(value?: string): string[] {
+    return (value ?? "")
+        .split(";")
+        .map((item) => item.trim())
+        .filter(Boolean);
+}
+
+function getLocationSummary(products: string[]): { primary: string; overflow: string } {
+    if (products.length === 0) return { primary: "Trống", overflow: "" };
+    if (products.length === 1) return { primary: products[0], overflow: "" };
+    return { primary: products[0], overflow: `+${products.length - 1} mặt hàng` };
+}
 
 export default function WarehouseGrid({
     layers,
@@ -55,6 +67,8 @@ export default function WarehouseGrid({
                                 {shelves.map((shelf) => {
                                     const location = getLocationInfo(shelf.code, layer.code);
                                     if (!location) return null;
+                                    const storedProducts = parseStoredProducts(location.SanPhamLuuTru);
+                                    const productSummary = getLocationSummary(storedProducts);
 
                                     return (
                                         <button
@@ -70,13 +84,17 @@ export default function WarehouseGrid({
                                             onDrop={() => handleShelfDrop(shelf.id)}
                                             onDragEnd={() => setDraggedShelfId(null)}
                                             onClick={() => setActiveLocation(location)}
-                                            className={`flex h-20 w-28 cursor-move flex-col items-center justify-center rounded-xl border-2 p-2 shadow-sm transition-all ${getLocationStyle(location.TrangThai)} ${activeLocation?.MaViTri === location.MaViTri ? "scale-105 ring-4 ring-pink-500" : ""} ${draggedShelfId === shelf.id ? "opacity-50" : ""}`}
-                                            title="Kéo cột kệ này để đổi thứ tự"
-                                        >
+                                            className={`flex h-24 w-32 cursor-move flex-col items-center justify-center rounded-xl border-2 p-2 shadow-sm transition-all ${getLocationStyle(location.TrangThai)} ${activeLocation?.MaViTri === location.MaViTri ? "scale-105 ring-4 ring-pink-500" : ""} ${draggedShelfId === shelf.id ? "opacity-50" : ""}`}
+                                            title={storedProducts.join("\n") || "Trống"}>
                                             <span className="text-xs font-bold tracking-wider">{selectedZone}-{location.Ke}-{location.Tang}</span>
-                                            <span className="mt-1 max-w-full truncate text-[10px] font-medium">
-                                                {location.SanPhamLuuTru || "Trống"}
+                                            <span className="mt-1 max-w-full truncate text-[10px] font-semibold leading-tight">
+                                                {productSummary.primary}
                                             </span>
+                                            {productSummary.overflow && (
+                                                <span className="mt-1 rounded bg-white/70 px-1.5 py-0.5 text-[10px] font-bold text-orange-700">
+                                                    {productSummary.overflow}
+                                                </span>
+                                            )}
                                         </button>
                                     );
                                 })}

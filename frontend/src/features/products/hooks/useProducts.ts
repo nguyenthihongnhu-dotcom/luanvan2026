@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import type { FormEvent } from "react";
+import type { ChangeEvent, FormEvent } from "react";
 import { useForm } from "@/shared/hooks/useForm";
 import { productService } from "@/features/products/services/productService";
+import type { LocationOption } from "@/features/products/services/productService";
 import { getProductCategoryLabel, getProductNameLabel } from "@/features/products/utils/productDisplay";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
@@ -13,6 +14,8 @@ export interface ProductItem {
     stock: number;
     minStock: number;
     expiryDate: string;
+    warehouseId: string;
+    locationId: string;
     locations: string;
     status: "In Stock" | "Low Stock" | "Out of Stock";
 }
@@ -30,6 +33,8 @@ const initialFormState = {
     stock: '',
     minStock: '',
     expiryDate: '',
+    warehouseId: '',
+    locationId: '',
 };
 
 const fallbackProducts: ProductItem[] = [];
@@ -39,6 +44,7 @@ export function useProducts() {
     const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
     const { formData, setFormData, handleInputChange, resetForm } = useForm(initialFormState);
     const [products, setProducts] = useState<ProductItem[]>(fallbackProducts);
+    const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -55,8 +61,14 @@ export function useProducts() {
             setError(null);
 
             try {
-                const result = await productService.listProducts();
-                if (isMounted) setProducts(result);
+                const [result, locations] = await Promise.all([
+                    productService.listProducts(),
+                    productService.listLocationOptions(),
+                ]);
+                if (isMounted) {
+                    setProducts(result);
+                    setLocationOptions(locations);
+                }
             } catch (err) {
                 console.error('Failed to load products from backend:', err);
                 if (isMounted) setError(getHttpErrorMessage(err, 'Không tải được sản phẩm từ backend'));
@@ -68,6 +80,15 @@ export function useProducts() {
         void loadProducts();
         return () => { isMounted = false; };
     }, []);
+
+    const handleProductInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+        const { name, value } = e.target;
+        if (name === "warehouseId") {
+            setFormData((prev) => ({ ...prev, warehouseId: value, locationId: "" }));
+            return;
+        }
+        handleInputChange(e);
+    };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
@@ -82,6 +103,8 @@ export function useProducts() {
             stock: stockNum,
             minStock: minStockNum,
             expiryDate: formData.expiryDate,
+            warehouseId: formData.warehouseId,
+            locationId: formData.locationId,
             locations: editingProduct?.locations ?? "",
             status: calculateStatus(stockNum, minStockNum),
         };
@@ -107,6 +130,8 @@ export function useProducts() {
             stock: product.stock.toString(),
             minStock: product.minStock?.toString() || '',
             expiryDate: product.expiryDate || '',
+            warehouseId: product.warehouseId || '',
+            locationId: product.locationId || '',
         });
         setShowModal(true);
     };
@@ -120,6 +145,7 @@ export function useProducts() {
     return {
         products,
         setProducts,
+        locationOptions,
         isLoading,
         error,
         showModal,
@@ -128,7 +154,7 @@ export function useProducts() {
         setEditingProduct,
         formData,
         setFormData,
-        handleInputChange,
+        handleInputChange: handleProductInputChange,
         resetForm,
         handleSubmit,
         handleEdit,

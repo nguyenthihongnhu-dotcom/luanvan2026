@@ -1,16 +1,28 @@
 import React from "react";
 import type { ProductItem } from "@/features/products/hooks/useProducts";
+import type { LocationOption } from "@/features/products/services/productService";
 import { productCategoryOptions } from "@/features/products/utils/productDisplay";
 
 interface ProductModalProps {
     editingProduct: ProductItem | null;
-    formData: { sku: string; name: string; category: string; stock: string; minStock: string; expiryDate: string; };
+    formData: { sku: string; name: string; category: string; stock: string; minStock: string; expiryDate: string; warehouseId: string; locationId: string; };
+    locationOptions: LocationOption[];
     handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
     handleSubmit: (e: React.FormEvent) => void;
     onClose: () => void;
 }
 
-export default function ProductModal({ editingProduct, formData, handleInputChange, handleSubmit, onClose }: ProductModalProps) {
+export default function ProductModal({ editingProduct, formData, locationOptions, handleInputChange, handleSubmit, onClose }: ProductModalProps) {
+    const stockValue = Number(formData.stock || 0);
+    const hasExistingLocation = Boolean(editingProduct?.locations);
+    const warehouseOptions = Array.from(
+        new Map(locationOptions.map((location) => [location.warehouseId, location.warehouseLabel])).entries(),
+    ).map(([id, label]) => ({ id, label }));
+    const filteredLocationOptions = formData.warehouseId
+        ? locationOptions.filter((location) => String(location.warehouseId) === formData.warehouseId)
+        : [];
+    const shouldRequireStockPlace = stockValue > 0 && !hasExistingLocation;
+
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md">
             <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl animate-in fade-in zoom-in duration-200">
@@ -18,7 +30,7 @@ export default function ProductModal({ editingProduct, formData, handleInputChan
                     <h2 className="text-lg font-bold text-pink-700">{editingProduct ? "Chỉnh sửa sản phẩm" : "Thêm sản phẩm mới"}</h2>
                     <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng">×</button>
                 </div>
-                <form onSubmit={handleSubmit} className="space-y-4 p-6">
+                <form onSubmit={handleSubmit} className="max-h-[80vh] space-y-4 overflow-y-auto p-6">
                     <div>
                         <label className="mb-1 block text-sm font-medium text-gray-700">Mã SKU</label>
                         <input type="text" name="sku" required value={formData.sku} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" placeholder="Ví dụ: BIM-HUG-L" />
@@ -43,6 +55,20 @@ export default function ProductModal({ editingProduct, formData, handleInputChan
                             <label className="mb-1 block text-sm font-medium text-gray-700">Tồn kho tối thiểu</label>
                             <input type="number" name="minStock" required min="0" value={formData.minStock} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
                         </div>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">Kho nhập ban đầu</label>
+                        <select name="warehouseId" required={shouldRequireStockPlace} disabled={hasExistingLocation || warehouseOptions.length === 0} value={formData.warehouseId} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500 disabled:bg-gray-100 disabled:text-gray-500">
+                            <option value="">Chọn kho</option>
+                            {warehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.label}</option>)}
+                        </select>
+                    </div>
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">Vị trí nhập ban đầu</label>
+                        <select name="locationId" required={shouldRequireStockPlace} disabled={hasExistingLocation || !formData.warehouseId || filteredLocationOptions.length === 0} value={formData.locationId} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500 disabled:bg-gray-100 disabled:text-gray-500">
+                            <option value="">Chọn vị trí</option>
+                            {filteredLocationOptions.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
+                        </select>
                     </div>
                     <div>
                         <label className="mb-1 block text-sm font-medium text-gray-700">Hạn sử dụng</label>

@@ -10,6 +10,7 @@ import TransactionDetailPage from '@/features/transactions/pages/TransactionDeta
 import TransfersPage from '@/features/transfers/pages/TransfersPage';
 import StockCountsPage from '@/features/stock-counts/pages/StockCountsPage';
 import StockPage from '@/features/stock/pages/StockPage';
+import QuickReceivePage from '@/features/quick-receive/pages/QuickReceivePage';
 import BatchesPage from '@/features/batches/pages/BatchesPage';
 import AlertsPage from '@/features/alerts/pages/AlertsPage';
 import WarehousesPage from '@/features/warehouses/pages/WarehousesPage';
@@ -34,6 +35,7 @@ export default function AppRouter() {
       <Route path="/issues/:id" element={<TransactionDetailPage />} />
       <Route path="/adjustments/:id" element={<TransactionDetailPage />} />
       <Route path="/stock" element={<StockPage />} />
+      <Route path="/quick-receive" element={<QuickReceivePage />} />
       <Route path="/inventory-transactions" element={<InventoryTransactionsPage />} />
       <Route path="/batches" element={<BatchesPage />} />
       <Route path="/alerts" element={<AlertsPage />} />

@@ -10,7 +10,24 @@ type CatalogProductRow = {
     stock?: string | number;
     min_stock_level?: string | number;
     expiry_date?: string | null;
+    warehouse_id?: string | number | null;
+    location_id?: string | number | null;
     locations?: string | null;
+};
+
+type BackendLocationRow = {
+    id: number;
+    code: string;
+    warehouse_id: number;
+    warehouse_code?: string;
+    warehouse_name?: string;
+};
+
+export type LocationOption = {
+    id: number;
+    label: string;
+    warehouseId: number;
+    warehouseLabel: string;
 };
 
 function toNumber(value: unknown): number {
@@ -22,6 +39,11 @@ function calculateStatus(stock: number, minStock: number): ProductItem['status']
     if (stock <= 0) return 'Out of Stock';
     if (stock <= minStock) return 'Low Stock';
     return 'In Stock';
+}
+
+function toOptionalNumber(value: string): number | undefined {
+    const numberValue = Number(value);
+    return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : undefined;
 }
 
 export async function listProducts(): Promise<ProductItem[]> {
@@ -41,10 +63,23 @@ export async function listProducts(): Promise<ProductItem[]> {
             stock,
             minStock,
             expiryDate: row.expiry_date ?? '',
+            warehouseId: row.warehouse_id ? String(row.warehouse_id) : '',
+            locationId: row.location_id ? String(row.location_id) : '',
             locations: row.locations ?? '',
             status: calculateStatus(stock, minStock),
         };
     });
+}
+
+export async function listLocationOptions(): Promise<LocationOption[]> {
+    const response = await httpClient.get<{ data: BackendLocationRow[] }>('/locations');
+
+    return unwrapData(response).map((location) => ({
+        id: location.id,
+        label: location.code,
+        warehouseId: location.warehouse_id,
+        warehouseLabel: [location.warehouse_code, location.warehouse_name].filter(Boolean).join(' - '),
+    }));
 }
 
 export async function createProduct(input: ProductItem): Promise<void> {
@@ -55,6 +90,7 @@ export async function createProduct(input: ProductItem): Promise<void> {
         stock: input.stock,
         minStock: input.minStock,
         expiryDate: input.expiryDate || undefined,
+        locationId: toOptionalNumber(input.locationId),
     });
 }
 
@@ -66,6 +102,7 @@ export async function updateProduct(id: number, input: ProductItem): Promise<voi
         stock: input.stock,
         minStock: input.minStock,
         expiryDate: input.expiryDate || undefined,
+        locationId: toOptionalNumber(input.locationId),
     });
 }
 
@@ -74,6 +111,7 @@ export async function deleteProduct(id: number): Promise<void> {
 }
 export const productService = {
     listProducts,
+    listLocationOptions,
     createProduct,
     updateProduct,
     deleteProduct,

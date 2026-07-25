@@ -1,14 +1,51 @@
 import { db } from '../../database/db';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import type {
   AllocationStrategy,
   CurrentStockRow,
   NearExpiryStockRow,
+  QuickReceiveInput,
+  QuickReceiveResult,
   QueryParams,
   StockAllocationCandidateRow,
   StockAllocationInput,
   StockFilters,
 } from './stock.model';
 
+
+type QuickProductRow = RowDataPacket & {
+  id: number;
+  sku: string;
+  variant_name: string;
+  product_name: string;
+};
+
+type QuickLocationRow = RowDataPacket & {
+  id: number;
+  code: string;
+  warehouse_id: number;
+  warehouse_code: string;
+};
+
+type QuickIdRow = RowDataPacket & { id: number };
+type QuickQuantityRow = RowDataPacket & { quantity: string | number | null };
+
+function normalizeScanValue(value: string): string {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+
+  try {
+    const parsed = JSON.parse(trimmed) as { sku?: unknown; id?: unknown; code?: unknown };
+    const candidate = parsed.sku ?? parsed.code ?? parsed.id;
+    return candidate == null ? trimmed : String(candidate).trim();
+  } catch {
+    return trimmed;
+  }
+}
+
+function makeTransactionCode(): string {
+  return `QRN-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
 function allocationOrderBy(strategy: AllocationStrategy): string {
   if (strategy === 'FEFO') {
     return `
@@ -119,4 +156,172 @@ export async function findStockAllocationCandidates(
   });
 
   return rows;
+}
+
+export async function quickReceiveStock(
+  input: QuickReceiveInput,
+): Promise<QuickReceiveResult> {
+  const productScan = normalizeScanValue(input.productScan);
+  const locationScan = normalizeScanValue(input.locationScan);
+  const quantity = Number(input.quantity);
+
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [productRows] = await connection.query<QuickProductRow[]>(
+      `
+        SELECT pv.id, pv.sku, pv.variant_name, p.name AS product_name
+        FROM product_variants pv
+        JOIN products p ON p.id = pv.product_id
+        WHERE pv.deleted_at IS NULL
+          AND pv.status = 'ACTIVE'
+          AND (pv.sku = ? OR pv.barcode = ? OR pv.id = ?)
+        LIMIT 1
+        FOR UPDATE
+      `,
+      [productScan, productScan, Number(productScan) || 0],
+    );
+    const product = productRows[0];
+
+    if (!product) {
+      throw new Error('PRODUCT_NOT_FOUND');
+    }
+
+    const [locationRows] = await connection.query<QuickLocationRow[]>(
+      `
+        SELECT wl.id, wl.code, wz.warehouse_id, w.code AS warehouse_code
+        FROM warehouse_locations wl
+        JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+        JOIN warehouse_zones wz ON wz.id = ws.zone_id
+        JOIN warehouses w ON w.id = wz.warehouse_id
+        WHERE wl.deleted_at IS NULL
+          AND wl.status = 'ACTIVE'
+          AND (wl.code = ? OR wl.qr_code_value = ? OR wl.id = ?)
+        LIMIT 1
+        FOR UPDATE
+      `,
+      [locationScan, locationScan, Number(locationScan) || 0],
+    );
+    const location = locationRows[0];
+
+    if (!location) {
+      throw new Error('LOCATION_NOT_FOUND');
+    }
+
+    const [userRows] = await connection.query<QuickIdRow[]>(
+      `SELECT id FROM users WHERE status = 'ACTIVE' AND deleted_at IS NULL ORDER BY id LIMIT 1`,
+    );
+    const performedBy = userRows[0]?.id;
+
+    if (!performedBy) {
+      throw new Error('PERFORMED_BY_NOT_FOUND');
+    }
+
+    let batchId: number | null = null;
+    let finalLotNumber: string | null = null;
+    const shouldUseBatch = Boolean(input.lotNumber || input.expiryDate);
+
+    if (shouldUseBatch) {
+      const lotNumber = input.lotNumber?.trim() || `LOT-${product.sku}-${Date.now()}`;
+      const [existingBatchRows] = await connection.query<QuickIdRow[]>(
+        `SELECT id FROM product_batches WHERE product_variant_id = ? AND lot_number = ? LIMIT 1 FOR UPDATE`,
+        [product.id, lotNumber],
+      );
+
+      if (existingBatchRows[0]) {
+        batchId = existingBatchRows[0].id;
+        await connection.query(
+          `UPDATE product_batches SET expiry_date = COALESCE(?, expiry_date), received_date = COALESCE(received_date, CURRENT_DATE), status = 'ACTIVE' WHERE id = ?`,
+          [input.expiryDate ?? null, batchId],
+        );
+      } else {
+        const [batchResult] = await connection.query<ResultSetHeader>(
+          `INSERT INTO product_batches (product_variant_id, lot_number, expiry_date, received_date, status) VALUES (?, ?, ?, CURRENT_DATE, 'ACTIVE')`,
+          [product.id, lotNumber, input.expiryDate ?? null],
+        );
+        batchId = batchResult.insertId;
+      }
+
+      finalLotNumber = lotNumber;
+    }
+
+    const [beforeRows] = await connection.query<QuickQuantityRow[]>(
+      `SELECT COALESCE(SUM(quantity), 0) AS quantity FROM stock_locations WHERE product_variant_id = ? AND location_id = ? FOR UPDATE`,
+      [product.id, location.id],
+    );
+    const quantityBefore = Number(beforeRows[0]?.quantity ?? 0);
+
+    await connection.query(
+      `
+        INSERT INTO stock_locations (product_variant_id, location_id, batch_id, quantity, reserved_quantity)
+        VALUES (?, ?, ?, ?, 0)
+        ON DUPLICATE KEY UPDATE quantity = quantity + VALUES(quantity), version = version + 1
+      `,
+      [product.id, location.id, batchId, quantity],
+    );
+
+    const quantityAfter = quantityBefore + quantity;
+    const transactionCode = makeTransactionCode();
+    const [transactionResult] = await connection.query<ResultSetHeader>(
+      `
+        INSERT INTO inventory_transactions (
+          transaction_code,
+          transaction_type,
+          warehouse_id,
+          product_variant_id,
+          batch_id,
+          source_location_id,
+          destination_location_id,
+          quantity,
+          quantity_before,
+          quantity_after,
+          reference_type,
+          reference_id,
+          reason_code,
+          note,
+          performed_by
+        )
+        VALUES (?, 'RECEIPT', ?, ?, ?, NULL, ?, ?, ?, ?, 'QUICK_RECEIVE', NULL, 'QR_RECEIVE', ?, ?)
+      `,
+      [
+        transactionCode,
+        location.warehouse_id,
+        product.id,
+        batchId,
+        location.id,
+        quantity,
+        quantityBefore,
+        quantityAfter,
+        input.note ?? null,
+        performedBy,
+      ],
+    );
+
+    await connection.commit();
+
+    return {
+      transactionId: transactionResult.insertId,
+      transactionCode,
+      productVariantId: product.id,
+      sku: product.sku,
+      productName: product.product_name,
+      variantName: product.variant_name,
+      locationId: location.id,
+      locationCode: location.code,
+      warehouseId: location.warehouse_id,
+      warehouseCode: location.warehouse_code,
+      quantity,
+      quantityBefore,
+      quantityAfter,
+      batchId,
+      lotNumber: finalLotNumber,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }

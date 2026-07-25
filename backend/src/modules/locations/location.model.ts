@@ -40,6 +40,7 @@ export type LocationRow = RowDataPacket & {
   shelf_name: string;
   current_quantity: number;
   available_quantity: number;
+  stored_products: string | null;
 };
 
 export type CreateLocationInput = {

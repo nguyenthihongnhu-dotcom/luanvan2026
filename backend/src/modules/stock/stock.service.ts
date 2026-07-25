@@ -2,6 +2,8 @@ import { HttpError } from '../../common/http';
 import type {
   CurrentStockRow,
   NearExpiryStockRow,
+  QuickReceiveInput,
+  QuickReceiveResult,
   StockAllocationInput,
   StockAllocationItem,
   StockAllocationResult,
@@ -11,6 +13,7 @@ import {
   findCurrentStock as findCurrentStockRepository,
   findNearExpiryStock as findNearExpiryStockRepository,
   findStockAllocationCandidates,
+  quickReceiveStock as quickReceiveStockRepository,
 } from './stock.repository';
 
 export async function listCurrentStock(
@@ -97,4 +100,26 @@ export async function previewStockAllocation(
     allocatedQuantity,
     items,
   };
+}
+
+export async function quickReceiveStock(
+  input: QuickReceiveInput,
+): Promise<QuickReceiveResult> {
+  try {
+    return await quickReceiveStockRepository(input);
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.message === 'PRODUCT_NOT_FOUND') {
+        throw new HttpError(404, 'Product from scanned QR/SKU was not found', 'PRODUCT_NOT_FOUND');
+      }
+      if (error.message === 'LOCATION_NOT_FOUND') {
+        throw new HttpError(404, 'Warehouse location from scanned QR/code was not found', 'LOCATION_NOT_FOUND');
+      }
+      if (error.message === 'PERFORMED_BY_NOT_FOUND') {
+        throw new HttpError(422, 'No active user found for inventory transaction', 'PERFORMED_BY_NOT_FOUND');
+      }
+    }
+
+    throw error;
+  }
 }

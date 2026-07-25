@@ -49,12 +49,20 @@ export async function findLocations(
         ws.code AS shelf_code,
         ws.name AS shelf_name,
         COALESCE(SUM(sl.quantity), 0) AS current_quantity,
-        COALESCE(SUM(sl.available_quantity), 0) AS available_quantity
+        COALESCE(SUM(sl.available_quantity), 0) AS available_quantity,
+        GROUP_CONCAT(
+          DISTINCT CASE
+            WHEN sl.quantity > 0 THEN CONCAT(pv.sku, ' - ', COALESCE(pv.variant_name, p.name), ' (', CAST(sl.quantity AS CHAR), ')')
+          END
+          ORDER BY pv.sku SEPARATOR '; '
+        ) AS stored_products
       FROM warehouse_locations wl
       JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
       JOIN warehouse_zones wz ON wz.id = ws.zone_id
       JOIN warehouses w ON w.id = wz.warehouse_id
       LEFT JOIN stock_locations sl ON sl.location_id = wl.id
+      LEFT JOIN product_variants pv ON pv.id = sl.product_variant_id
+      LEFT JOIN products p ON p.id = pv.product_id
       WHERE ${where.join(' AND ')}
       GROUP BY
         wl.id,
@@ -370,7 +378,7 @@ export async function findLocationHistory(
         it.created_at,
         pv.sku,
         p.name AS product_name,
-        pv.name AS variant_name,
+        pv.variant_name AS variant_name,
         u.full_name AS performed_by_name
       FROM inventory_transactions it
       JOIN product_variants pv ON pv.id = it.product_variant_id

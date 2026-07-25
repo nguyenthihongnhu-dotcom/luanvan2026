@@ -3,11 +3,13 @@ import {
   listCurrentStock,
   listNearExpiryStock,
   previewStockAllocation,
+  quickReceiveStock,
 } from './stock.service';
 import {
   parseNearExpiryFilters,
   parseStockAllocationInput,
   parseStockFilters,
+  parseQuickReceiveInput,
 } from './stock.validation';
 
 export async function listCurrentStockController(
@@ -35,4 +37,13 @@ export async function previewStockAllocationController(
   const input = parseStockAllocationInput(req.query);
 
   res.json({ data: await previewStockAllocation(input) });
+}
+
+export async function quickReceiveStockController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const input = parseQuickReceiveInput(req.body);
+
+  res.status(201).json({ data: await quickReceiveStock(input) });
 }
