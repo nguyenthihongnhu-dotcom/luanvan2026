@@ -46,11 +46,11 @@ export function getProductNameLabel(name: unknown): string {
 
 export function getStockStatusLabel(status: unknown): string {
     switch (status) {
-        case 'In Stock':
+        case 'IN_STOCK':
             return 'C\u00f2n h\u00e0ng';
-        case 'Low Stock':
+        case 'LOW_STOCK':
             return 'S\u1eafp h\u1ebft h\u00e0ng';
-        case 'Out of Stock':
+        case 'OUT_OF_STOCK':
             return 'H\u1ebft h\u00e0ng';
         default:
             return String(status || 'Kh\u00f4ng x\u00e1c \u0111\u1ecbnh');

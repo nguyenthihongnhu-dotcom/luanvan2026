@@ -1,6 +1,10 @@
-﻿import type { Request, Response } from 'express';
+import type { Request, Response } from 'express';
 import { HttpError } from '../../common/http';
-import { listSettings, updateSetting } from './settings.service';
+import {
+  listSettings,
+  seedDefaultSettings,
+  updateSetting,
+} from './settings.service';
 import {
   parseSettingId,
   parseSettingsFilters,
@@ -14,6 +18,19 @@ export async function listSettingsController(
   const filters = parseSettingsFilters(req.query);
 
   res.json({ data: await listSettings(filters) });
+}
+
+export async function seedDefaultSettingsController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  if (!req.user) {
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
+  }
+
+  res
+    .status(201)
+    .json({ data: await seedDefaultSettings(Number(req.user.id)) });
 }
 
 export async function updateSettingController(

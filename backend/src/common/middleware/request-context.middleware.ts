@@ -29,13 +29,13 @@ export function requestLogger(
   const startedAt = Date.now();
 
   res.on('finish', () => {
-    if (res.statusCode === 304) {
+    if (res.statusCode < 400) {
       return;
     }
 
     const durationMs = Date.now() - startedAt;
     const log = {
-      level: res.statusCode >= 500 ? 'error' : 'info',
+      level: res.statusCode >= 500 ? 'error' : 'warn',
       event: 'http_request',
       requestId: req.requestId,
       method: req.method,

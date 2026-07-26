@@ -126,6 +126,43 @@ export async function insertLocation(
   return { id: result.insertId };
 }
 
+export async function countShelfLocationsWithStock(
+  shelfId: number,
+): Promise<number> {
+  const [rows] = await db.query<Array<RowDataPacket & { total: number }>>({
+    sql: `
+      SELECT COUNT(DISTINCT wl.id) AS total
+      FROM warehouse_locations wl
+      JOIN stock_locations sl ON sl.location_id = wl.id
+      WHERE wl.shelf_id = :shelfId
+        AND wl.deleted_at IS NULL
+        AND (sl.quantity > 0 OR sl.reserved_quantity > 0)
+    `,
+    values: { shelfId } satisfies QueryParams,
+  });
+
+  return Number(rows[0]?.total ?? 0);
+}
+
+export async function countLayerLocationsWithStock(
+  shelfId: number,
+  layerNo: number,
+): Promise<number> {
+  const [rows] = await db.query<Array<RowDataPacket & { total: number }>>({
+    sql: `
+      SELECT COUNT(DISTINCT wl.id) AS total
+      FROM warehouse_locations wl
+      JOIN stock_locations sl ON sl.location_id = wl.id
+      WHERE wl.shelf_id = :shelfId
+        AND wl.layer_no = :layerNo
+        AND wl.deleted_at IS NULL
+        AND (sl.quantity > 0 OR sl.reserved_quantity > 0)
+    `,
+    values: { shelfId, layerNo } satisfies QueryParams,
+  });
+
+  return Number(rows[0]?.total ?? 0);
+}
 export async function softDeleteLocationsByShelfId(
   shelfId: number,
 ): Promise<MutationResult> {

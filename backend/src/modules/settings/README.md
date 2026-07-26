@@ -1,4 +1,4 @@
-﻿# Settings Module
+# Settings Module
 
 ## Mục Tiêu Nghiệp Vụ
 
@@ -6,11 +6,11 @@ Module `settings` quản lý cấu hình ứng dụng lưu trong bảng `app_set
 
 ## Đọc Code Theo Thứ Tự
 
-1. `settings.routes.ts`: `GET /settings`, `PUT /settings/:id` và permission `settings:update`.
+1. `settings.routes.ts`: `GET /settings`, `POST /settings/seed-defaults`, `PUT /settings/:id` và permission `settings:update`.
 2. `settings.validation.ts`: query filters, id param, body update.
-3. `settings.controller.ts`: lấy `req.user.id` cho update.
-4. `settings.service.ts`: service boundary và lỗi 404.
-5. `settings.repository.ts`: query/update `app_settings`.
+3. `settings.controller.ts`: lấy `req.user.id` cho seed/update.
+4. `settings.service.ts`: danh sách cấu hình mặc định, service boundary và lỗi 404.
+5. `settings.repository.ts`: query/update/seed `app_settings`.
 6. `config/config.ts`: cấu hình môi trường thật từ `.env`.
 
 ## Endpoints
@@ -18,6 +18,7 @@ Module `settings` quản lý cấu hình ứng dụng lưu trong bảng `app_set
 | Method | Path | Mô tả | Auth |
 | --- | --- | --- | --- |
 | GET | `/settings` | Danh sách app settings | Không |
+| POST | `/settings/seed-defaults` | Tạo các cấu hình mặc định bằng `INSERT IGNORE` | `settings:update` |
 | PUT | `/settings/:id` | Cập nhật `setting_value`, `description`, `updated_by` | `settings:update` |
 
 ## Query Params
@@ -26,6 +27,18 @@ Module `settings` quản lý cấu hình ứng dụng lưu trong bảng `app_set
 | --- | --- | --- |
 | `id` | number | Lọc theo setting id |
 | `search` | string | Tìm theo `setting_key` |
+
+## Default Settings
+
+`POST /settings/seed-defaults` hiện tạo các khóa mặc định nếu chưa tồn tại:
+
+| Key | Value mặc định | Mô tả |
+| --- | --- | --- |
+| `warehouse.default_code` | `"HCM01"` | Mã kho mặc định khi tạo dữ liệu vận hành |
+| `stock.low_stock_threshold_percent` | `20` | Ngưỡng cảnh báo tồn thấp |
+| `stock.expiry_warning_days` | `30` | Số ngày cảnh báo gần hết hạn |
+| `quick_receive.require_lot_number` | `false` | Bắt buộc nhập lô khi nhập nhanh bằng QR |
+| `notifications.auto_generate_from_alerts` | `true` | Tự động sinh thông báo từ cảnh báo |
 
 ## Update Body
 

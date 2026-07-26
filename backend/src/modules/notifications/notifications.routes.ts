@@ -10,7 +10,12 @@ import {
 
 export const notificationsRouter = Router();
 
-notificationsRouter.get('/', asyncHandler(listNotificationsController));
+notificationsRouter.get(
+  '/',
+  asyncHandler(verifyToken),
+  requirePermission('notifications:read'),
+  asyncHandler(listNotificationsController),
+);
 notificationsRouter.post(
   '/generate',
   asyncHandler(verifyToken),

@@ -110,13 +110,25 @@ export async function quickReceiveStock(
   } catch (error) {
     if (error instanceof Error) {
       if (error.message === 'PRODUCT_NOT_FOUND') {
-        throw new HttpError(404, 'Product from scanned QR/SKU was not found', 'PRODUCT_NOT_FOUND');
+        throw new HttpError(
+          404,
+          'Product from scanned QR/SKU was not found',
+          'PRODUCT_NOT_FOUND',
+        );
       }
       if (error.message === 'LOCATION_NOT_FOUND') {
-        throw new HttpError(404, 'Warehouse location from scanned QR/code was not found', 'LOCATION_NOT_FOUND');
+        throw new HttpError(
+          404,
+          'Warehouse location from scanned QR/code was not found',
+          'LOCATION_NOT_FOUND',
+        );
       }
       if (error.message === 'PERFORMED_BY_NOT_FOUND') {
-        throw new HttpError(422, 'No active user found for inventory transaction', 'PERFORMED_BY_NOT_FOUND');
+        throw new HttpError(
+          422,
+          'No active user found for inventory transaction',
+          'PERFORMED_BY_NOT_FOUND',
+        );
       }
     }
 

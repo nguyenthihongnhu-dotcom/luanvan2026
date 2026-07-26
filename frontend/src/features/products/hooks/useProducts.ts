@@ -6,6 +6,8 @@ import type { LocationOption } from "@/features/products/services/productService
 import { getProductCategoryLabel, getProductNameLabel } from "@/features/products/utils/productDisplay";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
+export type ProductStockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
+
 export interface ProductItem {
     id: number;
     sku: string;
@@ -17,24 +19,24 @@ export interface ProductItem {
     warehouseId: string;
     locationId: string;
     locations: string;
-    status: "In Stock" | "Low Stock" | "Out of Stock";
+    status: ProductStockStatus;
 }
 
 export const calculateStatus = (stock: number, minStock: number): ProductItem["status"] => {
-    if (stock <= 0) return "Out of Stock";
-    if (stock <= minStock) return "Low Stock";
-    return "In Stock";
+    if (stock <= 0) return "OUT_OF_STOCK";
+    if (stock <= minStock) return "LOW_STOCK";
+    return "IN_STOCK";
 };
 
 const initialFormState = {
-    sku: '',
-    name: '',
-    category: '',
-    stock: '',
-    minStock: '',
-    expiryDate: '',
-    warehouseId: '',
-    locationId: '',
+    sku: "",
+    name: "",
+    category: "",
+    stock: "",
+    minStock: "",
+    expiryDate: "",
+    warehouseId: "",
+    locationId: "",
 };
 
 const fallbackProducts: ProductItem[] = [];
@@ -70,8 +72,8 @@ export function useProducts() {
                     setLocationOptions(locations);
                 }
             } catch (err) {
-                console.error('Failed to load products from backend:', err);
-                if (isMounted) setError(getHttpErrorMessage(err, 'Không tải được sản phẩm từ backend'));
+                console.error("Failed to load products from backend:", err);
+                if (isMounted) setError(getHttpErrorMessage(err, "Không tải được sản phẩm từ backend"));
             } finally {
                 if (isMounted) setIsLoading(false);
             }
@@ -128,10 +130,10 @@ export function useProducts() {
             name: getProductNameLabel(product.name),
             category: getProductCategoryLabel(product.category),
             stock: product.stock.toString(),
-            minStock: product.minStock?.toString() || '',
-            expiryDate: product.expiryDate || '',
-            warehouseId: product.warehouseId || '',
-            locationId: product.locationId || '',
+            minStock: product.minStock?.toString() || "",
+            expiryDate: product.expiryDate || "",
+            warehouseId: product.warehouseId || "",
+            locationId: product.locationId || "",
         });
         setShowModal(true);
     };

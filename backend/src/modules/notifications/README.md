@@ -17,7 +17,7 @@ Module `notifications` quản lý thông báo cho user. Hiện nguồn chính l�
 
 | Method | Path | Mô tả | Permission |
 | --- | --- | --- | --- |
-| GET | `/notifications` | Danh sách thông báo | Không trong scope demo |
+| GET | `/notifications` | Danh sách thông báo của user hiện tại | `notifications:read` |
 | POST | `/notifications/generate` | Sinh thông báo từ alert OPEN | `notifications:generate` |
 | POST | `/notifications/read-all` | Đánh dấu tất cả thông báo của user hiện tại là đã đọc | `notifications:read` |
 | PATCH | `/notifications/:id/read` | Đánh dấu một thông báo của user hiện tại là đã đọc | `notifications:read` |
@@ -35,6 +35,7 @@ POST /notifications/generate
       -> nếu vẫn không có, fallback ADMIN/WAREHOUSE_MANAGER active
       -> INSERT notifications
       -> NOT EXISTS để tránh tạo trùng cho cùng alert/user
+  -> emit Socket.IO `notification:new` đến room user:{user_id}
   -> trả { createdCount }
 ```
 
@@ -49,6 +50,7 @@ POST /notifications/generate
 ## Rule quan trọng
 
 - Không tạo notification trùng cho cùng `reference_type/reference_id/user_id`.
+- `GET /notifications` phải đi qua `verifyToken`, `notifications:read` và luôn lọc theo `req.user.id`; không trả thông báo của user khác.
 - `read` và `read-all` phải xử lý theo user hiện tại, tránh user này đánh dấu thông báo của user khác.
-- Nếu sau này bật realtime, service có thể emit Socket.IO sau khi ghi DB thành công.
+- Realtime dùng Socket.IO room `user:{id}`. Backend chỉ emit sau khi DB ghi notification thành công; frontend nhận `notification:new` rồi chèn vào đầu danh sách nếu chưa có id đó.
 - Frontend chỉ nên hiển thị mutation nếu user có permission tương ứng.

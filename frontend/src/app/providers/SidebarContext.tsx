@@ -4,6 +4,9 @@ import type { ReactNode } from "react";
 export interface SidebarContextType {
   extraContent: ReactNode | null;
   setExtraContent: (content: ReactNode | null) => void;
+  isSidebarCollapsed: boolean;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
 }
 
 export const SidebarContext = createContext<SidebarContextType | undefined>(undefined);

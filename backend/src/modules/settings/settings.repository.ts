@@ -1,6 +1,7 @@
 import type { ResultSetHeader } from 'mysql2';
 import { db } from '../../database/db';
 import type {
+  DefaultSettingInput,
   SettingsFilters,
   SettingsRow,
   QueryParams,
@@ -28,11 +29,34 @@ export async function findSettings(
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
   const [rows] = await db.query<SettingsRow[]>({
-    sql: `SELECT * FROM ${tableName} ${whereSql} LIMIT 100`,
+    sql: `SELECT * FROM ${tableName} ${whereSql} ORDER BY setting_key ASC LIMIT 100`,
     values: params,
   });
 
   return rows;
+}
+
+export async function seedDefaultSettingsRepository(
+  settings: DefaultSettingInput[],
+): Promise<number> {
+  if (settings.length === 0) return 0;
+
+  const values = settings.map((setting) => [
+    setting.settingKey,
+    JSON.stringify(setting.settingValue),
+    setting.description,
+    setting.updatedBy,
+  ]);
+
+  const [result] = await db.query<ResultSetHeader>({
+    sql: `
+      INSERT IGNORE INTO app_settings (setting_key, setting_value, description, updated_by)
+      VALUES ?
+    `,
+    values: [values],
+  });
+
+  return result.affectedRows;
 }
 
 export async function updateSettingRepository(

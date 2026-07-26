@@ -1,5 +1,6 @@
 import { httpClient, HttpError, setAccessToken, unwrapData } from '@/shared/services/httpClient';
 import type { AuthResponse, LoginCredentials, RegisterPayload } from '@/features/auth/types';
+import { disconnectNotificationSocket } from '@/shared/services/socketClient';
 
 export class AuthServiceError extends Error {
     constructor(message: string) {
@@ -90,6 +91,7 @@ async function register(payload: RegisterPayload): Promise<AuthResponse> {
 }
 
 function logout(): void {
+    disconnectNotificationSocket();
     setAccessToken(null);
 }
 

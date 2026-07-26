@@ -36,9 +36,9 @@ function toNumber(value: unknown): number {
 }
 
 function calculateStatus(stock: number, minStock: number): ProductItem['status'] {
-    if (stock <= 0) return 'Out of Stock';
-    if (stock <= minStock) return 'Low Stock';
-    return 'In Stock';
+    if (stock <= 0) return 'OUT_OF_STOCK';
+    if (stock <= minStock) return 'LOW_STOCK';
+    return 'IN_STOCK';
 }
 
 function toOptionalNumber(value: string): number | undefined {
@@ -58,8 +58,8 @@ export async function listProducts(): Promise<ProductItem[]> {
         return {
             id: variantId,
             sku: row.sku ?? `SKU-${variantId}`,
-            name: row.variant_name || row.product_name || 'San pham',
-            category: row.category_name || 'Chua phan loai',
+            name: row.variant_name || row.product_name || 'Sản phẩm',
+            category: row.category_name || 'Chưa phân loại',
             stock,
             minStock,
             expiryDate: row.expiry_date ?? '',

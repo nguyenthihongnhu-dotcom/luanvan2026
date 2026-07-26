@@ -13,7 +13,8 @@ type ClientToServerEvents = {
 
 type ServerToClientEvents = {
   pong: () => void;
-  connected: (payload: { userId: string }) => void;
+  connected: (payload: { userId: number | string }) => void;
+  'notification:new': (notification: Record<string, unknown>) => void;
 };
 
 type SocketAuth = {
@@ -23,6 +24,13 @@ type SocketAuth = {
 type SocketData = {
   user: AuthUser;
 };
+
+let ioInstance: Server<
+  ClientToServerEvents,
+  ServerToClientEvents,
+  Record<string, never>,
+  SocketData
+> | null = null;
 
 export function initializeSocket(
   server: HttpServer,
@@ -66,12 +74,24 @@ export function initializeSocket(
   });
 
   io.on('connection', (socket) => {
-    socket.emit('connected', { userId: socket.data.user.id });
+    const userId = socket.data.user.id;
+    void socket.join(`user:${userId}`);
+    socket.emit('connected', { userId });
 
     socket.on('ping', () => {
       socket.emit('pong');
     });
   });
 
+  ioInstance = io;
   return io;
+}
+
+export function emitNotificationToUser(
+  userId: number | string,
+  notification: Record<string, unknown>,
+): void {
+  if (ioInstance) {
+    ioInstance.to(`user:${userId}`).emit('notification:new', notification);
+  }
 }

@@ -22,14 +22,14 @@ export default function Tablelayout<T>({
     const loadingState = (
         <div className="flex items-center justify-center gap-2 px-6 py-12 text-center text-sm font-medium text-slate-500">
             <div className="h-5 w-5 animate-spin rounded-full border-2 border-pink-600 border-t-transparent" />
-            <span>Dang tai du lieu kho...</span>
+            <span>Đang tải dữ liệu kho...</span>
         </div>
     );
 
     const emptyState = (
         <div className="flex flex-col items-center justify-center gap-1 px-6 py-12 text-center">
-            <span className="text-base font-semibold text-slate-500">Khong co du lieu</span>
-            <span className="text-xs text-slate-400">Thu thay doi bo loc hoac them ban ghi moi</span>
+            <span className="text-base font-semibold text-slate-500">Không có dữ liệu</span>
+            <span className="text-xs text-slate-400">Thử thay đổi bộ lọc hoặc thêm bản ghi mới</span>
         </div>
     );
 

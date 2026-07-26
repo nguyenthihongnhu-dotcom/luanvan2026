@@ -15,6 +15,11 @@ export async function findNotifications(
   const where: string[] = [];
   const params: QueryParams = {};
 
+  if (filters.userId) {
+    where.push('user_id = :userId');
+    params.userId = filters.userId;
+  }
+
   if (filters.id) {
     where.push('id = :id');
     params.id = filters.id;
@@ -28,7 +33,7 @@ export async function findNotifications(
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
   const [rows] = await db.query<NotificationsRow[]>({
-    sql: `SELECT * FROM ${tableName} ${whereSql} LIMIT 100`,
+    sql: `SELECT * FROM ${tableName} ${whereSql} ORDER BY created_at DESC, id DESC LIMIT 100`,
     values: params,
   });
 
@@ -37,6 +42,7 @@ export async function findNotifications(
 
 export async function generateNotificationsFromAlerts(): Promise<{
   createdCount: number;
+  createdNotifications: NotificationsRow[];
 }> {
   const [result] = await db.query(`
     INSERT INTO notifications (
@@ -80,8 +86,21 @@ export async function generateNotificationsFromAlerts(): Promise<{
       )
   `);
 
+  const createdCount =
+    'affectedRows' in result ? Number(result.affectedRows) : 0;
+  let createdNotifications: NotificationsRow[] = [];
+
+  if (createdCount > 0) {
+    const [rows] = await db.query<NotificationsRow[]>({
+      sql: `SELECT * FROM notifications ORDER BY id DESC LIMIT :limit`,
+      values: { limit: createdCount },
+    });
+    createdNotifications = rows;
+  }
+
   return {
-    createdCount: 'affectedRows' in result ? Number(result.affectedRows) : 0,
+    createdCount,
+    createdNotifications,
   };
 }
 

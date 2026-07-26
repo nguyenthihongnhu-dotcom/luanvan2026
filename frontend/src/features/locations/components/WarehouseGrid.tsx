@@ -53,8 +53,8 @@ export default function WarehouseGrid({
     return (
         <main className="flex flex-1 flex-col items-center justify-start overflow-auto p-8">
             <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
-                <h3 className="mb-2 text-center text-base font-bold uppercase text-gray-600">Mô hình mặt đứng dãy kệ</h3>
-                <p className="mb-6 text-center text-xs text-gray-400">Kéo tiêu đề kệ hoặc một cột kệ rồi thả sang vị trí khác để đổi thứ tự.</p>
+                <h3 className="mb-2 text-center text-base font-bold uppercase text-gray-600">Sơ đồ kệ/tầng trong khu</h3>
+                <p className="mb-6 text-center text-xs text-gray-400">Mỗi cột là một kệ, mỗi hàng là một tầng. Kéo kệ để đổi thứ tự hiển thị.</p>
 
                 <div className="space-y-4">
                     {layers.map((layer) => (
@@ -74,17 +74,8 @@ export default function WarehouseGrid({
                                         <button
                                             key={`${shelf.code}-${layer.code}`}
                                             type="button"
-                                            draggable
-                                            onDragStart={(event) => {
-                                                setDraggedShelfId(shelf.id);
-                                                event.dataTransfer.effectAllowed = "move";
-                                                event.dataTransfer.setData("text/plain", shelf.id);
-                                            }}
-                                            onDragOver={(event) => event.preventDefault()}
-                                            onDrop={() => handleShelfDrop(shelf.id)}
-                                            onDragEnd={() => setDraggedShelfId(null)}
                                             onClick={() => setActiveLocation(location)}
-                                            className={`flex h-24 w-32 cursor-move flex-col items-center justify-center rounded-xl border-2 p-2 shadow-sm transition-all ${getLocationStyle(location.TrangThai)} ${activeLocation?.MaViTri === location.MaViTri ? "scale-105 ring-4 ring-pink-500" : ""} ${draggedShelfId === shelf.id ? "opacity-50" : ""}`}
+                                            className={`flex h-24 w-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 p-2 shadow-sm transition-all ${getLocationStyle(location.TrangThai)} ${activeLocation?.MaViTri === location.MaViTri ? "scale-105 ring-4 ring-pink-500" : ""} ${draggedShelfId === shelf.id ? "opacity-50" : ""}`}
                                             title={storedProducts.join("\n") || "Trống"}>
                                             <span className="text-xs font-bold tracking-wider">{selectedZone}-{location.Ke}-{location.Tang}</span>
                                             <span className="mt-1 max-w-full truncate text-[10px] font-semibold leading-tight">
@@ -103,7 +94,7 @@ export default function WarehouseGrid({
                     ))}
 
                     <div className="flex items-center gap-4 pt-2">
-                        <div className="w-20" />
+                        <div className="w-20 text-right text-xs font-bold uppercase text-gray-400">Kệ</div>
                         <div className="flex gap-4">
                             {shelves.map((shelf) => (
                                 <div
@@ -118,7 +109,7 @@ export default function WarehouseGrid({
                                     onDrop={() => handleShelfDrop(shelf.id)}
                                     onDragEnd={() => setDraggedShelfId(null)}
                                     className={`w-28 cursor-move rounded-md border border-transparent py-1 text-center text-sm font-semibold text-gray-500 hover:border-pink-200 hover:bg-pink-50 ${draggedShelfId === shelf.id ? "opacity-50" : ""}`}
-                                    title="Kéo để đổi thứ tự kệ"
+                                    title="Kéo tên kệ để đổi thứ tự cột"
                                 >
                                     {shelf.name}
                                 </div>

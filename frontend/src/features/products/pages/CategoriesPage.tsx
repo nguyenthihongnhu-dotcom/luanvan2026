@@ -14,16 +14,21 @@ export default function Categories() {
     const [categories, setCategories] = useState<Category[]>([]);
     const [showModal, setShowModal] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
+    const [isLoading, setIsLoading] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
     const { formData, setFormData, handleInputChange, resetForm } = useForm(initialFormState);
 
     async function loadCategories() {
+        setIsLoading(true);
         try {
             setError(null);
             setCategories(await categoryService.listCategories());
         } catch (err) {
             console.error(err);
             setError(getHttpErrorMessage(err, "Không tải được danh mục từ backend"));
+        } finally {
+            setIsLoading(false);
         }
     }
 
@@ -31,15 +36,23 @@ export default function Categories() {
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (editingCategory) {
-            await categoryService.updateCategory(editingCategory.id, formData.name);
-        } else {
-            await categoryService.createCategory(formData.name);
+        setIsSaving(true);
+        try {
+            if (editingCategory) {
+                await categoryService.updateCategory(editingCategory.id, formData.name);
+            } else {
+                await categoryService.createCategory(formData.name);
+            }
+            await loadCategories();
+            setShowModal(false);
+            setEditingCategory(null);
+            resetForm();
+        } catch (err) {
+            console.error(err);
+            setError(getHttpErrorMessage(err, "Không lưu được danh mục"));
+        } finally {
+            setIsSaving(false);
         }
-        await loadCategories();
-        setShowModal(false);
-        setEditingCategory(null);
-        resetForm();
     };
 
     const handleEdit = (category: Category) => {
@@ -50,41 +63,59 @@ export default function Categories() {
 
     const handleDelete = async (id: number) => {
         if (!window.confirm("Bạn có chắc chắn muốn xóa danh mục này?")) return;
-        await categoryService.deleteCategory(id);
-        await loadCategories();
+        setIsSaving(true);
+        try {
+            await categoryService.deleteCategory(id);
+            await loadCategories();
+        } catch (err) {
+            console.error(err);
+            setError(getHttpErrorMessage(err, "Không xóa được danh mục"));
+        } finally {
+            setIsSaving(false);
+        }
     };
 
     const columns: ColumnProps<Category>[] = [
         { key: "id", title: "ID" },
         { key: "name", title: "Tên danh mục" },
-        { key: "actions", title: "Thao tác", className: "text-right", render: (_, record) => <div className="flex justify-end space-x-2"><button onClick={() => handleEdit(record)} className="text-blue-600 hover:text-blue-900 text-xs font-medium">Sửa</button><button onClick={() => handleDelete(record.id)} className="text-red-600 hover:text-red-900 text-xs font-medium">Xóa</button></div> },
+        {
+            key: "actions",
+            title: "Thao tác",
+            className: "text-right",
+            render: (_, record) => (
+                <div className="flex justify-end space-x-2">
+                    <button type="button" onClick={() => handleEdit(record)} disabled={isSaving} className="text-xs font-medium text-blue-600 hover:text-blue-900 disabled:opacity-50">Sửa</button>
+                    <button type="button" onClick={() => void handleDelete(record.id)} disabled={isSaving} className="text-xs font-medium text-red-600 hover:text-red-900 disabled:opacity-50">Xóa</button>
+                </div>
+            ),
+        },
     ];
 
     return (
         <DashboardLayout>
             <div className="flex flex-col space-y-4">
-                <div className="flex justify-between items-center">
+                <div className="flex items-center justify-between">
                     <h1 className="text-xl font-bold text-gray-800">Quản lý danh mục sản phẩm</h1>
-                    <button onClick={() => { setEditingCategory(null); resetForm(); setShowModal(true); }} className="bg-pink-600 text-white px-4 py-2 rounded-md text-sm font-medium hover:bg-pink-700 shadow-sm">+ Thêm danh mục</button>
+                    <button type="button" onClick={() => { setEditingCategory(null); resetForm(); setShowModal(true); }} className="rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-pink-700">+ Thêm danh mục</button>
                 </div>
                 {error && <div className="text-sm text-red-600">{error}</div>}
-                <Tablelayout columns={columns} dataSource={categories} rowKey="id" />
+                <Tablelayout columns={columns} dataSource={categories} rowKey="id" isLoading={isLoading} />
             </div>
             {showModal && createPortal(
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-opacity-80 p-4 backdrop-blur-md">
-                    <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden">
-                        <div className="px-6 py-4 border-b border-gray-100 flex justify-between items-center bg-pink-50">
+                    <div className="w-full max-w-md overflow-hidden rounded-xl bg-white shadow-xl">
+                        <div className="flex items-center justify-between border-b border-gray-100 bg-pink-50 px-6 py-4">
                             <h2 className="text-lg font-bold text-pink-700">{editingCategory ? "Chỉnh sửa danh mục" : "Thêm danh mục mới"}</h2>
                             <button type="button" onClick={() => setShowModal(false)} className="text-gray-400 hover:text-gray-600">×</button>
                         </div>
-                        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+                        <form onSubmit={handleSubmit} className="space-y-4 p-6">
                             <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">Tên danh mục</label>
-                                <input type="text" name="name" required value={formData.name} onChange={handleInputChange} className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-pink-500 outline-none text-sm" placeholder="Ví dụ: Sữa công thức" />
+                                <label className="mb-1 block text-sm font-medium text-gray-700">Tên danh mục</label>
+                                <input type="text" name="name" required value={formData.name} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" placeholder="Ví dụ: Sữa công thức" />
                             </div>
                             <div className="flex space-x-3 pt-4">
-                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md text-sm font-medium hover:bg-gray-50">Hủy</button>
-                                <button type="submit" className="flex-2 bg-pink-600 text-white px-8 py-2 rounded-md text-sm font-medium hover:bg-pink-700">Lưu danh mục</button>
+                                <button type="button" onClick={() => setShowModal(false)} className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Hủy</button>
+                                <button type="submit" disabled={isSaving} className="flex-2 rounded-md bg-pink-600 px-8 py-2 text-sm font-medium text-white hover:bg-pink-700 disabled:opacity-60">{isSaving ? "Đang lưu..." : "Lưu danh mục"}</button>
                             </div>
                         </form>
                     </div>

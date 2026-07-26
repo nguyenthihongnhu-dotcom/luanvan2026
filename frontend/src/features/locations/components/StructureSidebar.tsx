@@ -21,69 +21,117 @@ export default function StructureSidebar({
     handleDeleteShelf,
     handleDeleteLayer,
 }: StructureSidebarProps) {
+    function confirmDeleteShelf(shelf: Shelf) {
+        const confirmed = window.confirm(`Xóa kệ ${shelf.code}? Chỉ xóa được khi tất cả vị trí trong kệ không còn hàng.`);
+        if (confirmed) handleDeleteShelf(shelf.id, shelf.code);
+    }
+
+    function confirmDeleteLayer(layer: Layer) {
+        const confirmed = window.confirm(`Xóa tầng ${layer.code}? Chỉ xóa được khi tầng này không còn hàng trong mọi kệ.`);
+        if (confirmed) handleDeleteLayer(layer.id, layer.code);
+    }
+
     return (
-        <aside className="w-72 overflow-y-auto border-r border-gray-200 bg-white p-4">
-            <h2 className="mb-3 text-sm font-semibold uppercase text-gray-500">Cấu trúc nhanh</h2>
+        <aside className="w-80 overflow-y-auto border-r border-gray-200 bg-white p-4">
             <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-2">
-                    <button
-                        type="button"
-                        onClick={handleAddShelf}
-                        disabled={isSaving}
-                        className="rounded-lg bg-pink-600 py-2 text-[11px] font-medium uppercase text-white shadow-sm transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {isSaving ? "Đang lưu" : "+ Thêm kệ"}
-                    </button>
-                    <button
-                        type="button"
-                        onClick={handleAddLayer}
-                        disabled={isSaving}
-                        className="rounded-lg border border-pink-600 bg-white py-2 text-[11px] font-medium uppercase text-pink-600 shadow-sm transition hover:bg-pink-50 disabled:cursor-not-allowed disabled:opacity-60"
-                    >
-                        {isSaving ? "Đang lưu" : "+ Thêm tầng"}
-                    </button>
+                <div>
+                    <h2 className="text-sm font-bold uppercase tracking-wide text-gray-700">Cấu trúc khu {selectedZone}</h2>
+                    <p className="mt-1 text-xs leading-5 text-gray-500">Kệ là cột ngang. Tầng là hàng dọc và áp dụng cho toàn bộ kệ trong khu.</p>
                 </div>
 
-                <div className="rounded-lg border border-gray-100 bg-gray-50 p-2 text-sm">
-                    <p className="font-bold text-pink-600">Khu vực {selectedZone}</p>
-                    <div className="mt-2 space-y-2 pl-4">
-                        {shelves.length === 0 && <p className="text-xs text-gray-400">Chưa có kệ trong khu vực này.</p>}
-                        {shelves.map((shelf) => (
-                            <div key={shelf.id} className="border-l-2 border-gray-300 pl-2">
-                                <div className="group flex items-center justify-between">
-                                    <span className="font-medium">{shelf.name}</span>
-                                    <button
-                                        type="button"
-                                        onClick={() => handleDeleteShelf(shelf.id, shelf.code)}
-                                        className="text-red-400 opacity-0 transition-opacity hover:text-red-600 group-hover:opacity-100"
-                                        title="Xóa kệ"
-                                    >
-                                        <svg className="h-3.5 w-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                        </svg>
-                                    </button>
-                                </div>
-                                <div className="mt-1 space-y-1 pl-4 pr-2 text-xs text-gray-500">
-                                    {layers.map((layer) => (
-                                        <div key={layer.id} className="group/layer flex items-center justify-between">
-                                            <p>{layer.name}</p>
-                                            <button
-                                                type="button"
-                                                onClick={() => handleDeleteLayer(layer.id, layer.code)}
-                                                className="text-red-300 opacity-0 transition-opacity hover:text-red-500 group-hover/layer:opacity-100"
-                                                title="Xóa tầng"
-                                            >
-                                                <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                                                </svg>
-                                            </button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </div>
-                        ))}
+                <div className="grid grid-cols-2 gap-2">
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                        <div className="text-[11px] font-semibold uppercase text-gray-500">Số kệ</div>
+                        <div className="text-xl font-bold text-gray-900">{shelves.length}</div>
+                    </div>
+                    <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2">
+                        <div className="text-[11px] font-semibold uppercase text-gray-500">Số tầng</div>
+                        <div className="text-xl font-bold text-gray-900">{layers.length}</div>
                     </div>
                 </div>
+
+                <div className="rounded-lg border border-pink-100 bg-pink-50 p-3">
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-pink-700">Thêm cấu trúc</h3>
+                    <div className="mt-3 grid grid-cols-1 gap-2">
+                        <button
+                            type="button"
+                            onClick={handleAddShelf}
+                            disabled={isSaving}
+                            className="rounded-lg bg-pink-600 px-3 py-2 text-left text-xs font-bold text-white shadow-sm transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {isSaving ? "Đang lưu..." : "+ Thêm 1 kệ mới"}
+                            <span className="block text-[11px] font-normal text-pink-100">Tạo thêm một cột kệ trong khu.</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleAddLayer}
+                            disabled={isSaving}
+                            className="rounded-lg border border-pink-300 bg-white px-3 py-2 text-left text-xs font-bold text-pink-700 shadow-sm transition hover:bg-pink-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {isSaving ? "Đang lưu..." : "+ Thêm 1 tầng toàn khu"}
+                            <span className="block text-[11px] font-normal text-pink-500">Tạo thêm một hàng tầng cho tất cả kệ.</span>
+                        </button>
+                    </div>
+                </div>
+
+                <section className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-gray-600">Kệ (cột ngang)</h3>
+                        <span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">{shelves.length}</span>
+                    </div>
+                    <div className="mt-3 space-y-2">
+                        {shelves.length === 0 ? (
+                            <p className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-500">Chưa có kệ trong khu này.</p>
+                        ) : (
+                            shelves.map((shelf) => (
+                                <div key={shelf.id} className="flex items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+                                    <div className="min-w-0">
+                                        <div className="truncate text-sm font-semibold text-gray-800">{shelf.name}</div>
+                                        <div className="text-[11px] text-gray-500">Mã kệ: {shelf.code}</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => confirmDeleteShelf(shelf)}
+                                        disabled={isSaving}
+                                        className="shrink-0 rounded border border-red-200 bg-white px-2 py-1 text-[11px] font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        Xóa kệ
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </section>
+
+                <section className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+                    <div className="flex items-center justify-between border-b border-gray-100 pb-2">
+                        <h3 className="text-xs font-bold uppercase tracking-wide text-gray-600">Tầng (hàng dọc)</h3>
+                        <span className="rounded bg-gray-100 px-2 py-0.5 text-[11px] font-semibold text-gray-500">{layers.length}</span>
+                    </div>
+                    <p className="mt-2 text-[11px] leading-4 text-gray-500">Xóa tầng sẽ xóa tầng đó trên tất cả kệ trong khu. Backend sẽ chặn nếu tầng còn hàng.</p>
+                    <div className="mt-3 space-y-2">
+                        {layers.length === 0 ? (
+                            <p className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-500">Chưa có tầng trong khu này.</p>
+                        ) : (
+                            layers.map((layer) => (
+                                <div key={layer.id} className="flex items-center justify-between gap-2 rounded-md border border-gray-100 bg-gray-50 px-3 py-2">
+                                    <div className="min-w-0">
+                                        <div className="truncate text-sm font-semibold text-gray-800">{layer.name}</div>
+                                        <div className="text-[11px] text-gray-500">Mã tầng: {layer.code}</div>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => confirmDeleteLayer(layer)}
+                                        disabled={isSaving}
+                                        className="shrink-0 rounded border border-red-200 bg-white px-2 py-1 text-[11px] font-bold text-red-600 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-60"
+                                    >
+                                        Xóa tầng
+                                    </button>
+                                </div>
+                            ))
+                        )}
+                    </div>
+                </section>
             </div>
         </aside>
     );

@@ -4,6 +4,7 @@ import { AuthContext } from './AuthContext';
 import type { AuthContextValue } from './AuthContext';
 import type { AuthUser } from '@/features/auth/types';
 import { setAccessToken } from '@/shared/services/httpClient';
+import { disconnectNotificationSocket } from '@/shared/services/socketClient';
 
 interface AuthProviderProps {
     children: ReactNode;
@@ -17,6 +18,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         isAuthenticated: user !== null,
         login: setUser,
         logout: () => {
+            disconnectNotificationSocket();
             setAccessToken(null);
             setUser(null);
         },

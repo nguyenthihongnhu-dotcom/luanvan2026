@@ -12,7 +12,6 @@ import type {
   StockFilters,
 } from './stock.model';
 
-
 type QuickProductRow = RowDataPacket & {
   id: number;
   sku: string;
@@ -35,9 +34,20 @@ function normalizeScanValue(value: string): string {
   if (!trimmed) return '';
 
   try {
-    const parsed = JSON.parse(trimmed) as { sku?: unknown; id?: unknown; code?: unknown };
+    const parsed = JSON.parse(trimmed) as {
+      sku?: unknown;
+      id?: unknown;
+      code?: unknown;
+    };
     const candidate = parsed.sku ?? parsed.code ?? parsed.id;
-    return candidate == null ? trimmed : String(candidate).trim();
+    if (
+      typeof candidate === 'string' ||
+      typeof candidate === 'number' ||
+      typeof candidate === 'boolean'
+    ) {
+      return String(candidate).trim();
+    }
+    return trimmed;
   } catch {
     return trimmed;
   }
@@ -224,7 +234,8 @@ export async function quickReceiveStock(
     const shouldUseBatch = Boolean(input.lotNumber || input.expiryDate);
 
     if (shouldUseBatch) {
-      const lotNumber = input.lotNumber?.trim() || `LOT-${product.sku}-${Date.now()}`;
+      const lotNumber =
+        input.lotNumber?.trim() || `LOT-${product.sku}-${Date.now()}`;
       const [existingBatchRows] = await connection.query<QuickIdRow[]>(
         `SELECT id FROM product_batches WHERE product_variant_id = ? AND lot_number = ? LIMIT 1 FOR UPDATE`,
         [product.id, lotNumber],

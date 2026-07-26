@@ -11,7 +11,7 @@ import type { ProductItem } from "@/features/products/hooks/useProducts";
 import ProductModal from "@/features/products/components/ProductModal";
 import { getProductCategoryLabel, getProductNameLabel, getStockStatusLabel, productCategoryOptions } from "@/features/products/utils/productDisplay";
 
-const statusOptions: Array<ProductItem["status"]> = ["In Stock", "Low Stock", "Out of Stock"];
+const statusOptions: Array<ProductItem["status"]> = ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"];
 function escapeHtml(value: string): string {
     return value.replace(/[&<>"]/g, (char) => ({
         "&": "&amp;",
@@ -49,9 +49,9 @@ export default function ProductsPage() {
         setExtraContent(
             <div className="space-y-6">
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Danh mục</label>
+                    <label className="mb-2 block text-xs font-semibold uppercase text-gray-500">Danh mục</label>
                     <select
-                        className="w-full text-sm border-gray-200 rounded-md focus:ring-pink-500 focus:border-pink-500"
+                        className="w-full rounded-md border-gray-200 text-sm focus:border-pink-500 focus:ring-pink-500"
                         value={filterCategory}
                         onChange={(e) => setFilterCategory(e.target.value)}
                     >
@@ -62,7 +62,7 @@ export default function ProductsPage() {
                     </select>
                 </div>
                 <div>
-                    <label className="block text-xs font-semibold text-gray-500 uppercase mb-2">Trạng thái kho</label>
+                    <label className="mb-2 block text-xs font-semibold uppercase text-gray-500">Trạng thái kho</label>
                     <div className="space-y-2">
                         <label className="flex items-center space-x-2 text-sm text-gray-600">
                             <input type="radio" name="status" checked={filterStatus === "All"} onChange={() => setFilterStatus("All")} className="text-pink-600 focus:ring-pink-500" />
@@ -81,7 +81,6 @@ export default function ProductsPage() {
         return () => setExtraContent(null);
     }, [filterCategory, filterStatus, setExtraContent]);
 
-
     const handlePrintProductQr = async (product: ProductItem) => {
         const displayName = getProductNameLabel(product.name);
         const payload = JSON.stringify({
@@ -94,7 +93,7 @@ export default function ProductsPage() {
         const qrDataUrl = await QRCode.toDataURL(payload, { errorCorrectionLevel: "M", margin: 1, width: 180 });
         const printWindow = window.open("", "_blank", "width=480,height=620");
         if (!printWindow) {
-            window.alert("Trinh duyet dang chan cua so in. Vui long cho phep popup roi thu lai.");
+            window.alert("Trình duyệt đang chặn cửa sổ in. Vui lòng cho phép popup rồi thử lại.");
             return;
         }
 
@@ -107,7 +106,7 @@ export default function ProductsPage() {
             <html lang="vi">
                 <head>
                     <meta charset="utf-8" />
-                    <title>QR san pham ${safeSku}</title>
+                    <title>QR sản phẩm ${safeSku}</title>
                     <style>
                         body { font-family: Arial, sans-serif; padding: 24px; color: #111827; }
                         .label { border: 2px solid #111827; padding: 20px; width: 340px; }
@@ -121,8 +120,8 @@ export default function ProductsPage() {
                     <div class="label">
                         <div class="sku">${safeSku}</div>
                         <div class="name">${safeName}</div>
-                        <div class="meta">Danh muc: ${safeCategory}</div>
-                        <div class="meta">ID san pham: #${product.id}</div>
+                        <div class="meta">Danh mục: ${safeCategory}</div>
+                        <div class="meta">ID sản phẩm: #${product.id}</div>
                         <img class="qr" src="${qrDataUrl}" alt="QR ${safeSku}" />
                     </div>
                     <script>window.print();</script>
@@ -131,6 +130,7 @@ export default function ProductsPage() {
         `);
         printWindow.document.close();
     };
+
     const columns: ColumnProps<ProductItem>[] = [
         { key: "id", title: "ID" },
         { key: "sku", title: "SKU" },
@@ -144,13 +144,13 @@ export default function ProductsPage() {
             title: "Trạng thái",
             render: (_, record: ProductItem) => {
                 const styles = {
-                    "In Stock": "bg-green-50 text-green-700 border-green-200",
-                    "Low Stock": "bg-yellow-50 text-yellow-700 border-yellow-200",
-                    "Out of Stock": "bg-red-50 text-red-700 border-red-200",
+                    IN_STOCK: "bg-green-50 text-green-700 border-green-200",
+                    LOW_STOCK: "bg-yellow-50 text-yellow-700 border-yellow-200",
+                    OUT_OF_STOCK: "bg-red-50 text-red-700 border-red-200",
                 };
 
                 return (
-                    <span className={"inline-flex items-center rounded-md px-2 py-1 text-xs font-medium border " + styles[record.status]}>
+                    <span className={"inline-flex items-center rounded-md border px-2 py-1 text-xs font-medium " + styles[record.status]}>
                         {getStockStatusLabel(record.status)}
                     </span>
                 );
@@ -183,9 +183,9 @@ export default function ProductsPage() {
             className: "text-right",
             render: (_, record: ProductItem) => (
                 <div className="flex justify-end space-x-2">
-                    <button onClick={() => void handlePrintProductQr(record)} className="text-pink-600 hover:text-pink-900 text-xs font-medium">In QR</button>
-                    <button onClick={() => handleEdit(record)} className="text-blue-600 hover:text-blue-900 text-xs font-medium">Sửa</button>
-                    <button onClick={() => handleDelete(record.id)} className="text-red-600 hover:text-red-900 text-xs font-medium">Xóa</button>
+                    <button onClick={() => void handlePrintProductQr(record)} className="text-xs font-medium text-pink-600 hover:text-pink-900">In QR</button>
+                    <button onClick={() => handleEdit(record)} className="text-xs font-medium text-blue-600 hover:text-blue-900">Sửa</button>
+                    <button onClick={() => handleDelete(record.id)} className="text-xs font-medium text-red-600 hover:text-red-900">Xóa</button>
                 </div>
             ),
         },
@@ -204,9 +204,9 @@ export default function ProductsPage() {
 
     const renderStatusBadge = (status: ProductItem["status"]) => {
         const styles = {
-            "In Stock": "bg-green-50 text-green-700 border-green-200",
-            "Low Stock": "bg-yellow-50 text-yellow-700 border-yellow-200",
-            "Out of Stock": "bg-red-50 text-red-700 border-red-200",
+            IN_STOCK: "bg-green-50 text-green-700 border-green-200",
+            LOW_STOCK: "bg-yellow-50 text-yellow-700 border-yellow-200",
+            OUT_OF_STOCK: "bg-red-50 text-red-700 border-red-200",
         };
 
         return (
@@ -218,6 +218,7 @@ export default function ProductsPage() {
 
     const getProductLocations = (product: ProductItem) =>
         String(product.locations ?? "").split(",").map((location) => location.trim()).filter(Boolean);
+
     return (
         <DashboardLayout>
             <div className="flex flex-col space-y-4">
@@ -234,11 +235,11 @@ export default function ProductsPage() {
                     </button>
                 </div>
 
-                <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
+                <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                     <input
                         type="text"
                         placeholder="Tìm kiếm theo tên hoặc SKU..."
-                        className="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-pink-500 focus:border-transparent outline-none"
+                        className="w-full rounded-md border border-gray-300 px-4 py-2 outline-none focus:border-transparent focus:ring-2 focus:ring-pink-500 md:w-1/3"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
@@ -249,12 +250,12 @@ export default function ProductsPage() {
                 <div className="md:hidden">
                     {isLoading ? (
                         <div className="rounded-lg border border-slate-200 bg-white px-4 py-8 text-center text-sm font-medium text-slate-500">
-                            Dang tai du lieu kho...
+                            Đang tải dữ liệu kho...
                         </div>
                     ) : filteredProducts.length === 0 ? (
                         <div className="rounded-lg border border-slate-200 bg-white px-4 py-8 text-center">
-                            <div className="text-sm font-semibold text-slate-600">Khong co du lieu</div>
-                            <div className="mt-1 text-xs text-slate-400">Thu thay doi bo loc hoac them san pham moi</div>
+                            <div className="text-sm font-semibold text-slate-600">Không có dữ liệu</div>
+                            <div className="mt-1 text-xs text-slate-400">Thử thay đổi bộ lọc hoặc thêm sản phẩm mới</div>
                         </div>
                     ) : (
                         <div className="space-y-3">
@@ -275,23 +276,23 @@ export default function ProductsPage() {
 
                                         <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                                             <div>
-                                                <div className="text-xs font-semibold uppercase text-slate-400">Ton kho</div>
+                                                <div className="text-xs font-semibold uppercase text-slate-400">Tồn kho</div>
                                                 <div className="font-semibold text-slate-800">{formatNumber(product.stock)}</div>
                                             </div>
                                             <div>
-                                                <div className="text-xs font-semibold uppercase text-slate-400">Toi thieu</div>
+                                                <div className="text-xs font-semibold uppercase text-slate-400">Tối thiểu</div>
                                                 <div className="font-semibold text-slate-800">{formatNumber(product.minStock)}</div>
                                             </div>
                                             <div className="col-span-2">
-                                                <div className="text-xs font-semibold uppercase text-slate-400">Han su dung</div>
+                                                <div className="text-xs font-semibold uppercase text-slate-400">Hạn sử dụng</div>
                                                 <div className="font-semibold text-slate-800">{formatDate(product.expiryDate)}</div>
                                             </div>
                                         </div>
 
                                         <div className="mt-4">
-                                            <div className="text-xs font-semibold uppercase text-slate-400">Vi tri kho</div>
+                                            <div className="text-xs font-semibold uppercase text-slate-400">Vị trí kho</div>
                                             {locations.length === 0 ? (
-                                                <div className="mt-1 text-sm text-slate-400">Chua co</div>
+                                                <div className="mt-1 text-sm text-slate-400">Chưa có</div>
                                             ) : (
                                                 <div className="mt-2 flex flex-wrap gap-1.5">
                                                     {locations.map((location) => (
@@ -308,10 +309,10 @@ export default function ProductsPage() {
                                                 In QR
                                             </button>
                                             <button onClick={() => handleEdit(product)} className="rounded-md border border-blue-200 px-2 py-2 text-xs font-semibold text-blue-700">
-                                                Sua
+                                                Sửa
                                             </button>
                                             <button onClick={() => handleDelete(product.id)} className="rounded-md border border-red-200 px-2 py-2 text-xs font-semibold text-red-700">
-                                                Xoa
+                                                Xóa
                                             </button>
                                         </div>
                                     </article>

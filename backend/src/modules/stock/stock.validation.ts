@@ -1,6 +1,10 @@
 import { z } from 'zod';
 import { validateInput } from '../../common/validation/validate';
-import type { QuickReceiveInput, StockAllocationInput, StockFilters } from './stock.model';
+import type {
+  QuickReceiveInput,
+  StockAllocationInput,
+  StockFilters,
+} from './stock.model';
 
 const stockFiltersSchema = z.object({
   warehouseId: z.coerce.number().int().positive().optional(),
@@ -8,7 +12,6 @@ const stockFiltersSchema = z.object({
 });
 
 const nearExpiryFiltersSchema = stockFiltersSchema.pick({ warehouseId: true });
-
 
 const quickReceiveSchema = z.object({
   productScan: z.string().trim().min(1).max(500),

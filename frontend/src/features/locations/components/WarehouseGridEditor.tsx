@@ -189,9 +189,9 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
         setExtraContent(
             <div className="space-y-6">
                 <div className="space-y-2">
-                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Cấu hình lưới kho</h3>
+                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Mặt bằng tổng thể</h3>
                     <div className="flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
-                        <span className="text-xs font-semibold text-gray-600">Số hàng:</span>
+                        <span className="text-xs font-semibold text-gray-600">Dòng mặt bằng:</span>
                         <div className="flex items-center gap-2">
                             <button type="button" onClick={() => setRows(Math.max(6, rows - 1))} className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">-</button>
                             <span className="w-8 text-center text-xs font-bold text-gray-800">{rows}</span>
@@ -199,7 +199,7 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
                         </div>
                     </div>
                     <div className="flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
-                        <span className="text-xs font-semibold text-gray-600">Số cột:</span>
+                        <span className="text-xs font-semibold text-gray-600">Cột mặt bằng:</span>
                         <div className="flex items-center gap-2">
                             <button type="button" onClick={() => setCols(Math.max(8, cols - 1))} className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">-</button>
                             <span className="w-8 text-center text-xs font-bold text-gray-800">{cols}</span>
@@ -209,7 +209,7 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
                 </div>
 
                 <div className="space-y-2">
-                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Hướng bố trí khi thả</h3>
+                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Hướng xếp kệ trong khu</h3>
                     <div className="flex overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                         <button type="button" onClick={() => setOrientation("horizontal")} className={`flex-1 cursor-pointer border-0 py-1.5 text-xs font-bold transition-colors ${orientation === "horizontal" ? "bg-pink-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>Ngang</button>
                         <button type="button" onClick={() => setOrientation("vertical")} className={`flex-1 cursor-pointer border-0 py-1.5 text-xs font-bold transition-colors ${orientation === "vertical" ? "bg-pink-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>Dọc</button>
@@ -217,9 +217,9 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
                 </div>
 
                 <div className="space-y-2">
-                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Thêm zone mới</h3>
+                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Thêm khu mới</h3>
                     <div className="mb-2 space-y-1">
-                        <label htmlFor="zone-name-input" className="block text-[11px] font-semibold text-gray-600">Tên phân khu tùy chọn:</label>
+                        <label htmlFor="zone-name-input" className="block text-[11px] font-semibold text-gray-600">Tên khu:</label>
                         <input
                             id="zone-name-input"
                             type="text"
@@ -230,7 +230,7 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
                         />
                     </div>
                     <div className="mb-2 flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
-                        <span className="text-xs font-semibold text-gray-600">Số kệ:</span>
+                        <span className="text-xs font-semibold text-gray-600">Số kệ trong khu:</span>
                         <div className="flex items-center gap-2">
                             <button type="button" onClick={() => setNewZoneSize(Math.max(1, newZoneSize - 1))} className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">-</button>
                             <span className="w-8 text-center text-xs font-bold text-gray-800">{newZoneSize}</span>
@@ -238,14 +238,14 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
                         </div>
                     </div>
                     <button type="button" onClick={createNewZone} className="w-full cursor-pointer rounded-lg border-0 bg-pink-600 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-pink-700">
-                        + Thêm phân khu mới
+                        + Thêm khu mới
                     </button>
                 </div>
 
                 <div className="space-y-2">
-                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Kéo thả phân khu</h3>
+                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Khu chưa đặt lên mặt bằng</h3>
                     <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-                        {zones.length === 0 && <p className="py-4 text-center text-xs italic text-gray-400">Chưa có phân khu nào</p>}
+                        {zones.length === 0 && <p className="py-4 text-center text-xs italic text-gray-400">Chưa có khu nào</p>}
                         {zones.map((zone) => (
                             <div key={zone.id} draggable onDragStart={(event) => handleDragStart(event, zone.id)} className="flex cursor-grab select-none items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2 transition hover:border-pink-300 hover:shadow-md active:cursor-grabbing">
                                 <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white shadow-sm" style={{ backgroundColor: zone.color }}>{zone.code}</div>
@@ -261,7 +261,7 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
 
                 {backendZoneCodes.length > 0 && (
                     <div className="rounded-lg border border-gray-100 bg-gray-50 p-2 text-xs text-gray-500">
-                        Zone từ backend: {backendZoneCodes.join(", ")}
+                        Khu từ backend: {backendZoneCodes.join(", ")}
                     </div>
                 )}
             </div>
@@ -273,9 +273,9 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
     return (
         <div className="flex h-[calc(100vh-180px)] flex-1 flex-col overflow-auto rounded-xl border border-gray-200 bg-gray-100 p-6">
             <div className="mb-4">
-                <h3 className="text-base font-bold uppercase tracking-wide text-gray-800">Mặt bằng bố trí kho</h3>
+                <h3 className="text-base font-bold uppercase tracking-wide text-gray-800">Mặt bằng kho (dòng/cột)</h3>
                 <p className="text-xs text-gray-500">
-                    Kéo các phân khu từ thanh menu bên trái, thả vào ô bất kỳ trên lưới để xác định vị trí. Hướng bố trí ngang/dọc sẽ áp dụng khi thả.
+                    Dòng/cột chỉ dùng để bố trí khu trên mặt bằng. Khi vào từng khu, cấu trúc lưu hàng sẽ hiển thị theo kệ và tầng riêng.
                 </p>
             </div>
 
@@ -301,7 +301,7 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
                                         <div className="mt-0.5 text-[10px] text-gray-500">{zone.size} kệ</div>
                                     </div>
                                 ) : (
-                                    <span className="text-[10px] text-gray-300">({row + 1}, {col + 1})</span>
+                                    <span className="text-[10px] text-gray-300">H{row + 1}-C{col + 1}</span>
                                 )}
                             </div>
                         );

@@ -15,9 +15,18 @@ export async function listNotificationsController(
   req: Request,
   res: Response,
 ): Promise<void> {
+  if (!req.user) {
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
+  }
+
   const filters = parseNotificationsFilters(req.query);
 
-  res.json({ data: await listNotifications(filters) });
+  res.json({
+    data: await listNotifications({
+      ...filters,
+      userId: Number(req.user.id),
+    }),
+  });
 }
 
 export async function generateNotificationsController(

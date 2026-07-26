@@ -1,4 +1,4 @@
-﻿import { httpClient, unwrapData } from '@/shared/services/httpClient';
+import { httpClient, unwrapData } from '@/shared/services/httpClient';
 
 export interface AppSetting {
     id: number;
@@ -14,6 +14,10 @@ export interface UpdateSettingInput {
     description?: string;
 }
 
+export interface SettingMutationResult {
+    affectedRows: number;
+}
+
 export async function listSettings(search = ''): Promise<AppSetting[]> {
     const params = new URLSearchParams();
     if (search.trim()) params.set('search', search.trim());
@@ -21,8 +25,13 @@ export async function listSettings(search = ''): Promise<AppSetting[]> {
     return unwrapData(response);
 }
 
+export async function seedDefaultSettings(): Promise<SettingMutationResult> {
+    const response = await httpClient.post<{ data: SettingMutationResult }>('/settings/seed-defaults');
+    return unwrapData(response);
+}
+
 export async function updateSetting(id: number, input: UpdateSettingInput): Promise<void> {
     await httpClient.put(`/settings/${id}`, input);
 }
 
-export const settingService = { listSettings, updateSetting };
+export const settingService = { listSettings, seedDefaultSettings, updateSetting };

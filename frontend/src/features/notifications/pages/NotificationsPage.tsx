@@ -4,8 +4,9 @@ import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
 import { useDateFormatter } from '@/shared/hooks';
 import { notificationService } from '@/features/notifications/services/notificationService';
-import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { NotificationItem } from '@/features/notifications/services/notificationService';
+import { getHttpErrorMessage } from '@/shared/services/httpClient';
+import { getNotificationSocket } from '@/shared/services/socketClient';
 
 type ReadStatusFilter = 'ALL' | 'UNREAD' | 'READ';
 
@@ -33,7 +34,25 @@ export default function NotificationsPage() {
 
     useEffect(() => {
         void loadNotifications('');
-        // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
+
+        const socket = getNotificationSocket();
+        const handleNewNotification = (newNotif: NotificationItem) => {
+            setNotifications((prev) => {
+                if (prev.some((n) => n.id === newNotif.id)) return prev;
+                return [newNotif, ...prev];
+            });
+        };
+
+        if (socket) {
+            socket.on('notification:new', handleNewNotification);
+        }
+
+        return () => {
+            if (socket) {
+                socket.off('notification:new', handleNewNotification);
+            }
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only
     }, []);
 
     const filteredNotifications = useMemo(() => {
