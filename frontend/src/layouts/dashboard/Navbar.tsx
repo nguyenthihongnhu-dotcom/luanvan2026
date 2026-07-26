@@ -119,9 +119,9 @@ export default function Navbar(): ReactNode {
     }, [openGroup]);
 
     return (
-        <nav ref={navRef} className="relative overflow-hidden border-b border-slate-200 bg-white px-3 py-2 shadow-xs sm:px-4">
-            <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-2 overflow-hidden">
-                <div className="flex min-w-0 flex-1 items-center gap-1 overflow-x-auto">
+        <nav ref={navRef} className="relative z-40 overflow-visible border-b border-slate-200 bg-white px-3 py-2 shadow-xs sm:px-4">
+            <div className="mx-auto flex max-w-[1400px] items-center justify-between gap-2 overflow-visible">
+                <div className="flex min-w-0 flex-1 flex-wrap items-center gap-1 overflow-visible">
                     {navbarGroups.map((group) => {
                         const isOpen = openGroup === group.name;
                         const isGroupActive = group.items.some((item) => item.path === location.pathname);
@@ -143,7 +143,7 @@ export default function Navbar(): ReactNode {
                                 </button>
 
                                 {isOpen && (
-                                    <div className="absolute left-0 top-full z-20 mt-2 min-w-50 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
+                                    <div className="absolute left-0 top-full z-50 mt-2 min-w-50 rounded-xl border border-slate-200 bg-white p-1.5 shadow-lg">
                                         {group.items.map((item) => {
                                             const isActive = location.pathname === item.path;
                                             const Icon = item.icon;

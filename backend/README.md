@@ -16,7 +16,7 @@ Backend là API server cho hệ thống quản lý kho Bambi WMS, dùng Express 
 cd backend
 npm install
 cp .env.example .env
-npm run start:dev
+npm run dev
 ```
 
 Backend mặc định chạy tại:
@@ -48,20 +48,20 @@ mysql -u root -p warehouse_management < warehouse_sample_data.sql
 
 ## Biến môi trường
 
-Nguồn sự thật là `src/config/config.ts` + `.env.example`. Bảng dưới liệt kê từng biến và giá trị nên dùng khi lên production.
+Nguồn sự thật là `src/config/config.ts` và `.env.example`.
 
 | Biến | Bắt buộc | Mặc định | Ghi chú production |
 | --- | --- | --- | --- |
 | `PORT` | Không | `3000` | Đặt theo port reverse proxy trỏ vào. |
 | `CORS_ORIGIN` | Không | `http://localhost:5173` | Đặt đúng origin frontend; có thể khai báo nhiều origin bằng dấu phẩy. Không dùng `*` ở production. |
-| `DATABASE_URL` | Có | — | Connection string MySQL; dùng user có quyền tối thiểu cần thiết, không dùng `root`. |
+| `DATABASE_URL` | Có | Không có | Connection string MySQL; dùng user có quyền tối thiểu cần thiết, không dùng `root`. |
 | `DB_CONNECTION_LIMIT` | Không | `10` | Tăng theo tải thực tế và giới hạn kết nối MySQL server. |
-| `JWT_SECRET` | Có | — | Phải là chuỗi random dài (32+ byte), khác nhau giữa các môi trường, không commit vào repo. |
+| `JWT_SECRET` | Có | Không có | Chuỗi random dài, khác nhau giữa các môi trường, không commit vào repo. |
 | `ACCESS_TOKEN_TTL_SECONDS` | Không | `900` | TTL access token. |
 | `REFRESH_TOKEN_TTL_DAYS` | Không | `30` | TTL refresh token/session. |
 | `PASSWORD_RESET_TTL_MINUTES` | Không | `15` | TTL token reset mật khẩu. |
 
-`config.ts` throw lỗi ngay khi thiếu `DATABASE_URL`/`JWT_SECRET`, nên service sẽ không start thay vì chạy với giá trị rỗng.
+`config.ts` throw lỗi ngay khi thiếu `DATABASE_URL` hoặc `JWT_SECRET`, nên service không start với cấu hình rỗng.
 
 ## Chạy production
 
@@ -71,19 +71,19 @@ npm run build
 NODE_ENV=production npm run start:prod
 ```
 
+`start:prod` chạy `node dist/main`, không dùng `ts-node`. Đặt biến môi trường qua secret manager của hạ tầng deploy, không copy `.env` production vào source control.
+
 ## Chạy bằng Docker Compose
 
 Từ root repo:
 
-`ash
+```bash
 docker compose up --build
-` 
+```
 
-Compose dựng MySQL 8.4, import schema/sample data và chạy backend tại http://localhost:3000.
+Compose dựng MySQL 8.4, import schema/sample data và chạy backend tại `http://localhost:3000`.
 
-`start:prod` chạy `node dist/main` (build output của `tsc`), không dùng `ts-node`. Đặt biến môi trường qua secret manager của hạ tầng deploy, không copy `.env` production vào source control.
-
-Checklist đầy đủ trước khi lên production: [backend/docs/overview.md — Production readiness](docs/overview.md#9-production-readiness-checklist-trước-khi-lên-production).
+Checklist đầy đủ trước khi lên production: [backend/docs/overview.md - Production readiness](docs/overview.md#10-production-readiness).
 
 ## Kiểm tra
 
@@ -118,4 +118,4 @@ Quy ước:
 - Validation kiểm tra input bằng Zod.
 - Service giữ business logic.
 - Repository giữ SQL/database transaction.
-- README trong module mô tả tính năng, endpoint, bảng chính và lưu ý bảo trì.
+- README trong module mô tả tính năng, endpoint, bảng chính, flow và lưu ý bảo trì.

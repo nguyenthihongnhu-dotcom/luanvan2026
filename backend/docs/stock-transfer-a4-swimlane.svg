@@ -1,0 +1,159 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="297mm" height="210mm" viewBox="0 0 2970 2100">
+  <defs>
+    <style>
+      .page { fill: #ffffff; }
+      .title { font: 700 52px Arial, sans-serif; fill: #111827; }
+      .subtitle { font: 400 26px Arial, sans-serif; fill: #4b5563; }
+      .lane-title { font: 700 27px Arial, sans-serif; fill: #111827; }
+      .box-title { font: 700 24px Arial, sans-serif; fill: #111827; }
+      .box-text { font: 400 20px Arial, sans-serif; fill: #374151; }
+      .small { font: 400 18px Arial, sans-serif; fill: #4b5563; }
+      .note { font: 700 22px Arial, sans-serif; fill: #111827; }
+      .error { font: 700 22px Arial, sans-serif; fill: #111827; }
+      .lane { fill: #ffffff; stroke: #9ca3af; stroke-width: 2; }
+      .header { fill: #f3f4f6; stroke: #4b5563; stroke-width: 2; }
+      .actor { fill: #ffffff; stroke: #4b5563; stroke-width: 2; }
+      .frontend { fill: #ffffff; stroke: #4b5563; stroke-width: 2; }
+      .backend { fill: #ffffff; stroke: #4b5563; stroke-width: 2; }
+      .database { fill: #ffffff; stroke: #4b5563; stroke-width: 2; }
+      .decision { fill: #ffffff; stroke: #4b5563; stroke-width: 2; }
+      .fail { fill: #ffffff; stroke: #4b5563; stroke-width: 2; }
+      .arrow { stroke: #374151; stroke-width: 3; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #6b7280; stroke-width: 3; fill: none; stroke-dasharray: 10 8; marker-end: url(#arrow); }
+    </style>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#374151"/>
+    </marker>
+  </defs>
+
+  <rect class="page" x="0" y="0" width="2970" height="2100"/>
+
+
+  <rect class="lane" x="70" y="175" width="690" height="1835"/>
+  <rect class="lane" x="760" y="175" width="690" height="1835"/>
+  <rect class="lane" x="1450" y="175" width="690" height="1835"/>
+  <rect class="lane" x="2140" y="175" width="760" height="1835"/>
+
+  <rect class="header" x="70" y="175" width="690" height="70"/>
+  <rect class="header" x="760" y="175" width="690" height="70"/>
+  <rect class="header" x="1450" y="175" width="690" height="70"/>
+  <rect class="header" x="2140" y="175" width="760" height="70"/>
+  <text class="lane-title" x="415" y="220" text-anchor="middle">NHÂN VIÊN KHO</text>
+  <text class="lane-title" x="1105" y="220" text-anchor="middle">FRONTEND</text>
+  <text class="lane-title" x="1795" y="220" text-anchor="middle">BACKEND API / SERVICE</text>
+  <text class="lane-title" x="2520" y="220" text-anchor="middle">DATABASE</text>
+
+  <rect class="actor" x="115" y="300" width="600" height="115" rx="10"/>
+  <text class="box-title" x="415" y="340" text-anchor="middle">1. Mở màn Chuyển kho</text>
+  <text class="box-text" x="415" y="375" text-anchor="middle">Chuẩn bị tạo phiếu chuyển vị trí kệ</text>
+
+  <rect class="frontend" x="805" y="300" width="600" height="115" rx="10"/>
+  <text class="box-title" x="1105" y="340" text-anchor="middle">2. Tải dữ liệu nền</text>
+  <text class="box-text" x="1105" y="375" text-anchor="middle">GET /stock/current + GET /locations</text>
+
+  <rect class="database" x="2200" y="300" width="640" height="115" rx="10"/>
+  <text class="box-title" x="2520" y="340" text-anchor="middle">3. Trả tồn khả dụng và vị trí</text>
+  <text class="box-text" x="2520" y="375" text-anchor="middle">vw_current_stock, warehouse_locations</text>
+
+  <path class="arrow" d="M715 358 H805"/>
+  <path class="arrow" d="M1405 358 H2200"/>
+  <path class="dash" d="M2200 390 H1405"/>
+
+  <rect class="actor" x="115" y="490" width="600" height="150" rx="10"/>
+  <text class="box-title" x="415" y="530" text-anchor="middle">4. Nhập thông tin chuyển</text>
+  <text class="box-text" x="415" y="565" text-anchor="middle">Chọn kệ nguồn, kệ đích, SKU/lô</text>
+  <text class="box-text" x="415" y="600" text-anchor="middle">Nhập số lượng cần chuyển</text>
+
+  <rect class="frontend" x="805" y="490" width="600" height="150" rx="10"/>
+  <text class="box-title" x="1105" y="530" text-anchor="middle">5. Kiểm tra client-side</text>
+  <text class="box-text" x="1105" y="565" text-anchor="middle">Số lượng &gt; 0</text>
+  <text class="box-text" x="1105" y="600" text-anchor="middle">Số lượng ≤ available_quantity</text>
+
+  <path class="arrow" d="M715 565 H805"/>
+
+  <polygon class="decision" points="1105,705 1360,790 1105,875 850,790"/>
+  <text class="box-title" x="1105" y="780" text-anchor="middle">Hợp lệ?</text>
+  <text class="small" x="1105" y="812" text-anchor="middle">quantity ≤ tồn khả dụng</text>
+
+  <rect class="fail" x="115" y="735" width="600" height="110" rx="10"/>
+  <text class="error" x="415" y="778" text-anchor="middle">Không hợp lệ</text>
+  <text class="box-text" x="415" y="812" text-anchor="middle">Hiển thị lỗi, không gửi backend</text>
+  <path class="arrow" d="M850 790 H715"/>
+
+  <rect class="frontend" x="805" y="950" width="600" height="125" rx="10"/>
+  <text class="box-title" x="1105" y="990" text-anchor="middle">6. Gửi tạo phiếu</text>
+  <text class="box-text" x="1105" y="1025" text-anchor="middle">POST /stock-transfers</text>
+  <text class="small" x="1105" y="1055" text-anchor="middle">productVariantId, sourceLocationId, destinationLocationId</text>
+  <path class="arrow" d="M1105 875 V950"/>
+
+  <rect class="backend" x="1495" y="950" width="600" height="125" rx="10"/>
+  <text class="box-title" x="1795" y="990" text-anchor="middle">7. Validate input</text>
+  <text class="box-text" x="1795" y="1025" text-anchor="middle">Không cho nguồn = đích</text>
+  <text class="small" x="1795" y="1055" text-anchor="middle">items từ 1 đến 100 dòng</text>
+  <path class="arrow" d="M1405 1012 H1495"/>
+
+  <rect class="database" x="2200" y="950" width="640" height="125" rx="10"/>
+  <text class="box-title" x="2520" y="990" text-anchor="middle">8. Lưu phiếu nháp</text>
+  <text class="box-text" x="2520" y="1025" text-anchor="middle">INSERT stock_transfers status = DRAFT</text>
+  <text class="box-text" x="2520" y="1055" text-anchor="middle">INSERT stock_transfer_items</text>
+  <path class="arrow" d="M2095 1012 H2200"/>
+
+  <rect class="actor" x="115" y="1155" width="600" height="115" rx="10"/>
+  <text class="box-title" x="415" y="1195" text-anchor="middle">9. Bấm Xác nhận</text>
+  <text class="box-text" x="415" y="1230" text-anchor="middle">Xác nhận chuyển kho và cập nhật tồn</text>
+
+  <rect class="frontend" x="805" y="1155" width="600" height="115" rx="10"/>
+  <text class="box-title" x="1105" y="1195" text-anchor="middle">10. Gửi xác nhận</text>
+  <text class="box-text" x="1105" y="1230" text-anchor="middle">POST /stock-transfers/:id/confirm</text>
+  <path class="arrow" d="M715 1212 H805"/>
+
+  <rect class="backend" x="1495" y="1155" width="600" height="115" rx="10"/>
+  <text class="box-title" x="1795" y="1195" text-anchor="middle">11. Kiểm tra quyền</text>
+  <text class="box-text" x="1795" y="1230" text-anchor="middle">verifyToken + stock_transfers:confirm</text>
+  <path class="arrow" d="M1405 1212 H1495"/>
+
+  <rect class="database" x="2200" y="1155" width="640" height="115" rx="10"/>
+  <text class="box-title" x="2520" y="1195" text-anchor="middle">12. Begin Transaction</text>
+  <text class="box-text" x="2520" y="1230" text-anchor="middle">Khóa phiếu + items + stock bằng FOR UPDATE</text>
+  <path class="arrow" d="M2095 1212 H2200"/>
+
+  <rect class="backend" x="1495" y="1355" width="600" height="150" rx="10"/>
+  <text class="box-title" x="1795" y="1395" text-anchor="middle">13. Kiểm tra nghiệp vụ</text>
+  <text class="box-text" x="1795" y="1430" text-anchor="middle">Phiếu DRAFT/PENDING, có items</text>
+  <text class="box-text" x="1795" y="1465" text-anchor="middle">Nguồn/đích thuộc đúng kho</text>
+
+  <rect class="database" x="2200" y="1355" width="640" height="150" rx="10"/>
+  <text class="box-title" x="2520" y="1395" text-anchor="middle">14. Kiểm tra tồn nguồn</text>
+  <text class="box-text" x="2520" y="1430" text-anchor="middle">UPDATE stock_locations</text>
+  <text class="box-text" x="2520" y="1465" text-anchor="middle">WHERE quantity - reserved_quantity ≥ số chuyển</text>
+  <path class="arrow" d="M2520 1270 V1355"/>
+  <path class="arrow" d="M2200 1430 H2095"/>
+  <path class="arrow" d="M2095 1430 H2200"/>
+
+  <polygon class="decision" points="2520,1585 2810,1670 2520,1755 2230,1670"/>
+  <text class="box-title" x="2520" y="1660" text-anchor="middle">Đủ tồn?</text>
+  <text class="small" x="2520" y="1692" text-anchor="middle">affectedRows = 1</text>
+  <path class="arrow" d="M2520 1505 V1585"/>
+
+  <rect class="fail" x="1495" y="1605" width="600" height="130" rx="10"/>
+  <text class="error" x="1795" y="1650" text-anchor="middle">Không đủ tồn</text>
+  <text class="box-text" x="1795" y="1685" text-anchor="middle">Rollback transaction</text>
+  <text class="box-text" x="1795" y="1715" text-anchor="middle">Trả lỗi INSUFFICIENT_STOCK</text>
+  <path class="arrow" d="M2230 1670 H2095"/>
+
+  <rect class="database" x="2200" y="1845" width="640" height="125" rx="10"/>
+  <text class="box-title" x="2520" y="1885" text-anchor="middle">15. Cập nhật tồn và log</text>
+  <text class="box-text" x="2520" y="1920" text-anchor="middle">Trừ nguồn + TRANSFER_OUT</text>
+  <text class="box-text" x="2520" y="1950" text-anchor="middle">Cộng đích + TRANSFER_IN</text>
+  <path class="arrow" d="M2520 1755 V1845"/>
+
+  <rect class="backend" x="1495" y="1845" width="600" height="125" rx="10"/>
+  <text class="box-title" x="1795" y="1885" text-anchor="middle">16. Hoàn tất phiếu</text>
+  <text class="box-text" x="1795" y="1920" text-anchor="middle">status = CONFIRMED, ghi audit_logs</text>
+  <text class="note" x="1795" y="1950" text-anchor="middle">Commit: tổng tồn toàn kho không đổi</text>
+  <path class="arrow" d="M2200 1908 H2095"/>
+
+  <text class="small" x="1485" y="2055" text-anchor="middle">
+    Bảng chính: stock_transfers, stock_transfer_items, stock_locations, inventory_transactions. Mỗi item tạo 2 giao dịch: TRANSFER_OUT và TRANSFER_IN.
+  </text>
+</svg>
