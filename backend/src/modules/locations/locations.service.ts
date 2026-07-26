@@ -1,6 +1,8 @@
 import { HttpError } from '../../common/http';
 import type {
   CreateLocationInput,
+  CreateLayerInput,
+  CreateLayerResult,
   CreateShelfInput,
   CreateZoneInput,
   CreateZoneResult,
@@ -11,6 +13,8 @@ import type {
   LocationHistoryRow,
   MutationResult,
   ReorderShelvesInput,
+  SyncLocationMatrixInput,
+  SyncLocationMatrixResult,
 } from './location.model';
 import {
   countLayerLocationsWithStock,
@@ -18,11 +22,13 @@ import {
   findLocations as findLocationsRepository,
   findLocationHistory,
   insertLocation,
+  insertLayer,
   insertShelf,
   insertZone,
   softDeleteLocationByLayer,
   softDeleteLocationsByShelfId,
   reorderShelvesRepository,
+  syncLocationMatrixRepository,
 } from './locations.repository';
 
 function throwLocationHasStock(scope: 'shelf' | 'layer', total: number): never {
@@ -78,6 +84,19 @@ export async function createShelf(
 ): Promise<CreateShelfResult> {
   return insertShelf(input);
 }
+
+export async function createLayer(
+  input: CreateLayerInput,
+): Promise<CreateLayerResult> {
+  return insertLayer(input);
+}
+
+export async function syncLocationMatrix(
+  input: SyncLocationMatrixInput,
+): Promise<SyncLocationMatrixResult> {
+  return syncLocationMatrixRepository(input);
+}
+
 export async function createZone(
   input: CreateZoneInput,
 ): Promise<CreateZoneResult> {

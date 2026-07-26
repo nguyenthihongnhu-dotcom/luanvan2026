@@ -74,6 +74,27 @@ export type CreateShelfResult = {
   code: string;
   createdLocationCount: number;
 };
+
+export type CreateLayerInput = {
+  zoneCode: string;
+  warehouseId?: number;
+  layerNo?: number;
+};
+
+export type CreateLayerResult = {
+  layerNo: number;
+  createdLocationCount: number;
+};
+
+export type SyncLocationMatrixInput = {
+  zoneCode: string;
+  warehouseId?: number;
+};
+
+export type SyncLocationMatrixResult = {
+  createdLocationCount: number;
+};
+
 export type CreateZoneInput = {
   warehouseId?: number;
   code: string;

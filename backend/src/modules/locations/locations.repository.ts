@@ -1,7 +1,10 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
+import type { PoolConnection } from 'mysql2/promise';
 import { db } from '../../database/db';
 import type {
   CreateLocationInput,
+  CreateLayerInput,
+  CreateLayerResult,
   CreateShelfInput,
   CreateZoneInput,
   CreateZoneResult,
@@ -12,6 +15,8 @@ import type {
   LocationHistoryRow,
   MutationResult,
   QueryParams,
+  SyncLocationMatrixInput,
+  SyncLocationMatrixResult,
 } from './location.model';
 
 export async function findLocations(
@@ -197,6 +202,145 @@ export async function softDeleteLocationByLayer(
   return { affectedRows: result.affectedRows };
 }
 
+type ShelfForMatrix = RowDataPacket & {
+  id: number;
+  code: string;
+  name: string;
+};
+
+async function findZoneForWrite(
+  connection: PoolConnection,
+  input: { zoneCode: string; warehouseId?: number },
+): Promise<{ id: number; code: string }> {
+  const [zoneRows] = await connection.query<
+    Array<RowDataPacket & { id: number; code: string }>
+  >(
+    `
+      SELECT wz.id, wz.code
+      FROM warehouse_zones wz
+      JOIN warehouses w ON w.id = wz.warehouse_id
+      WHERE wz.code = ?
+        AND wz.deleted_at IS NULL
+        AND w.id = COALESCE(?, w.id)
+      ORDER BY w.id
+      LIMIT 1
+    `,
+    [input.zoneCode, input.warehouseId ?? null],
+  );
+  const zone = zoneRows[0];
+
+  if (!zone) {
+    throw new Error('ZONE_NOT_FOUND');
+  }
+
+  return zone;
+}
+
+async function getActiveShelvesByZone(
+  connection: PoolConnection,
+  zoneId: number,
+): Promise<ShelfForMatrix[]> {
+  const [shelfRows] = await connection.query<ShelfForMatrix[]>(
+    `
+      SELECT id, code, name
+      FROM warehouse_shelves
+      WHERE zone_id = ?
+        AND deleted_at IS NULL
+      ORDER BY sort_order, code
+    `,
+    [zoneId],
+  );
+
+  return shelfRows;
+}
+
+async function ensureLocationForShelfLayer(
+  connection: PoolConnection,
+  input: {
+    zoneCode: string;
+    shelfId: number;
+    shelfCode: string;
+    shelfName: string;
+    layerNo: number;
+  },
+): Promise<number> {
+  const layerCode = String(input.layerNo).padStart(2, '0');
+  const locationCode = `${input.zoneCode}-${input.shelfCode}-${layerCode}`;
+  const locationName = `${input.shelfName} tầng ${layerCode}`;
+  const [existingRows] = await connection.query<
+    Array<RowDataPacket & { id: number; deleted_at: Date | null }>
+  >(
+    `
+      SELECT id, deleted_at
+      FROM warehouse_locations
+      WHERE shelf_id = ?
+        AND layer_no = ?
+      LIMIT 1
+    `,
+    [input.shelfId, input.layerNo],
+  );
+  const existing = existingRows[0];
+
+  if (existing && existing.deleted_at === null) {
+    return 0;
+  }
+
+  if (existing) {
+    const [result] = await connection.query<ResultSetHeader>(
+      `
+        UPDATE warehouse_locations
+        SET code = ?,
+            name = ?,
+            location_type = 'STANDARD',
+            status = 'ACTIVE',
+            deleted_at = NULL
+        WHERE id = ?
+      `,
+      [locationCode, locationName, existing.id],
+    );
+    return result.affectedRows;
+  }
+
+  const [result] = await connection.query<ResultSetHeader>(
+    `
+      INSERT INTO warehouse_locations (
+        shelf_id,
+        code,
+        layer_no,
+        name,
+        location_type,
+        status
+      )
+      VALUES (?, ?, ?, ?, 'STANDARD', 'ACTIVE')
+    `,
+    [input.shelfId, locationCode, input.layerNo, locationName],
+  );
+
+  return result.affectedRows;
+}
+
+async function ensureZoneLocationMatrix(
+  connection: PoolConnection,
+  input: { zoneId: number; zoneCode: string; layerCount: number },
+): Promise<number> {
+  const shelves = await getActiveShelvesByZone(connection, input.zoneId);
+  let createdLocationCount = 0;
+
+  for (const shelf of shelves) {
+    for (let layerNo = 1; layerNo <= input.layerCount; layerNo += 1) {
+      createdLocationCount += await ensureLocationForShelfLayer(connection, {
+        zoneCode: input.zoneCode,
+        shelfId: shelf.id,
+        shelfCode: shelf.code,
+        shelfName: shelf.name,
+        layerNo,
+      });
+    }
+  }
+
+  return createdLocationCount;
+}
+
 export async function insertShelf(
   input: CreateShelfInput,
 ): Promise<CreateShelfResult> {
@@ -205,26 +349,7 @@ export async function insertShelf(
   try {
     await connection.beginTransaction();
 
-    const [zoneRows] = await connection.query<
-      Array<RowDataPacket & { id: number }>
-    >(
-      `
-        SELECT wz.id
-        FROM warehouse_zones wz
-        JOIN warehouses w ON w.id = wz.warehouse_id
-        WHERE wz.code = ?
-          AND wz.deleted_at IS NULL
-          AND w.id = COALESCE(?, w.id)
-        ORDER BY w.id
-        LIMIT 1
-      `,
-      [input.zoneCode, input.warehouseId ?? null],
-    );
-    const zoneId = zoneRows[0]?.id;
-
-    if (!zoneId) {
-      throw new Error('ZONE_NOT_FOUND');
-    }
+    const zone = await findZoneForWrite(connection, input);
 
     const [maxRows] = await connection.query<
       Array<
@@ -232,7 +357,7 @@ export async function insertShelf(
       >
     >(
       `SELECT MAX(code) AS max_code, MAX(sort_order) AS max_sort FROM warehouse_shelves WHERE zone_id = ? AND deleted_at IS NULL`,
-      [zoneId],
+      [zone.id],
     );
     const nextNumber = input.code
       ? Number(input.code.replace(/\D/g, '')) || 1
@@ -243,7 +368,7 @@ export async function insertShelf(
 
     const [shelfResult] = await connection.query<ResultSetHeader>(
       `INSERT INTO warehouse_shelves (zone_id, code, name, status, sort_order) VALUES (?, ?, ?, 'ACTIVE', ?)`,
-      [zoneId, shelfCode, shelfName, (maxRows[0]?.max_sort ?? 0) + 1],
+      [zone.id, shelfCode, shelfName, (maxRows[0]?.max_sort ?? 0) + 1],
     );
 
     const [layerRows] = await connection.query<
@@ -256,29 +381,21 @@ export async function insertShelf(
         WHERE ws.zone_id = ?
           AND wl.deleted_at IS NULL
       `,
-      [zoneId],
+      [zone.id],
     );
     const layerCount = input.layerCount ?? layerRows[0]?.max_layer ?? 3;
 
-    for (let layerNo = 1; layerNo <= layerCount; layerNo += 1) {
-      const layerCode = String(layerNo).padStart(2, '0');
-      await connection.query(
-        `INSERT INTO warehouse_locations (shelf_id, code, layer_no, name, location_type, status)
-         VALUES (?, ?, ?, ?, 'STANDARD', 'ACTIVE')`,
-        [
-          shelfResult.insertId,
-          `${input.zoneCode}-${shelfCode}-${layerCode}`,
-          layerNo,
-          `${shelfName} tầng ${layerCode}`,
-        ],
-      );
-    }
+    const createdLocationCount = await ensureZoneLocationMatrix(connection, {
+      zoneId: zone.id,
+      zoneCode: zone.code,
+      layerCount,
+    });
 
     await connection.commit();
     return {
       id: shelfResult.insertId,
       code: shelfCode,
-      createdLocationCount: layerCount,
+      createdLocationCount,
     };
   } catch (error) {
     await connection.rollback();
@@ -287,6 +404,88 @@ export async function insertShelf(
     connection.release();
   }
 }
+
+export async function insertLayer(
+  input: CreateLayerInput,
+): Promise<CreateLayerResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const zone = await findZoneForWrite(connection, input);
+    const [layerRows] = await connection.query<
+      Array<RowDataPacket & { max_layer: number | null }>
+    >(
+      `
+        SELECT MAX(wl.layer_no) AS max_layer
+        FROM warehouse_locations wl
+        JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+        WHERE ws.zone_id = ?
+          AND ws.deleted_at IS NULL
+          AND wl.deleted_at IS NULL
+      `,
+      [zone.id],
+    );
+    const layerNo = input.layerNo ?? (layerRows[0]?.max_layer ?? 0) + 1;
+    const createdLocationCount = await ensureZoneLocationMatrix(connection, {
+      zoneId: zone.id,
+      zoneCode: zone.code,
+      layerCount: layerNo,
+    });
+
+    await connection.commit();
+    return { layerNo, createdLocationCount };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
+export async function syncLocationMatrixRepository(
+  input: SyncLocationMatrixInput,
+): Promise<SyncLocationMatrixResult> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const zone = await findZoneForWrite(connection, input);
+    const [layerRows] = await connection.query<
+      Array<RowDataPacket & { max_layer: number | null }>
+    >(
+      `
+        SELECT MAX(wl.layer_no) AS max_layer
+        FROM warehouse_locations wl
+        JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+        WHERE ws.zone_id = ?
+          AND ws.deleted_at IS NULL
+          AND wl.deleted_at IS NULL
+      `,
+      [zone.id],
+    );
+    const layerCount = layerRows[0]?.max_layer ?? 0;
+    const createdLocationCount =
+      layerCount > 0
+        ? await ensureZoneLocationMatrix(connection, {
+            zoneId: zone.id,
+            zoneCode: zone.code,
+            layerCount,
+          })
+        : 0;
+
+    await connection.commit();
+    return { createdLocationCount };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 export async function insertZone(
   input: CreateZoneInput,
 ): Promise<CreateZoneResult> {

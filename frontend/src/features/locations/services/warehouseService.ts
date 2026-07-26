@@ -88,6 +88,15 @@ export async function createShelf(input: { zoneCode: string; code?: string; name
     await httpClient.post('/locations/shelves', input);
 }
 
+export async function createLayer(input: { zoneCode: string; layerNo?: number }): Promise<void> {
+    await httpClient.post('/locations/layers', input);
+}
+
+export async function syncLocationMatrix(input: { zoneCode: string }): Promise<{ createdLocationCount: number }> {
+    const response = await httpClient.post<{ data: { createdLocationCount: number } }>('/locations/sync-matrix', input);
+    return unwrapData(response);
+}
+
 export async function createZone(input: { code: string; name?: string; shelfCount?: number; layerCount?: number }): Promise<void> {
     await httpClient.post('/locations/zones', input);
 }
@@ -116,6 +125,8 @@ export const warehouseService = {
     deriveLayers,
     createLocation,
     createShelf,
+    createLayer,
+    syncLocationMatrix,
     createZone,
     deleteShelf,
     deleteLayer,

@@ -22,6 +22,8 @@ Module `locations` mô tả layout kho vật lý để frontend vẽ sơ đồ v
 | POST | `/locations` | Tạo một location |
 | POST | `/locations/zones` | Tạo zone + shelf mặc định + layer mặc định |
 | POST | `/locations/shelves` | Tạo shelf + layer mặc định |
+| POST | `/locations/layers` | Tạo tầng mới cho toàn khu và lấp các ô kệ/tầng còn thiếu |
+| POST | `/locations/sync-matrix` | Lấp lại các ô kệ/tầng còn thiếu trong khu hiện tại |
 | PATCH | `/locations/shelves/reorder` | Cập nhật thứ tự hiển thị các kệ |
 | DELETE | `/locations/shelf/:shelfId` | Soft delete các location thuộc shelf nếu không còn hàng |
 | DELETE | `/locations/layer?shelfId=1&layerNo=2` | Soft delete một layer nếu không còn hàng |
@@ -60,7 +62,34 @@ POST /locations/shelves
       -> tìm zone theo zoneCode
       -> tính mã kệ tiếp theo nếu frontend không gửi code
       -> insert shelf
-      -> sinh location theo layerCount hoặc số tầng hiện có của khu
+      -> ensure ma trận location đủ đến layerCount hoặc số tầng hiện có của khu
+      -> tự lấp các ô kệ/tầng còn thiếu trong khu
+```
+
+## Luồng tạo tầng
+
+```text
+POST /locations/layers
+  -> parseCreateLayer
+  -> createLayer
+  -> insertLayer transaction
+      -> tìm zone theo zoneCode
+      -> nếu không gửi layerNo thì lấy tầng lớn nhất hiện có + 1
+      -> ensure ma trận location đủ từ tầng 1 đến tầng mới
+      -> tự lấp các ô thiếu như A-A02-02 trước khi commit
+```
+
+## Luồng đồng bộ ma trận
+
+```text
+POST /locations/sync-matrix
+  -> parseSyncLocationMatrix
+  -> syncLocationMatrix
+  -> syncLocationMatrixRepository transaction
+      -> tìm zone theo zoneCode
+      -> lấy tầng lớn nhất hiện có trong khu
+      -> ensure mọi tổ hợp kệ x tầng đều có warehouse_locations active
+      -> trả createdLocationCount
 ```
 
 ## Luồng xóa kệ/tầng
@@ -82,5 +111,6 @@ DELETE /locations/layer?shelfId=&layerNo=
 - Không hard delete location/kệ/khu đã có lịch sử tồn.
 - Không cho xóa kệ/tầng nếu còn tồn thực tế hoặc tồn đã giữ chỗ.
 - Khi sinh code location, phải giữ format dễ đọc: `ZONE-SHELF-LAYER`, ví dụ `A-01-03`.
+- Khi thêm kệ hoặc tầng, backend phải đảm bảo ma trận `shelf x layer` không bị lỗ trống; không để frontend tự loop từng ô.
 - Nếu thêm warehouse multi-tenant, mọi query location phải lọc theo warehouse/user permission.
 - Nếu frontend hiển thị sai sơ đồ, kiểm tra `GET /locations` trước rồi mới kiểm tra UI.

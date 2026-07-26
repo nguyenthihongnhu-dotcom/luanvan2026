@@ -125,7 +125,6 @@ export function useWarehouse() {
             }
 
             const nextCodeInt = layers.length > 0 ? Math.max(...layers.map(layer => parseInt(layer.code, 10) || 0)) + 1 : 1;
-            const layerCode = nextCodeInt.toString().padStart(2, '0');
             const targetShelves = shelves.filter((shelf) => Number.isFinite(Number(shelf.id)));
 
             if (targetShelves.length === 0) {
@@ -138,17 +137,19 @@ export function useWarehouse() {
                 return;
             }
 
-            for (const shelf of targetShelves) {
-                await warehouseService.createLocation({
-                    shelfId: Number(shelf.id),
-                    code: `${selectedZone}-${shelf.code}-${layerCode}`,
-                    layerNo: nextCodeInt,
-                    name: `Tầng ${layerCode}`,
-                });
-            }
+            await warehouseService.createLayer({
+                zoneCode: selectedZone,
+                layerNo: nextCodeInt,
+            });
         }, 'Không thêm được tầng. Kiểm tra khu vực/kệ trong MySQL.');
     };
 
+    const handleSyncMatrix = async () => {
+        if (!selectedZone) return;
+        await runMutation(async () => {
+            await warehouseService.syncLocationMatrix({ zoneCode: selectedZone });
+        }, 'Không đồng bộ được ma trận kệ/tầng.');
+    };
 
     const handleReorderShelves = async (sourceShelfId: string, targetShelfId: string) => {
         if (sourceShelfId === targetShelfId) return;
@@ -167,6 +168,7 @@ export function useWarehouse() {
             await warehouseService.reorderShelves(shelfIds);
         }, 'Không lưu được thứ tự kệ.');
     };
+
     const handleDeleteShelf = async (shelfId: string, shelfCode: string) => {
         if (!window.confirm(`Bạn có chắc muốn xóa kệ ${shelfCode}?`)) return;
         await runMutation(async () => {
@@ -203,6 +205,7 @@ export function useWarehouse() {
         handleAddZone,
         handleAddShelf,
         handleAddLayer,
+        handleSyncMatrix,
         handleReorderShelves,
         handleDeleteShelf,
         handleDeleteLayer,

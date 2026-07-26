@@ -25,6 +25,7 @@ export default function WarehouseMapping() {
         handleAddZone,
         handleAddShelf,
         handleAddLayer,
+        handleSyncMatrix,
         handleReorderShelves,
         handleDeleteShelf,
         handleDeleteLayer,
@@ -76,6 +77,7 @@ export default function WarehouseMapping() {
                                     isSaving={isSaving}
                                     handleAddShelf={handleAddShelf}
                                     handleAddLayer={handleAddLayer}
+                                    handleSyncMatrix={handleSyncMatrix}
                                     handleDeleteShelf={handleDeleteShelf}
                                     handleDeleteLayer={handleDeleteLayer}
                                 />

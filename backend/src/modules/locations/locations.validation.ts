@@ -2,9 +2,11 @@ import { z } from 'zod';
 import { validateInput } from '../../common/validation/validate';
 import type {
   CreateLocationInput,
+  CreateLayerInput,
   CreateShelfInput,
   CreateZoneInput,
   ReorderShelvesInput,
+  SyncLocationMatrixInput,
   LocationFilters,
 } from './location.model';
 
@@ -55,6 +57,17 @@ const createShelfSchema = z.object({
   layerCount: z.coerce.number().int().positive().max(20).optional(),
 });
 
+const createLayerSchema = z.object({
+  zoneCode: z.string().trim().min(1).max(30).toUpperCase(),
+  warehouseId: z.coerce.number().int().positive().optional(),
+  layerNo: z.coerce.number().int().positive().max(20).optional(),
+});
+
+const syncLocationMatrixSchema = z.object({
+  zoneCode: z.string().trim().min(1).max(30).toUpperCase(),
+  warehouseId: z.coerce.number().int().positive().optional(),
+});
+
 const layerDeleteSchema = z.object({
   shelfId: z.coerce.number().int().positive(),
   layerNo: z.coerce.number().int().positive(),
@@ -82,6 +95,17 @@ export function parseLayerDeleteQuery(input: unknown): {
 export function parseCreateShelf(input: unknown): CreateShelfInput {
   return validateInput(createShelfSchema, input);
 }
+
+export function parseCreateLayer(input: unknown): CreateLayerInput {
+  return validateInput(createLayerSchema, input);
+}
+
+export function parseSyncLocationMatrix(
+  input: unknown,
+): SyncLocationMatrixInput {
+  return validateInput(syncLocationMatrixSchema, input);
+}
+
 export function parseCreateZone(input: unknown): CreateZoneInput {
   return validateInput(createZoneSchema, input);
 }

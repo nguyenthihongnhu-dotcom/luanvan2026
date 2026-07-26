@@ -81,7 +81,7 @@ export async function findGoodsReceiptDetail(
       SELECT
         gri.*,
         pv.sku,
-        pv.name AS variant_name,
+        pv.variant_name AS variant_name,
         p.name AS product_name,
         pb.lot_number,
         pb.expiry_date,

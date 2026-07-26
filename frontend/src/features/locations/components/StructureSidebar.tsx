@@ -7,6 +7,7 @@ interface StructureSidebarProps {
     isSaving?: boolean;
     handleAddShelf: () => void;
     handleAddLayer: () => void;
+    handleSyncMatrix: () => void;
     handleDeleteShelf: (shelfId: string, shelfCode: string) => void;
     handleDeleteLayer: (layerId: string, layerCode: string) => void;
 }
@@ -18,6 +19,7 @@ export default function StructureSidebar({
     isSaving = false,
     handleAddShelf,
     handleAddLayer,
+    handleSyncMatrix,
     handleDeleteShelf,
     handleDeleteLayer,
 }: StructureSidebarProps) {
@@ -51,7 +53,7 @@ export default function StructureSidebar({
                 </div>
 
                 <div className="rounded-lg border border-pink-100 bg-pink-50 p-3">
-                    <h3 className="text-xs font-bold uppercase tracking-wide text-pink-700">Thêm cấu trúc</h3>
+                    <h3 className="text-xs font-bold uppercase tracking-wide text-pink-700">Thêm và đồng bộ cấu trúc</h3>
                     <div className="mt-3 grid grid-cols-1 gap-2">
                         <button
                             type="button"
@@ -70,6 +72,15 @@ export default function StructureSidebar({
                         >
                             {isSaving ? "Đang lưu..." : "+ Thêm 1 tầng toàn khu"}
                             <span className="block text-[11px] font-normal text-pink-500">Tạo thêm một hàng tầng cho tất cả kệ.</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={handleSyncMatrix}
+                            disabled={isSaving || shelves.length === 0 || layers.length === 0}
+                            className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-left text-xs font-bold text-slate-700 shadow-sm transition hover:border-slate-400 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-60"
+                        >
+                            {isSaving ? "Đang lưu..." : "Đồng bộ ma trận"}
+                            <span className="block text-[11px] font-normal text-slate-500">Lấp các ô kệ/tầng đang thiếu trong khu.</span>
                         </button>
                     </div>
                 </div>
