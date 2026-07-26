@@ -29,6 +29,10 @@ export function requestLogger(
   const startedAt = Date.now();
 
   res.on('finish', () => {
+    if (res.statusCode === 304) {
+      return;
+    }
+
     const durationMs = Date.now() - startedAt;
     const log = {
       level: res.statusCode >= 500 ? 'error' : 'info',
