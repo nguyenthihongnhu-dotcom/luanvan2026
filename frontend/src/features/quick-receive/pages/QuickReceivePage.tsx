@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { CameraOutlined, CloseOutlined } from '@ant-design/icons';
+// import { CameraOutlined, CloseOutlined } from '@ant-design/icons';
+import { CloseOutlined } from '@ant-design/icons';
 import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import { getHttpErrorMessage, HttpError, httpClient } from '@/shared/services/httpClient';
 import { quickReceiveService } from '@/features/quick-receive/services/quickReceiveService';
@@ -24,6 +24,7 @@ type FormState = {
 
 type ScanTarget = 'product' | 'location';
 
+/*
 type DetectedBarcode = {
     rawValue: string;
 };
@@ -33,6 +34,7 @@ type BarcodeDetectorInstance = {
 };
 
 type BarcodeDetectorConstructor = new (options?: { formats?: string[] }) => BarcodeDetectorInstance;
+*/
 
 const initialForm: FormState = {
     productScan: '',
@@ -85,9 +87,11 @@ function formatNumber(value: number): string {
     return Number(value ?? 0).toLocaleString('vi-VN');
 }
 
+/*
 function getBarcodeDetector(): BarcodeDetectorConstructor | null {
     return (window as Window & { BarcodeDetector?: BarcodeDetectorConstructor }).BarcodeDetector ?? null;
 }
+*/
 
 export default function QuickReceivePage() {
     const [form, setForm] = useState<FormState>(initialForm);
@@ -130,64 +134,25 @@ export default function QuickReceivePage() {
         setCameraStarting(false);
     }
 
-    async function startCameraScan(target: ScanTarget) {
-        const BarcodeDetector = getBarcodeDetector();
-        if (!BarcodeDetector) {
-            setCameraMessage('Trình duyệt này chưa hỗ trợ quét QR bằng camera. Dùng Chrome/Edge bản mới hoặc nhập mã thủ công.');
-            return;
+    function stopCameraScan() {
+        if (frameRef.current !== null) {
+            cancelAnimationFrame(frameRef.current);
+            frameRef.current = null;
         }
-
-        stopCameraScan();
-        setScanTarget(target);
-        setCameraMessage(target === 'product' ? 'Đưa QR sản phẩm vào khung camera.' : 'Đưa QR vị trí kho vào khung camera.');
-        setCameraStarting(true);
-
-        try {
-            const stream = await navigator.mediaDevices.getUserMedia({
-                video: { facingMode: { ideal: 'environment' } },
-                audio: false,
-            });
-            streamRef.current = stream;
-            if (!videoRef.current) return;
-            videoRef.current.srcObject = stream;
-            await videoRef.current.play();
-            setCameraStarting(false);
-
-            const detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'ean_13'] });
-            const scanFrame = async () => {
-                const video = videoRef.current;
-                if (!video || video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
-                    frameRef.current = requestAnimationFrame(scanFrame);
-                    return;
-                }
-
-                try {
-                    const codes = await detector.detect(video);
-                    const rawValue = codes[0]?.rawValue?.trim();
-                    if (rawValue) {
-                        updateField(target === 'product' ? 'productScan' : 'locationScan', rawValue);
-                        setCameraMessage(`Đã quét: ${normalizeScanValue(rawValue)}`);
-                        stopCameraScan();
-                        if (target === 'product') {
-                            locationInputRef.current?.focus();
-                        } else {
-                            quantityInputRef.current?.focus();
-                        }
-                        return;
-                    }
-                } catch {
-                    setCameraMessage('Không đọc được QR trong khung hình hiện tại. Thử đưa mã rõ hơn hoặc nhập thủ công.');
-                }
-
-                frameRef.current = requestAnimationFrame(scanFrame);
-            };
-
-            frameRef.current = requestAnimationFrame(scanFrame);
-        } catch {
-            stopCameraScan();
-            setCameraMessage('Không mở được camera. Kiểm tra quyền camera của trình duyệt rồi thử lại.');
+        streamRef.current?.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+        if (videoRef.current) {
+            videoRef.current.srcObject = null;
         }
+        setScanTarget(null);
+        setCameraStarting(false);
     }
+
+    /*
+    async function startCameraScan(target: ScanTarget) {
+        // Code quét QR camera đã bị tắt
+    }
+    */
 
     useEffect(() => {
         return () => stopCameraScan();
@@ -283,6 +248,7 @@ export default function QuickReceivePage() {
                 {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
                 {cameraMessage && <div className="rounded-md border border-blue-200 bg-blue-50 px-4 py-2 text-sm text-blue-700">{cameraMessage}</div>}
 
+                {/* Camera quét QR đã bị tắt
                 {scanTarget && (
                     <section className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
                         <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
@@ -301,6 +267,7 @@ export default function QuickReceivePage() {
                         </div>
                     </section>
                 )}
+                */}
 
                 {missingSku && (
                     <form onSubmit={(event) => void handleCreateProduct(event)} className="rounded-lg border border-amber-200 bg-amber-50 p-4 shadow-sm">
@@ -342,10 +309,10 @@ export default function QuickReceivePage() {
                                     placeholder="Quét QR sản phẩm hoặc nhập SKU, ví dụ SUA-FRISO-4"
                                     className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500"
                                 />
-                                <button type="button" onClick={() => void startCameraScan('product')} className="inline-flex items-center gap-2 rounded-md border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100">
+                                {/* <button type="button" onClick={() => void startCameraScan('product')} className="inline-flex items-center gap-2 rounded-md border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100">
                                     <CameraOutlined />
                                     Bật cam
-                                </button>
+                                </button> */}
                             </div>
                             {normalizedProduct && <p className="mt-1 text-xs font-semibold text-pink-700">Nhận diện: {normalizedProduct}</p>}
                         </div>
@@ -366,10 +333,10 @@ export default function QuickReceivePage() {
                                     placeholder="Quét QR vị trí hoặc nhập HCM01-A-A02-01"
                                     className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500"
                                 />
-                                <button type="button" onClick={() => void startCameraScan('location')} className="inline-flex items-center gap-2 rounded-md border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100">
+                                {/* <button type="button" onClick={() => void startCameraScan('location')} className="inline-flex items-center gap-2 rounded-md border border-pink-200 bg-pink-50 px-3 py-2 text-sm font-semibold text-pink-700 hover:bg-pink-100">
                                     <CameraOutlined />
                                     Bật cam
-                                </button>
+                                </button> */}
                             </div>
                             {normalizedLocation && <p className="mt-1 text-xs font-semibold text-pink-700">Vị trí: {normalizedLocation}</p>}
                         </div>

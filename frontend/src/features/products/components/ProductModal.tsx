@@ -7,12 +7,13 @@ interface ProductModalProps {
     editingProduct: ProductItem | null;
     formData: { sku: string; name: string; category: string; stock: string; minStock: string; expiryDate: string; warehouseId: string; locationId: string; };
     locationOptions: LocationOption[];
+    categoryOptions?: string[];
     handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
     handleSubmit: (e: React.FormEvent) => void;
     onClose: () => void;
 }
 
-export default function ProductModal({ editingProduct, formData, locationOptions, handleInputChange, handleSubmit, onClose }: ProductModalProps) {
+export default function ProductModal({ editingProduct, formData, locationOptions, categoryOptions, handleInputChange, handleSubmit, onClose }: ProductModalProps) {
     const stockValue = Number(formData.stock || 0);
     const hasExistingLocation = Boolean(editingProduct?.locations);
     const warehouseOptions = Array.from(
@@ -22,6 +23,7 @@ export default function ProductModal({ editingProduct, formData, locationOptions
         ? locationOptions.filter((location) => String(location.warehouseId) === formData.warehouseId)
         : [];
     const shouldRequireStockPlace = stockValue > 0 && !hasExistingLocation;
+    const categoriesToRender = categoryOptions && categoryOptions.length > 0 ? categoryOptions : productCategoryOptions;
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md">
@@ -43,7 +45,7 @@ export default function ProductModal({ editingProduct, formData, locationOptions
                         <label className="mb-1 block text-sm font-medium text-gray-700">Danh mục</label>
                         <select name="category" required value={formData.category} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
                             <option value="">Chọn danh mục</option>
-                            {productCategoryOptions.map((category) => <option key={category} value={category}>{category}</option>)}
+                            {categoriesToRender.map((category) => <option key={category} value={category}>{category}</option>)}
                         </select>
                     </div>
                     <div className="grid grid-cols-2 gap-4">

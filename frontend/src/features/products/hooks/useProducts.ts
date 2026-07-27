@@ -1,9 +1,10 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import type { ChangeEvent, FormEvent } from "react";
 import { useForm } from "@/shared/hooks/useForm";
 import { productService } from "@/features/products/services/productService";
 import type { LocationOption } from "@/features/products/services/productService";
-import { getProductCategoryLabel, getProductNameLabel } from "@/features/products/utils/productDisplay";
+import { categoryService, type Category } from "@/features/products/services/categoryService";
+import { getProductCategoryLabel, getProductNameLabel, productCategoryOptions } from "@/features/products/utils/productDisplay";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
 export type ProductStockStatus = "IN_STOCK" | "LOW_STOCK" | "OUT_OF_STOCK";
@@ -46,13 +47,18 @@ export function useProducts() {
     const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null);
     const { formData, setFormData, handleInputChange, resetForm } = useForm(initialFormState);
     const [products, setProducts] = useState<ProductItem[]>(fallbackProducts);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
     const reloadProducts = async () => {
-        const result = await productService.listProducts();
+        const [result, categoryList] = await Promise.all([
+            productService.listProducts(),
+            categoryService.listCategories().catch(() => []),
+        ]);
         setProducts(result);
+        setCategories(categoryList);
     };
 
     useEffect(() => {
@@ -63,13 +69,18 @@ export function useProducts() {
             setError(null);
 
             try {
-                const [result, locations] = await Promise.all([
+                const [result, locations, categoryList] = await Promise.all([
                     productService.listProducts(),
                     productService.listLocationOptions(),
+                    categoryService.listCategories().catch((err) => {
+                        console.error("Failed to load categories:", err);
+                        return [];
+                    }),
                 ]);
                 if (isMounted) {
                     setProducts(result);
                     setLocationOptions(locations);
+                    setCategories(categoryList);
                 }
             } catch (err) {
                 console.error("Failed to load products from backend:", err);
@@ -82,6 +93,13 @@ export function useProducts() {
         void loadProducts();
         return () => { isMounted = false; };
     }, []);
+
+    const categoryOptions = useMemo(() => {
+        const namesFromDb = categories.map((c) => c.name.trim()).filter(Boolean);
+        const namesFromProducts = products.map((p) => getProductCategoryLabel(p.category)).filter(Boolean);
+        const combined = Array.from(new Set([...namesFromDb, ...namesFromProducts]));
+        return combined.length > 0 ? combined : productCategoryOptions;
+    }, [categories, products]);
 
     const handleProductInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
@@ -147,6 +165,8 @@ export function useProducts() {
     return {
         products,
         setProducts,
+        categories,
+        categoryOptions,
         locationOptions,
         isLoading,
         error,
