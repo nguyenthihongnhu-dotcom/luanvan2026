@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
+import type { ColDef } from "ag-grid-community";
 import DashboardLayout from "@/layouts/dashboard/DashboardLayout";
-import Tablelayout from "@/shared/ui/Table/TableLayout";
-import type { ColumnProps } from "@/shared/ui/Table/types";
+import DataGridLayout from "@/shared/ui/DataGrid/DataGridLayout";
 import { warehouseService } from "@/features/warehouses/services/warehouseService";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import { stockService } from "@/features/stock/services/stockService";
@@ -16,6 +16,11 @@ function formatNumber(value: unknown): string {
 function formatDate(value: string | null): string {
     if (!value) return "Không có";
     return new Intl.DateTimeFormat("vi-VN").format(new Date(value));
+}
+
+function toNumber(value: string | number | null | undefined): number {
+    const parsed = Number(value ?? 0);
+    return Number.isFinite(parsed) ? parsed : 0;
 }
 
 function warehouseLabel(warehouse: WarehouseOption): string {
@@ -131,27 +136,91 @@ export default function StockPage() {
         }
     }
 
-    const stockColumns: ColumnProps<CurrentStockItem>[] = [
-        { key: "sku", title: "SKU", className: "font-semibold text-gray-900" },
-        { key: "product_name", title: "Sản phẩm", render: (_, record) => `${record.product_name} - ${record.variant_name}` },
-        { key: "warehouse_code", title: "Kho", render: (_, record) => `${record.warehouse_code} - ${record.warehouse_name}` },
-        { key: "location_code", title: "Vị trí" },
-        { key: "lot_number", title: "Lô", render: (value) => String(value || "Không có") },
-        { key: "expiry_date", title: "Hạn sử dụng", render: (value) => formatDate(value as string | null) },
-        { key: "quantity", title: "Tồn", render: (value) => formatNumber(value) },
-        { key: "reserved_quantity", title: "Đã giữ", render: (value) => formatNumber(value) },
-        { key: "available_quantity", title: "Khả dụng", render: (value) => formatNumber(value) },
-    ];
+    const stockColumns = useMemo<ColDef<CurrentStockItem>[]>(() => [
+        { field: "sku", headerName: "SKU", pinned: "left", cellClass: "font-semibold text-gray-900", minWidth: 140 },
+        {
+            headerName: "Sản phẩm",
+            valueGetter: ({ data }) => data ? `${data.product_name} - ${data.variant_name}` : "",
+            minWidth: 240,
+        },
+        {
+            headerName: "Kho",
+            valueGetter: ({ data }) => data ? `${data.warehouse_code} - ${data.warehouse_name}` : "",
+            minWidth: 180,
+        },
+        { field: "location_code", headerName: "Vị trí", minWidth: 130 },
+        {
+            field: "lot_number",
+            headerName: "Lô",
+            minWidth: 140,
+            valueFormatter: ({ value }) => String(value || "Không có"),
+        },
+        {
+            field: "expiry_date",
+            headerName: "Hạn sử dụng",
+            filter: "agDateColumnFilter",
+            minWidth: 150,
+            valueFormatter: ({ value }) => formatDate(value as string | null),
+        },
+        {
+            field: "quantity",
+            headerName: "Tồn",
+            filter: "agNumberColumnFilter",
+            type: "rightAligned",
+            valueGetter: ({ data }) => toNumber(data?.quantity),
+            valueFormatter: ({ value }) => formatNumber(value),
+            width: 120,
+        },
+        {
+            field: "reserved_quantity",
+            headerName: "Đã giữ",
+            filter: "agNumberColumnFilter",
+            type: "rightAligned",
+            valueGetter: ({ data }) => toNumber(data?.reserved_quantity),
+            valueFormatter: ({ value }) => formatNumber(value),
+            width: 120,
+        },
+        {
+            field: "available_quantity",
+            headerName: "Khả dụng",
+            filter: "agNumberColumnFilter",
+            type: "rightAligned",
+            valueGetter: ({ data }) => toNumber(data?.available_quantity),
+            valueFormatter: ({ value }) => formatNumber(value),
+            width: 130,
+        },
+    ], []);
 
-    const expiryColumns: ColumnProps<NearExpiryStockItem>[] = [
-        { key: "sku", title: "SKU", className: "font-semibold text-gray-900" },
-        { key: "product_name", title: "Sản phẩm" },
-        { key: "lot_number", title: "Lô" },
-        { key: "location_code", title: "Vị trí" },
-        { key: "expiry_date", title: "Hạn sử dụng", render: (value) => formatDate(value as string) },
-        { key: "days_until_expiry", title: "Còn lại", render: (value) => `${formatNumber(value)} ngày` },
-        { key: "available_quantity", title: "Khả dụng", render: (value) => formatNumber(value) },
-    ];
+    const expiryColumns = useMemo<ColDef<NearExpiryStockItem>[]>(() => [
+        { field: "sku", headerName: "SKU", pinned: "left", cellClass: "font-semibold text-gray-900", minWidth: 140 },
+        { field: "product_name", headerName: "Sản phẩm", minWidth: 240 },
+        { field: "lot_number", headerName: "Lô", minWidth: 150 },
+        { field: "location_code", headerName: "Vị trí", minWidth: 130 },
+        {
+            field: "expiry_date",
+            headerName: "Hạn sử dụng",
+            filter: "agDateColumnFilter",
+            minWidth: 150,
+            valueFormatter: ({ value }) => formatDate(value as string | null),
+        },
+        {
+            field: "days_until_expiry",
+            headerName: "Còn lại",
+            filter: "agNumberColumnFilter",
+            type: "rightAligned",
+            valueFormatter: ({ value }) => `${formatNumber(value)} ngày`,
+            width: 130,
+        },
+        {
+            field: "available_quantity",
+            headerName: "Khả dụng",
+            filter: "agNumberColumnFilter",
+            type: "rightAligned",
+            valueGetter: ({ data }) => toNumber(data?.available_quantity),
+            valueFormatter: ({ value }) => formatNumber(value),
+            width: 130,
+        },
+    ], []);
 
     const allocationShortage = allocationPreview ? allocationPreview.allocatedQuantity < allocationPreview.requestedQuantity : false;
 
@@ -239,12 +308,23 @@ export default function StockPage() {
 
                 <div className="space-y-3">
                     <h2 className="text-base font-semibold text-gray-800">Tồn hiện tại</h2>
-                    <Tablelayout columns={stockColumns} dataSource={currentStock} rowKey="stock_location_id" isLoading={isLoading} />
+                    <DataGridLayout
+                        columns={stockColumns}
+                        getRowId={({ data }) => String(data.stock_location_id)}
+                        isLoading={isLoading}
+                        rows={currentStock}
+                    />
                 </div>
 
                 <div className="space-y-3">
                     <h2 className="text-base font-semibold text-gray-800">Lô gần hết hạn</h2>
-                    <Tablelayout columns={expiryColumns} dataSource={nearExpiryStock} rowKey="batch_id" isLoading={isLoading} />
+                    <DataGridLayout
+                        columns={expiryColumns}
+                        getRowId={({ data }) => `${data.batch_id}-${data.location_code}`}
+                        height={420}
+                        isLoading={isLoading}
+                        rows={nearExpiryStock}
+                    />
                 </div>
             </div>
         </DashboardLayout>

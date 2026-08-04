@@ -36,19 +36,48 @@ Hệ thống có 6 nhóm quy trình nghiệp vụ chính. Điểm chung của c�
 
 ### Quy trình chung của một chứng từ kho
 
+Sơ đồ trả lời câu hỏi: một chứng từ kho đi qua những bước nào từ lúc soạn tới lúc ghi sổ, và dừng ở đâu khi thiếu quyền hoặc dữ liệu không hợp lệ.
+
 ```mermaid
-flowchart LR
-    A[Tạo phiếu nháp<br/>DRAFT] --> B[Nhập chi tiết dòng hàng]
-    B --> C{Người có quyền<br/>xác nhận?}
-    C -- Không --> X[Từ chối 403]
-    C -- Có --> D[Kiểm tra nghiệp vụ:<br/>tồn, lô, hạn, vị trí]
-    D -- Không hợp lệ --> E[Báo lỗi<br/>INSUFFICIENT_STOCK...]
-    D -- Hợp lệ --> F[BEGIN TRANSACTION]
-    F --> G[Cập nhật stock_locations]
-    G --> H[Ghi inventory_transactions]
-    H --> I[Đổi trạng thái phiếu<br/>CONFIRMED/APPROVED]
-    I --> J[COMMIT]
-    J --> K[Sinh alert/notification nếu cần]
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu: Người dùng mở màn hình chứng từ"]) --> A["Tạo phiếu nháp, trạng thái DRAFT"]
+    A --> B["Nhập chi tiết dòng hàng"]
+    B --> C{"Người dùng có quyền xác nhận?"}
+    C -->|Không| C1["Trả lỗi 403 FORBIDDEN"]
+    C1 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    C -->|Có| Dq{"Tồn, lô, hạn dùng, vị trí hợp lệ?"}
+    Dq -->|Không hợp lệ| D1["Trả lỗi nghiệp vụ, ví dụ INSUFFICIENT_STOCK"]
+    D1 --> B
+    Dq -->|Hợp lệ| F["BEGIN TRANSACTION"]
+    F --> G["Cập nhật bảng stock_locations"]
+    G --> H["Ghi bảng inventory_transactions"]
+    H --> I["Đổi trạng thái phiếu sang CONFIRMED hoặc APPROVED"]
+    I --> J["COMMIT"]
+    J --> K["Sinh cảnh báo và thông báo nếu cần"]
+    K --> End2(["Kết thúc: Phiếu đã ghi sổ, tồn kho đã cập nhật"])
 ```
 
 ### 1) Quy trình Nhập kho (Goods Receipt)
@@ -56,20 +85,48 @@ flowchart LR
 Mục đích: ghi nhận hàng nhập từ nhà cung cấp, làm **tăng** tồn kho.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    Start([Bắt đầu]) --> S1[Nhân viên tạo phiếu nhập<br/>chọn kho + nhà cung cấp]
-    S1 --> S2[Thêm dòng: SKU, số lượng,<br/>lô/hạn sử dụng, vị trí nhập]
-    S2 --> S3{SKU có<br/>tracking lô/hạn?}
-    S3 -- Có --> S4[Bắt buộc nhập lô + hạn dùng]
-    S3 -- Không --> S5[Bỏ qua lô]
-    S4 --> S6[Lưu phiếu DRAFT]
+    Start(["Bắt đầu: Hàng về kho"]) --> S1["Nhân viên tạo phiếu nhập, chọn kho và nhà cung cấp"]
+    S1 --> S2["Thêm dòng hàng: SKU, số lượng, vị trí nhập"]
+    S2 --> S3{"SKU yêu cầu theo dõi lô và hạn dùng?"}
+    S3 -->|Có| S4["Nhập số lô và hạn sử dụng"]
+    S3 -->|Không| S5["Bỏ qua thông tin lô"]
+    S4 --> S6["Lưu phiếu, trạng thái DRAFT"]
     S5 --> S6
-    S6 --> S7[Người quản lý xác nhận phiếu<br/>quyền goods_receipts:confirm]
-    S7 --> S8[Tạo/khớp product_batches]
-    S8 --> S9[Tăng quantity ở stock_locations]
-    S9 --> S10[Ghi inventory_transactions<br/>type = RECEIPT]
-    S10 --> S11[Phiếu chuyển CONFIRMED]
-    S11 --> End([Kết thúc])
+    S6 --> S7{"Người xác nhận có quyền goods_receipts:confirm?"}
+    S7 -->|Không| S8["Trả lỗi 403 FORBIDDEN"]
+    S8 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    S7 -->|Có| S9{"Dòng cần lô đã có batch_id?"}
+    S9 -->|Chưa có| S10["ROLLBACK, trả lỗi LOT_TRACKING_REQUIRES_BATCH"]
+    S10 --> S2
+    S9 -->|Đã có| S11["Tạo mới hoặc khớp bản ghi product_batches"]
+    S11 --> S12["Tăng quantity trong stock_locations"]
+    S12 --> S13["Ghi inventory_transactions loại RECEIPT"]
+    S13 --> S14["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
+    S14 --> End2(["Kết thúc: Tồn kho đã tăng"])
 ```
 
 ### 2) Quy trình Xuất kho (Goods Issue)
@@ -77,19 +134,45 @@ flowchart TD
 Mục đích: xuất hàng bán/điều phối, làm **giảm** tồn. Phân bổ hàng theo **FEFO/FIFO**.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    Start([Bắt đầu]) --> S1[Tạo phiếu xuất, chọn kho,<br/>lý do xuất, chiến lược FEFO/FIFO]
-    S1 --> S2[Thêm dòng: SKU + số lượng cần xuất]
-    S2 --> S3[Lưu phiếu DRAFT]
-    S3 --> S4[Người có quyền xác nhận<br/>goods_issues:confirm]
-    S4 --> S5[Khóa các bản ghi tồn FOR UPDATE]
-    S5 --> S6{Tồn khả dụng<br/>đủ không?}
-    S6 -- Không đủ --> S7[Lỗi INSUFFICIENT_STOCK<br/>ROLLBACK]
-    S6 -- Đủ --> S8[Phân bổ theo FEFO:<br/>lô hết hạn sớm xuất trước]
-    S8 --> S9[Giảm quantity theo từng lô/vị trí]
-    S9 --> S10[Ghi inventory_transactions<br/>type = ISSUE cho từng dòng phân bổ]
-    S10 --> S11[Phiếu CONFIRMED, COMMIT]
-    S11 --> End([Kết thúc])
+    Start(["Bắt đầu: Có nhu cầu xuất hàng"]) --> S1["Tạo phiếu xuất, chọn kho và lý do xuất"]
+    S1 --> S2["Thêm dòng hàng: SKU và số lượng cần xuất"]
+    S2 --> S3["Lưu phiếu, trạng thái DRAFT"]
+    S3 --> S4{"Người xác nhận có quyền goods_issues:confirm?"}
+    S4 -->|Không| S5["Trả lỗi 403 FORBIDDEN"]
+    S5 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    S4 -->|Có| S6["BEGIN TRANSACTION, khóa bản ghi tồn FOR UPDATE"]
+    S6 --> S7{"Tồn khả dụng đủ số lượng cần xuất?"}
+    S7 -->|Không đủ| S8["ROLLBACK, trả lỗi INSUFFICIENT_STOCK"]
+    S8 --> End2(["Kết thúc: Tồn kho không đổi"])
+    S7 -->|Đủ| S9["Phân bổ theo FEFO: lô hết hạn sớm xuất trước"]
+    S9 --> S10["Giảm quantity theo từng lô và vị trí"]
+    S10 --> S11["Ghi inventory_transactions loại ISSUE"]
+    S11 --> S12["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
+    S12 --> End3(["Kết thúc: Tồn kho đã giảm"])
 ```
 
 ### 3) Quy trình Chuyển kho (Stock Transfer)
@@ -97,16 +180,43 @@ flowchart TD
 Mục đích: di chuyển hàng giữa hai vị trí/kho. Sinh cặp giao dịch `TRANSFER_OUT` + `TRANSFER_IN`.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    Start([Bắt đầu]) --> S1[Tạo phiếu chuyển:<br/>vị trí nguồn → vị trí đích]
-    S1 --> S2[Thêm dòng SKU + số lượng]
-    S2 --> S3[Xác nhận phiếu<br/>stock_transfers:confirm]
-    S3 --> S4{Tồn nguồn đủ?}
-    S4 -- Không --> S5[Lỗi, ROLLBACK]
-    S4 -- Có --> S6[Giảm tồn vị trí nguồn<br/>ghi TRANSFER_OUT]
-    S6 --> S7[Tăng tồn vị trí đích<br/>ghi TRANSFER_IN]
-    S7 --> S8[Phiếu CONFIRMED, COMMIT]
-    S8 --> End([Kết thúc])
+    Start(["Bắt đầu: Có yêu cầu chuyển hàng"]) --> S1["Tạo phiếu chuyển, chọn vị trí nguồn và vị trí đích"]
+    S1 --> S2["Thêm dòng hàng: SKU và số lượng"]
+    S2 --> S3["Lưu phiếu, trạng thái DRAFT"]
+    S3 --> S4{"Người xác nhận có quyền stock_transfers:confirm?"}
+    S4 -->|Không| S5["Trả lỗi 403 FORBIDDEN"]
+    S5 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    S4 -->|Có| S6{"Tồn khả dụng tại vị trí nguồn đủ?"}
+    S6 -->|Không đủ| S7["ROLLBACK, trả lỗi INSUFFICIENT_STOCK"]
+    S7 --> End2(["Kết thúc: Tồn kho không đổi"])
+    S6 -->|Đủ| S8["Giảm tồn vị trí nguồn, ghi TRANSFER_OUT"]
+    S8 --> S9["Tăng tồn vị trí đích, ghi TRANSFER_IN"]
+    S9 --> S10["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
+    S10 --> End3(["Kết thúc: Hàng đã sang vị trí đích"])
 ```
 
 ### 4) Quy trình Kiểm kê (Stock Count)
@@ -114,15 +224,43 @@ flowchart TD
 Mục đích: đếm thực tế và đối chiếu với tồn hệ thống. Có nhiều bước trạng thái.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'labelBackgroundColor': '#ffffff'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12 },
+  'state': { 'padding': 12, 'useMaxWidth': false }
+}}%%
 stateDiagram-v2
     [*] --> DRAFT: tạo phiếu kiểm kê
-    DRAFT --> IN_PROGRESS: bắt đầu (chốt danh sách SKU cần đếm)
+    DRAFT --> IN_PROGRESS: bắt đầu đếm, chốt danh sách SKU
+    DRAFT --> CANCELLED: hủy phiếu
     IN_PROGRESS --> IN_PROGRESS: ghi số đếm từng dòng
     IN_PROGRESS --> SUBMITTED: nộp kết quả
-    SUBMITTED --> APPROVED: duyệt (sinh điều chỉnh chênh lệch)
-    SUBMITTED --> REJECTED: từ chối
+    IN_PROGRESS --> CANCELLED: hủy phiếu
+    SUBMITTED --> APPROVED: duyệt, sinh điều chỉnh chênh lệch
+    SUBMITTED --> REJECTED: từ chối kết quả
     APPROVED --> [*]
     REJECTED --> [*]
+    CANCELLED --> [*]
 ```
 
 Khi **approve**: hệ thống so sánh số đếm với tồn hệ thống, chênh lệch dương sinh giao dịch `COUNT_ADJUSTMENT_IN`, chênh lệch âm sinh `COUNT_ADJUSTMENT_OUT`.
@@ -132,13 +270,38 @@ Khi **approve**: hệ thống so sánh số đếm với tồn hệ thống, ch�
 Mục đích: chỉnh tồn do hư hỏng, mất mát, sai lệch... Bắt buộc qua bước **duyệt** (không tự duyệt).
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'labelBackgroundColor': '#ffffff'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12 },
+  'state': { 'padding': 12, 'useMaxWidth': false }
+}}%%
 stateDiagram-v2
-    [*] --> DRAFT: tạo
+    [*] --> DRAFT: tạo phiếu điều chỉnh
     DRAFT --> PENDING: gửi duyệt
-    PENDING --> APPROVED: duyệt (người khác duyệt)
+    DRAFT --> CANCELLED: hủy phiếu
+    PENDING --> APPROVED: duyệt bởi người khác người tạo
     PENDING --> REJECTED: từ chối
-    DRAFT --> CANCELLED: hủy
-    PENDING --> CANCELLED: hủy
+    PENDING --> CANCELLED: hủy phiếu
     APPROVED --> [*]
     REJECTED --> [*]
     CANCELLED --> [*]
@@ -148,18 +311,48 @@ Khi **approve**: sinh `MANUAL_ADJUSTMENT_IN` / `MANUAL_ADJUSTMENT_OUT` tùy chi�
 
 ### 6) Quy trình Xác thực và phân quyền
 
+Sơ đồ trả lời câu hỏi: một người dùng được xác thực và kiểm tra quyền ở những điểm nào trước khi chạm tới nghiệp vụ.
+
 ```mermaid
-flowchart LR
-    A[Người dùng nhập email/mật khẩu] --> B[POST /auth/login]
-    B --> C[bcrypt.compare mật khẩu]
-    C -- Sai --> D[401 Invalid credentials]
-    C -- Đúng --> E[Sinh access token JWT<br/>+ refresh token]
-    E --> F[Lưu phiên user_sessions]
-    F --> G[Trả token cho client]
-    G --> H[Client gắn Bearer token mỗi request]
-    H --> I[Middleware verifyToken + requirePermission]
-    I -- Thiếu quyền --> J[403 Forbidden]
-    I -- Đủ quyền --> K[Vào controller nghiệp vụ]
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu: Người dùng mở trang đăng nhập"]) --> A["Nhập email và mật khẩu"]
+    A --> B["Gửi POST /auth/login"]
+    B --> C{"bcrypt.compare mật khẩu khớp?"}
+    C -->|Không khớp| C1["Trả 401 INVALID_CREDENTIALS"]
+    C1 --> A
+    C -->|Khớp| Dn["Sinh access token JWT và refresh token"]
+    Dn --> E["Lưu phiên vào bảng user_sessions"]
+    E --> F["Trả cặp token về client"]
+    F --> G["Client gắn Bearer token vào mỗi request"]
+    G --> H["Middleware verifyToken và requirePermission"]
+    H --> I{"Vai trò có đủ quyền cho route?"}
+    I -->|Không đủ| I1["Trả 403 FORBIDDEN"]
+    I1 --> End1(["Kết thúc: Từ chối truy cập"])
+    I -->|Đủ| J["Chuyển vào controller nghiệp vụ"]
+    J --> End2(["Kết thúc: Trả dữ liệu cho client"])
 ```
 
 ---
@@ -169,41 +362,63 @@ flowchart LR
 Phân rã chức năng hệ thống theo các phân hệ (mỗi phân hệ tương ứng một module backend + feature frontend).
 
 ```mermaid
-flowchart TD
-    ROOT[BAMBI WMS]
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart LR
+    ROOT["Hệ thống Bambi WMS"]
+    ROOT --> A["1. Quản trị hệ thống"]
+    ROOT --> B["2. Danh mục hàng hóa"]
+    ROOT --> C["3. Cấu trúc kho"]
+    ROOT --> Dm["4. Nghiệp vụ tồn kho"]
+    ROOT --> E["5. Báo cáo và vận hành"]
 
-    ROOT --> A[1. Quản trị hệ thống]
-    ROOT --> B[2. Danh mục hàng hóa]
-    ROOT --> C[3. Cấu trúc kho]
-    ROOT --> D[4. Nghiệp vụ tồn kho]
-    ROOT --> E[5. Báo cáo và vận hành]
+    A --> A1["1.1 Đăng nhập và đăng xuất"]
+    A --> A2["1.2 Quản lý người dùng"]
+    A --> A3["1.3 Quản lý vai trò và quyền"]
+    A --> A4["1.4 Cấu hình ứng dụng"]
 
-    A --> A1[Đăng nhập/Đăng xuất]
-    A --> A2[Quản lý người dùng]
-    A --> A3[Quản lý vai trò và quyền]
-    A --> A4[Cấu hình ứng dụng]
+    B --> B1["2.1 Danh mục, nhãn hiệu, đơn vị tính"]
+    B --> B2["2.2 Sản phẩm và biến thể SKU"]
+    B --> B3["2.3 Nhà cung cấp"]
+    B --> B4["2.4 Lô hàng và hạn sử dụng"]
 
-    B --> B1[Danh mục/Nhãn hiệu/Đơn vị]
-    B --> B2[Sản phẩm và biến thể SKU]
-    B --> B3[Nhà cung cấp]
-    B --> B4[Lô và hạn sử dụng]
+    C --> C1["3.1 Quản lý kho"]
+    C --> C2["3.2 Khu vực, kệ, vị trí"]
 
-    C --> C1[Quản lý kho]
-    C --> C2[Khu vực - Kệ - Vị trí]
+    Dm --> D1["4.1 Xem tồn kho hiện tại"]
+    Dm --> D2["4.2 Phiếu nhập kho"]
+    Dm --> D3["4.3 Phiếu xuất kho"]
+    Dm --> D4["4.4 Phiếu chuyển kho"]
+    Dm --> D5["4.5 Kiểm kê"]
+    Dm --> D6["4.6 Điều chỉnh tồn"]
+    Dm --> D7["4.7 Lịch sử giao dịch tồn"]
 
-    D --> D1[Xem tồn hiện tại]
-    D --> D2[Phiếu nhập kho]
-    D --> D3[Phiếu xuất kho]
-    D --> D4[Phiếu chuyển kho]
-    D --> D5[Kiểm kê]
-    D --> D6[Điều chỉnh tồn]
-    D --> D7[Lịch sử giao dịch tồn]
-
-    E --> E1[Báo cáo tồn/near-expiry]
-    E --> E2[Cảnh báo - Alerts]
-    E --> E3[Thông báo - Notifications]
-    E --> E4[Nhật ký thao tác - Audit logs]
-    E --> E5[Tệp đính kèm]
+    E --> E1["5.1 Báo cáo tồn và hàng cận hạn"]
+    E --> E2["5.2 Cảnh báo"]
+    E --> E3["5.3 Thông báo"]
+    E --> E4["5.4 Nhật ký thao tác"]
+    E --> E5["5.5 Tệp đính kèm"]
 ```
 
 ---
@@ -221,45 +436,82 @@ flowchart TD
 
 ### Sơ đồ Use case tổng quát
 
-> Bố cục gom nhóm theo Actor: mỗi Actor cùng nhóm use case của mình nằm trong một khung riêng, các đường liên kết không cắt nhau. Quan hệ dùng chung (Đăng nhập, Xem báo cáo) được nêu ở bảng mô tả bên dưới.
+> Sơ đồ vẽ theo đúng notation UML: actor là hình người que đặt ngoài ranh giới hệ thống, use case là hình elip đặt trong khung `Hệ thống Bambi WMS`, đường liên kết (association) là nét liền gấp khúc 90° và không cắt nhau. Quan hệ dùng chung (Đăng nhập, Xem báo cáo) được nêu ở bảng mô tả bên dưới.
+>
+> Sơ đồ này viết bằng **PlantUML** (`docs/diagrams/09_2-4-3_so-do-use-case-tong-quat_flow.puml`) vì Mermaid không có ký hiệu chuẩn cho use case diagram; 53 sơ đồ còn lại vẫn dùng Mermaid.
 
-```mermaid
-flowchart TB
-    subgraph ST[Nhân viên kho]
-        direction LR
-        Staff([Nhân viên kho])
-        Staff --- S1((Đăng nhập))
-        Staff --- S4((Xem tồn kho))
-        Staff --- S5((Tạo phiếu nhập))
-        Staff --- S6((Tạo phiếu xuất))
-        Staff --- S7((Tạo phiếu chuyển))
-        Staff --- S8((Kiểm kê))
-        Staff --- S12((Xem báo cáo))
-    end
+```plantuml
+@startuml
+skinparam shadowing false
+skinparam linetype ortho
+skinparam defaultFontSize 13
+skinparam padding 6
+skinparam roundcorner 6
+skinparam backgroundColor #ffffff
+skinparam ArrowColor #000000
+skinparam nodesep 22
+skinparam ranksep 70
+skinparam usecase {
+  BackgroundColor #ffffff
+  BorderColor #000000
+  FontColor #000000
+}
+skinparam actor {
+  BackgroundColor #ffffff
+  BorderColor #000000
+  FontColor #000000
+}
+skinparam rectangle {
+  BackgroundColor #ffffff
+  BorderColor #000000
+  FontColor #000000
+}
+left to right direction
 
-    subgraph MG[Quản lý kho]
-        direction LR
-        Manager([Quản lý kho])
-        Manager --- M9((Điều chỉnh tồn))
-        Manager --- M10((Xác nhận / Duyệt<br/>chứng từ))
-        Manager --- M11((Đảo giao dịch<br/>Reverse))
-        Manager --- M16((Xử lý cảnh báo))
-    end
+actor "Nhân viên kho" as Staff
+actor "Quản lý kho" as Manager
+actor "Quản trị viên" as Admin
+actor "Hệ thống" as Sys
 
-    subgraph AD[Quản trị viên]
-        direction LR
-        Admin([Quản trị viên])
-        Admin --- A2((Quản lý danh mục<br/>và sản phẩm))
-        Admin --- A3((Quản lý cấu trúc kho))
-        Admin --- A13((Quản lý người dùng<br/>và phân quyền))
-        Admin --- A14((Cấu hình hệ thống))
-    end
+rectangle "Hệ thống Bambi WMS" {
+  usecase "Đăng nhập" as UC01
+  usecase "Xem tồn kho" as UC02
+  usecase "Tạo phiếu nhập" as UC03
+  usecase "Tạo phiếu xuất" as UC04
+  usecase "Tạo phiếu chuyển" as UC05
+  usecase "Thực hiện kiểm kê" as UC06
+  usecase "Xem báo cáo" as UC07
+  usecase "Xác nhận và duyệt\nchứng từ" as UC08
+  usecase "Điều chỉnh tồn" as UC09
+  usecase "Đảo giao dịch" as UC10
+  usecase "Xử lý cảnh báo" as UC11
+  usecase "Quản lý danh mục\nvà sản phẩm" as UC12
+  usecase "Quản lý cấu trúc kho" as UC13
+  usecase "Quản lý người dùng\nvà phân quyền" as UC14
+  usecase "Cấu hình hệ thống" as UC15
+  usecase "Sinh cảnh báo\nvà thông báo" as UC16
+}
 
-    subgraph SY[Hệ thống]
-        direction LR
-        System([Hệ thống])
-        System --- Y15((Sinh cảnh báo<br/>và thông báo))
-    end
+Staff -- UC01
+Staff -- UC02
+Staff -- UC03
+Staff -- UC04
+Staff -- UC05
+Staff -- UC06
+Staff -- UC07
+
+Manager -- UC08
+Manager -- UC09
+Manager -- UC10
+Manager -- UC11
+
+Admin -- UC12
+Admin -- UC13
+Admin -- UC14
+Admin -- UC15
+
+Sys -- UC16
+@enduml
 ```
 
 ### Mô tả sơ lược các Use case
@@ -294,19 +546,42 @@ flowchart TB
 Mô hình dữ liệu được chia thành **6 phân hệ**. Sơ đồ dưới đây là bản đồ quan hệ mức ý niệm giữa các phân hệ (các thực thể chi tiết xem ở mức luận lý 3.1.2). Cách trình bày theo phân hệ giúp các đường quan hệ **không cắt nhau** và mỗi sơ đồ vừa một khổ trang.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart LR
-    A[Xác thực<br/>và Phân quyền]
-    B[Cấu trúc kho]
-    C[Danh mục<br/>và Lô hàng]
-    D[Tồn kho lõi]
-    E[Chứng từ<br/>nghiệp vụ]
-    F[Vận hành<br/>và Hệ thống]
+    A["Xác thực và phân quyền"]
+    B["Cấu trúc kho"]
+    C["Danh mục và lô hàng"]
+    Dc["Tồn kho lõi"]
+    E["Chứng từ nghiệp vụ"]
+    F["Vận hành và hệ thống"]
 
-    B --> D
-    C --> D
-    A --> E
-    E --> D
-    D --> F
+    A -->|cấp quyền thao tác| E
+    B -->|xác định vị trí lưu trữ| Dc
+    C -->|xác định SKU và lô| Dc
+    E -->|làm thay đổi| Dc
+    Dc -->|cung cấp số liệu| F
 ```
 
 | Phân hệ | Thực thể ý niệm chính |
@@ -324,7 +599,34 @@ Chi tiết từng phân hệ kèm khóa chính (PK), khóa ngoại (FK) và thu�
 
 **a) Phân hệ Xác thực và Phân quyền**
 
+Sơ đồ trả lời câu hỏi: tài khoản, vai trò, quyền và phiên đăng nhập liên kết với nhau ra sao.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'attributeBackgroundColorOdd': '#ffffff',
+    'attributeBackgroundColorEven': '#ffffff'
+  },
+  'er': { 'entityPadding': 12, 'minEntityWidth': 130, 'useMaxWidth': false }
+}}%%
 erDiagram
     roles ||--o{ users : role_id
     roles ||--o{ role_permissions : role_id
@@ -368,7 +670,34 @@ erDiagram
 
 **b) Phân hệ Cấu trúc kho**
 
+Sơ đồ trả lời câu hỏi: kho được phân rã tới vị trí lưu trữ theo mấy cấp và người dùng gắn với kho nào.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'attributeBackgroundColorOdd': '#ffffff',
+    'attributeBackgroundColorEven': '#ffffff'
+  },
+  'er': { 'entityPadding': 12, 'minEntityWidth': 130, 'useMaxWidth': false }
+}}%%
 erDiagram
     warehouses ||--o{ warehouse_zones : warehouse_id
     warehouse_zones ||--o{ warehouse_shelves : zone_id
@@ -405,7 +734,34 @@ erDiagram
 
 **c) Phân hệ Danh mục và Lô hàng**
 
+Sơ đồ trả lời câu hỏi: một SKU được mô tả bởi những bảng danh mục nào và lô hàng gắn vào đâu.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'attributeBackgroundColorOdd': '#ffffff',
+    'attributeBackgroundColorEven': '#ffffff'
+  },
+  'er': { 'entityPadding': 12, 'minEntityWidth': 130, 'useMaxWidth': false }
+}}%%
 erDiagram
     categories ||--o{ products : category_id
     brands ||--o{ products : brand_id
@@ -459,7 +815,34 @@ erDiagram
 
 **d) Phân hệ Tồn theo vị trí (`stock_locations`)**
 
+Sơ đồ trả lời câu hỏi: tồn kho được lưu ở mức chi tiết nào — theo SKU, theo vị trí hay theo lô.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'attributeBackgroundColorOdd': '#ffffff',
+    'attributeBackgroundColorEven': '#ffffff'
+  },
+  'er': { 'entityPadding': 12, 'minEntityWidth': 130, 'useMaxWidth': false }
+}}%%
 erDiagram
     product_variants ||--o{ stock_locations : product_variant_id
     warehouse_locations ||--o{ stock_locations : location_id
@@ -492,7 +875,34 @@ erDiagram
 
 **e) Phân hệ Lịch sử giao dịch (`inventory_transactions`)**
 
+Sơ đồ trả lời câu hỏi: mỗi biến động tồn được ghi lại kèm những thông tin truy vết nào.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'attributeBackgroundColorOdd': '#ffffff',
+    'attributeBackgroundColorEven': '#ffffff'
+  },
+  'er': { 'entityPadding': 12, 'minEntityWidth': 130, 'useMaxWidth': false }
+}}%%
 erDiagram
     warehouses ||--o{ inventory_transactions : warehouse_id
     product_variants ||--o{ inventory_transactions : product_variant_id
@@ -531,9 +941,34 @@ erDiagram
 
 **f) Phân hệ Chứng từ nghiệp vụ**
 
-Năm loại chứng từ có cấu trúc giống nhau: một bảng *phiếu* (header) và một bảng *dòng chi tiết* (item). Sơ đồ chỉ minh họa hai loại tiêu biểu; ba loại còn lại (chuyển kho, kiểm kê, điều chỉnh) tương tự.
+Năm loại chứng từ có cấu trúc giống nhau: một bảng *phiếu* (header) và một bảng *dòng chi tiết* (item). Sơ đồ liệt kê đủ cả năm cặp bảng, chỉ giữ khóa chính, khóa ngoại và thuộc tính tiêu biểu của mỗi bảng.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'attributeBackgroundColorOdd': '#ffffff',
+    'attributeBackgroundColorEven': '#ffffff'
+  },
+  'er': { 'entityPadding': 12, 'minEntityWidth': 130, 'useMaxWidth': false }
+}}%%
 erDiagram
     goods_receipts ||--o{ goods_receipt_items : goods_receipt_id
     goods_issues ||--o{ goods_issue_items : goods_issue_id
@@ -566,6 +1001,8 @@ erDiagram
     }
     stock_transfers {
         bigint id PK
+        bigint from_location_id FK
+        bigint to_location_id FK
         enum status
     }
     stock_transfer_items {
@@ -576,16 +1013,20 @@ erDiagram
     }
     stock_counts {
         bigint id PK
+        bigint warehouse_id FK
+        enum scope_type
         enum status
     }
     stock_count_items {
         bigint id PK
         bigint stock_count_id FK
         bigint product_variant_id FK
+        decimal system_quantity
         decimal counted_quantity
     }
     stock_adjustments {
         bigint id PK
+        bigint warehouse_id FK
         enum status
     }
     stock_adjustment_items {
@@ -729,7 +1170,48 @@ Kiến trúc lớp mỗi request: `Routes → Middleware (auth/permission) → C
 
 #### Sequence 1: Đăng nhập
 
+Sơ đồ trả lời câu hỏi: các lớp nào tham gia vào một lần đăng nhập và hệ thống trả gì về khi mật khẩu sai.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
     actor U as Người dùng
     participant FE as Frontend
@@ -739,126 +1221,259 @@ sequenceDiagram
     participant Repo as auth.repository
     participant DB as MySQL
 
-    U->>FE: Nhập email + mật khẩu
+    U->>FE: Nhập email và mật khẩu
     FE->>R: POST /auth/login
-    R->>C: loginController
+    R->>C: loginController(body)
     C->>S: login(input)
     S->>Repo: findActiveAuthUserByEmail(email)
-    Repo->>DB: SELECT users WHERE email
-    DB-->>Repo: user + password_hash
+    Repo->>DB: SELECT users WHERE email = ?
+    DB-->>Repo: user kèm password_hash
     Repo-->>S: user
     S->>S: bcrypt.compare(password, hash)
     alt Mật khẩu sai
-        S-->>C: 401 Invalid credentials
-        C-->>FE: error
-    else Đúng
-        S->>S: jwt.sign access + tạo refresh token
-        S->>Repo: lưu user_sessions
+        S-->>C: 401 INVALID_CREDENTIALS
+        C-->>FE: 401 INVALID_CREDENTIALS
+        FE-->>U: Hiện lỗi Email hoặc mật khẩu không đúng
+    else Mật khẩu đúng
+        S->>S: jwt.sign access token và sinh refresh token
+        S->>Repo: createUserSession(refresh_token_hash)
         Repo->>DB: INSERT user_sessions
-        S-->>C: { accessToken, refreshToken, user }
-        C-->>FE: 200 tokens
-        FE-->>U: Vào dashboard
+        DB-->>Repo: session_id
+        Repo-->>S: session
+        S-->>C: accessToken, refreshToken, user
+        C-->>FE: 200 kèm cặp token
+        FE-->>U: Mở trang tổng quan
     end
 ```
 
 #### Sequence 2: Xác nhận phiếu xuất kho (FEFO) — nghiệp vụ lõi
 
+Sơ đồ trả lời câu hỏi: khi xác nhận phiếu xuất, hệ thống khóa và trừ tồn theo FEFO ở bước nào, và trả lỗi gì khi tồn không đủ.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
     actor M as Quản lý kho
     participant FE as Frontend
-    participant MW as Middleware auth+permission
+    participant MW as Middleware xác thực và phân quyền
     participant C as goods-issues.controller
     participant S as goods-issues.service
     participant Repo as goods-issues.repository
     participant DB as MySQL
 
-    M->>FE: Bấm "Xác nhận" phiếu xuất
-    FE->>MW: POST /goods-issues/:id/confirm (Bearer token)
-    MW->>MW: verifyToken + requirePermission(goods_issues:confirm)
+    M->>FE: Bấm Xác nhận trên phiếu xuất
+    FE->>MW: POST /goods-issues/:id/confirm kèm Bearer token
+    MW->>MW: verifyToken và requirePermission(goods_issues:confirm)
     alt Thiếu quyền
-        MW-->>FE: 403 Forbidden
+        MW-->>FE: 403 FORBIDDEN
+        FE-->>M: Hiện thông báo không đủ quyền
     else Đủ quyền
-        MW->>C: confirmGoodsIssueController
+        MW->>C: confirmGoodsIssueController(id)
         C->>S: confirmGoodsIssue(input)
         S->>Repo: confirmGoodsIssueTransaction(input)
         Repo->>DB: BEGIN TRANSACTION
-        Repo->>DB: SELECT items phiếu
+        Repo->>DB: SELECT goods_issue_items WHERE goods_issue_id = ?
+        DB-->>Repo: danh sách dòng hàng
         loop Mỗi dòng hàng
-            Repo->>DB: SELECT stock_locations ... ORDER BY expiry_date ASC FOR UPDATE
-            DB-->>Repo: các lô khả dụng (FEFO)
-            alt Tồn không đủ
+            Repo->>DB: SELECT stock_locations ORDER BY expiry_date ASC FOR UPDATE
+            DB-->>Repo: các lô khả dụng theo FEFO
+            alt Tồn khả dụng không đủ
                 Repo->>DB: ROLLBACK
                 Repo-->>S: INSUFFICIENT_STOCK
-                S-->>C: 409 error
-            else Đủ
-                Repo->>DB: UPDATE stock_locations SET quantity-=? WHERE available>=?
-                Repo->>DB: INSERT inventory_transactions (type=ISSUE)
+                S-->>C: 409 INSUFFICIENT_STOCK
+                C-->>FE: 409 INSUFFICIENT_STOCK
+                FE-->>M: Hiện lỗi Tồn kho không đủ
+            else Tồn khả dụng đủ
+                Repo->>DB: UPDATE stock_locations SET quantity = quantity - ?
+                Repo->>DB: INSERT inventory_transactions loại ISSUE
             end
         end
-        Repo->>DB: UPDATE goods_issues SET status='CONFIRMED'
+        Repo->>DB: UPDATE goods_issues SET status = 'CONFIRMED'
         Repo->>DB: COMMIT
-        Repo-->>S: result
-        S-->>C: ok
+        Repo-->>S: kết quả phân bổ theo lô
+        S-->>C: thành công
         C-->>FE: 200 phiếu CONFIRMED
+        FE-->>M: Hiện phiếu đã xác nhận
     end
 ```
 
 #### Sequence 3: Tạo phiếu nhập kho
 
+Sơ đồ trả lời câu hỏi: dữ liệu phiếu nhập được kiểm tra ở đâu trước khi ghi xuống cơ sở dữ liệu.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
     actor St as Nhân viên kho
     participant FE as Frontend
     participant C as goods-receipts.controller
-    participant V as validation (Zod)
+    participant V as Lớp kiểm tra dữ liệu Zod
     participant S as goods-receipts.service
     participant Repo as goods-receipts.repository
     participant DB as MySQL
 
-    St->>FE: Nhập phiếu (kho, NCC, dòng hàng)
+    St->>FE: Nhập phiếu: kho, nhà cung cấp, dòng hàng
     FE->>C: POST /goods-receipts
-    C->>V: validate body
-    alt Dữ liệu sai
+    C->>V: validate(body)
+    alt Dữ liệu không hợp lệ
         V-->>C: 400 VALIDATION_ERROR
-        C-->>FE: error
-    else Hợp lệ
+        C-->>FE: 400 VALIDATION_ERROR
+        FE-->>St: Hiện lỗi ngay trên form
+    else Dữ liệu hợp lệ
         C->>S: createGoodsReceipt(input)
-        S->>Repo: insertGoodsReceipt + items
-        Repo->>DB: INSERT goods_receipts (status=DRAFT)
+        S->>Repo: insertGoodsReceipt kèm dòng hàng
+        Repo->>DB: INSERT goods_receipts, status = 'DRAFT'
         Repo->>DB: INSERT goods_receipt_items
-        DB-->>Repo: id
-        Repo-->>S: { id }
-        S-->>C: { id }
-        C-->>FE: 201 Created (DRAFT)
+        DB-->>Repo: id phiếu
+        Repo-->>S: id phiếu
+        S-->>C: id phiếu
+        C-->>FE: 201 Created, phiếu DRAFT
+        FE-->>St: Mở phiếu vừa tạo
     end
 ```
 
 #### Sequence 4: Duyệt phiếu điều chỉnh tồn
 
+Sơ đồ trả lời câu hỏi: hệ thống chặn hành vi tự duyệt phiếu điều chỉnh ở bước nào.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
     actor M as Quản lý duyệt
-    participant MW as Middleware
+    participant MW as Middleware xác thực và phân quyền
     participant S as stock-adjustments.service
-    participant Repo as repository
+    participant Repo as stock-adjustments.repository
     participant DB as MySQL
 
     M->>MW: POST /stock-adjustments/:id/approve
     MW->>MW: requirePermission(stock_adjustments:approve)
-    MW->>S: approveStockAdjustment
-    S->>S: Kiểm tra người duyệt ≠ người tạo
-    alt Tự duyệt
+    MW->>S: approveStockAdjustment(id, approverId)
+    S->>S: Kiểm tra người duyệt khác người tạo
+    alt Người duyệt trùng người tạo
         S-->>M: 403 SELF_APPROVAL_FORBIDDEN
-    else Hợp lệ
-        S->>Repo: approveTransaction
-        Repo->>DB: BEGIN
-        Repo->>DB: UPDATE stock_locations (tăng/giảm)
-        Repo->>DB: INSERT inventory_transactions (MANUAL_ADJUSTMENT_IN/OUT)
-        Repo->>DB: UPDATE status='APPROVED'
+    else Người duyệt hợp lệ
+        S->>Repo: approveTransaction(id)
+        Repo->>DB: BEGIN TRANSACTION
+        Repo->>DB: UPDATE stock_locations tăng hoặc giảm quantity
+        Repo->>DB: INSERT inventory_transactions MANUAL_ADJUSTMENT_IN hoặc OUT
+        Repo->>DB: UPDATE stock_adjustments SET status = 'APPROVED'
         Repo->>DB: COMMIT
-        Repo-->>S: ok
-        S-->>M: 200 APPROVED
+        Repo-->>S: thành công
+        S-->>M: 200 phiếu APPROVED
     end
 ```
 
@@ -866,73 +1481,146 @@ sequenceDiagram
 
 #### Activity 1: Xác nhận phiếu xuất kho theo FEFO
 
-```mermaid
-flowchart TD
-    Start([Bắt đầu confirm]) --> A[Xác thực token và quyền]
-    A --> B{Có quyền confirm?}
-    B -- Không --> R1[Trả 403]:::err
-    B -- Có --> C[BEGIN TRANSACTION]
-    C --> D[Đọc các dòng của phiếu]
-    D --> E[Chọn dòng hàng tiếp theo]
-    E --> F[Khóa các lô tồn FOR UPDATE<br/>sắp xếp hết hạn sớm trước]
-    F --> G{Tổng tồn khả dụng<br/>≥ số cần xuất?}
-    G -- Không --> H[ROLLBACK]:::err --> R2[Trả INSUFFICIENT_STOCK]:::err
-    G -- Có --> I[Phân bổ số lượng vào từng lô]
-    I --> J[UPDATE giảm quantity từng lô]
-    J --> K[INSERT inventory_transactions ISSUE]
-    K --> L{Còn dòng hàng?}
-    L -- Còn --> E
-    L -- Hết --> M[UPDATE phiếu = CONFIRMED]
-    M --> N[COMMIT]
-    N --> O[Sinh alert nếu tồn dưới min]
-    O --> End([Kết thúc])
+Sơ đồ trả lời câu hỏi: một lần xác nhận phiếu xuất xử lý lần lượt từng dòng hàng như thế nào trong một giao dịch.
 
-    classDef err fill:#fee,stroke:#c00;
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu: Người dùng bấm Xác nhận"]) --> A["Xác thực token và kiểm tra quyền"]
+    A --> B{"Có quyền goods_issues:confirm?"}
+    B -->|Không| B1["Trả 403 FORBIDDEN"]
+    B1 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    B -->|Có| C["BEGIN TRANSACTION"]
+    C --> Dr["Đọc danh sách dòng hàng của phiếu"]
+    Dr --> E["Chọn dòng hàng tiếp theo"]
+    E --> F["Khóa các lô tồn FOR UPDATE, sắp xếp hết hạn sớm trước"]
+    F --> G{"Tổng tồn khả dụng đủ số cần xuất?"}
+    G -->|Không đủ| G1["ROLLBACK, trả lỗi INSUFFICIENT_STOCK"]
+    G1 --> End2(["Kết thúc: Tồn kho không đổi"])
+    G -->|Đủ| H["Phân bổ số lượng vào từng lô theo FEFO"]
+    H --> I["Giảm quantity của từng lô"]
+    I --> J["Ghi inventory_transactions loại ISSUE"]
+    J --> K{"Còn dòng hàng chưa xử lý?"}
+    K -->|Còn| E
+    K -->|Hết| L["Đổi trạng thái phiếu sang CONFIRMED"]
+    L --> Mc["COMMIT"]
+    Mc --> N["Sinh cảnh báo nếu tồn xuống dưới mức tối thiểu"]
+    N --> End3(["Kết thúc: Xuất kho thành công"])
 ```
 
 #### Activity 2: Quy trình kiểm kê
 
-```mermaid
-flowchart TD
-    Start([Tạo phiếu kiểm kê]) --> A[DRAFT: chọn phạm vi SKU/vị trí]
-    A --> B[start → IN_PROGRESS<br/>chốt danh sách dòng cần đếm]
-    B --> C[Nhân viên đếm và ghi số thực tế]
-    C --> D{Đếm xong hết?}
-    D -- Chưa --> C
-    D -- Rồi --> E[submit → SUBMITTED]
-    E --> F{Quản lý duyệt?}
-    F -- Từ chối --> G[REJECTED]:::err
-    F -- Duyệt --> H[approve → so sánh đếm vs hệ thống]
-    H --> I{Có chênh lệch?}
-    I -- Không --> K[APPROVED, không đổi tồn]
-    I -- Dương --> J1[Sinh COUNT_ADJUSTMENT_IN]
-    I -- Âm --> J2[Sinh COUNT_ADJUSTMENT_OUT]
-    J1 --> K
-    J2 --> K
-    K --> End([Kết thúc])
-    G --> End
+Sơ đồ trả lời câu hỏi: kết quả kiểm kê được đối chiếu và chuyển thành giao dịch điều chỉnh ở bước nào.
 
-    classDef err fill:#fee,stroke:#c00;
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu: Tạo phiếu kiểm kê DRAFT"]) --> A["Chọn phạm vi kiểm kê: kho, khu vực hoặc SKU"]
+    A --> B["Bắt đầu đếm, chuyển IN_PROGRESS, chốt danh sách dòng"]
+    B --> C["Nhân viên ghi số lượng thực đếm từng dòng"]
+    C --> Dq{"Đã đếm hết các dòng?"}
+    Dq -->|Chưa| C
+    Dq -->|Rồi| E["Nộp kết quả, chuyển SUBMITTED"]
+    E --> F{"Quản lý duyệt kết quả?"}
+    F -->|Từ chối| F1["Chuyển REJECTED, tồn kho không đổi"]
+    F1 --> End1(["Kết thúc: Phiếu bị từ chối"])
+    F -->|Duyệt| G["So sánh số thực đếm với tồn hệ thống"]
+    G --> H{"Có chênh lệch không?"}
+    H -->|Không| K["Chuyển APPROVED, giữ nguyên tồn"]
+    H -->|Thừa| I1["Ghi COUNT_ADJUSTMENT_IN, tăng tồn"]
+    H -->|Thiếu| I2["Ghi COUNT_ADJUSTMENT_OUT, giảm tồn"]
+    I1 --> K
+    I2 --> K
+    K --> End2(["Kết thúc: Kiểm kê đã được duyệt"])
 ```
 
 #### Activity 3: Phân quyền request bất kỳ
 
-```mermaid
-flowchart TD
-    Start([HTTP request]) --> A[app.ts định tuyến]
-    A --> B{Route cần quyền?}
-    B -- Không --> F[Vào controller]
-    B -- Có --> C[verifyToken: giải mã JWT]
-    C --> D{Token hợp lệ?}
-    D -- Không --> E1[401 TOKEN_INVALID]:::err
-    D -- Có --> G[requirePermission: tra role_permissions]
-    G --> H{Role có quyền?}
-    H -- Không --> E2[403 Forbidden]:::err
-    H -- Có --> F[Vào controller → service → repository]
-    F --> I[Trả JSON wrapper data]
-    I --> End([Kết thúc])
+Sơ đồ trả lời câu hỏi: một request bất kỳ bị chặn ở đâu khi thiếu token hoặc thiếu quyền.
 
-    classDef err fill:#fee,stroke:#c00;
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu: Nhận HTTP request"]) --> A["app.ts định tuyến request"]
+    A --> B{"Route yêu cầu quyền?"}
+    B -->|Không| F["Chuyển vào controller, service, repository"]
+    B -->|Có| C["verifyToken: giải mã và kiểm tra JWT"]
+    C --> Dq{"Token hợp lệ và còn hạn?"}
+    Dq -->|Không| D1["Trả 401 TOKEN_INVALID"]
+    D1 --> End1(["Kết thúc: Từ chối truy cập"])
+    Dq -->|Có| G["requirePermission: tra bảng role_permissions"]
+    G --> H{"Vai trò có quyền yêu cầu?"}
+    H -->|Không| H1["Trả 403 FORBIDDEN"]
+    H1 --> End1
+    H -->|Có| F
+    F --> I["Trả JSON bọc trong trường data"]
+    I --> End2(["Kết thúc: Trả dữ liệu thành công"])
 ```
 
 ---
@@ -995,79 +1683,176 @@ Mục này đặc tả **mỗi chức năng nghiệp vụ** bằng đủ **4 lo�
 | Tiền điều kiện | Đăng nhập; đã có kho, NCC, SKU; quyền `goods_receipts:confirm` |
 | Kích hoạt | Nhân viên bấm "Tạo phiếu nhập" |
 | Luồng chính | 1. Chọn kho + NCC → 2. Thêm dòng (SKU, SL, lô, hạn, vị trí) → 3. Lưu DRAFT → 4. Quản lý confirm → 5. Tạo/khớp lô → 6. Tăng `stock_locations` → 7. Ghi giao dịch RECEIPT → 8. CONFIRMED |
-| Luồng phụ | Reverse: phiếu CONFIRMED → sinh REVERSAL, giảm lại tồn |
+| Luồng phụ | Reverse: phiếu CONFIRMED → sinh giao dịch REVERSAL, giảm lại tồn, phiếu chuyển `CANCELLED` |
 | Ngoại lệ | Thiếu quyền → 403; SKU cần lô nhưng thiếu `batch_id` → lỗi validation; phiếu rỗng → `GOODS_RECEIPT_HAS_NO_ITEMS`; lỗi DB → ROLLBACK |
 | Hậu điều kiện | Tồn tăng; có `inventory_transactions` type RECEIPT |
 
 **(2) Sơ đồ tuần tự**
 
+Sơ đồ trả lời câu hỏi: xác nhận phiếu nhập đi qua những lớp nào và dừng ở đâu khi SKU cần lô nhưng thiếu batch_id.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
     actor M as Quản lý kho
-    participant MW as Middleware auth+perm
+    participant MW as Middleware xác thực và phân quyền
     participant C as goods-receipts.controller
     participant S as goods-receipts.service
-    participant Repo as repository
+    participant Repo as goods-receipts.repository
     participant DB as MySQL
 
     M->>MW: POST /goods-receipts/:id/confirm
-    MW->>MW: verifyToken + requirePermission(goods_receipts:confirm)
-    MW->>C: confirmGoodsReceiptController
+    MW->>MW: verifyToken và requirePermission(goods_receipts:confirm)
+    MW->>C: confirmGoodsReceiptController(id)
     C->>S: confirmGoodsReceipt(id)
-    S->>S: Kiểm tra phiếu tồn tại, đang DRAFT/PENDING, có dòng hàng
+    S->>S: Kiểm tra phiếu đang DRAFT hoặc PENDING và có dòng hàng
     S->>Repo: confirmTransaction(id)
-    Repo->>DB: BEGIN
+    Repo->>DB: BEGIN TRANSACTION
     loop Mỗi dòng hàng
-        alt SKU tracking lô và thiếu batch_id
+        alt SKU cần theo lô nhưng thiếu batch_id
             Repo->>DB: ROLLBACK
             Repo-->>S: LOT_TRACKING_REQUIRES_BATCH
-        else Hợp lệ
-            Repo->>DB: INSERT/UPDATE product_batches
-            Repo->>DB: UPSERT stock_locations (quantity += SL)
-            Repo->>DB: INSERT inventory_transactions (RECEIPT)
+            S-->>C: 422 LOT_TRACKING_REQUIRES_BATCH
+            C-->>M: 422 kèm dòng hàng bị lỗi
+        else Dòng hàng hợp lệ
+            Repo->>DB: INSERT hoặc UPDATE product_batches
+            Repo->>DB: UPSERT stock_locations, tăng quantity
+            Repo->>DB: INSERT inventory_transactions loại RECEIPT
         end
     end
-    Repo->>DB: UPDATE goods_receipts SET status='CONFIRMED'
+    Repo->>DB: UPDATE goods_receipts SET status = 'CONFIRMED'
     Repo->>DB: COMMIT
-    Repo-->>S: ok
-    S-->>C: ok
-    C-->>M: 200 CONFIRMED
+    Repo-->>S: thành công
+    S-->>C: thành công
+    C-->>M: 200 phiếu CONFIRMED
 ```
 
 **(3) Sơ đồ hoạt động**
 
+Sơ đồ trả lời câu hỏi: người dùng thao tác theo trình tự nào để đưa một phiếu nhập từ DRAFT tới CONFIRMED.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    A([Bắt đầu]) --> B[Tạo phiếu: kho + NCC]
-    B --> C[Thêm dòng hàng]
-    C --> D{SKU cần lô/hạn?}
-    D -- Có --> E[Nhập lô + hạn dùng]
-    D -- Không --> F[Bỏ qua lô]
-    E --> G[Lưu DRAFT]
+    Start(["Bắt đầu"]) --> B["Tạo phiếu: chọn kho và nhà cung cấp"]
+    B --> C["Thêm dòng hàng: SKU, số lượng, vị trí nhập"]
+    C --> Dq{"SKU yêu cầu theo dõi lô và hạn dùng?"}
+    Dq -->|Có| E["Nhập số lô và hạn sử dụng"]
+    Dq -->|Không| F["Bỏ qua thông tin lô"]
+    E --> G["Lưu phiếu, trạng thái DRAFT"]
     F --> G
-    G --> H[Quản lý xác nhận]
-    H --> I{Đủ quyền và hợp lệ?}
-    I -- Không --> J[Báo lỗi / 403]:::err
-    I -- Có --> K[BEGIN]
-    K --> L[Tạo/khớp lô]
-    L --> M[Tăng tồn stock_locations]
-    M --> N[Ghi giao dịch RECEIPT]
-    N --> O[status = CONFIRMED, COMMIT]
-    O --> P([Kết thúc])
-    classDef err fill:#fee,stroke:#c00;
+    G --> H{"Người xác nhận có quyền goods_receipts:confirm?"}
+    H -->|Không| H1["Trả 403 FORBIDDEN"]
+    H1 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    H -->|Có| I["BEGIN TRANSACTION"]
+    I --> J{"Dòng cần lô đã có batch_id?"}
+    J -->|Chưa có| J1["ROLLBACK, trả LOT_TRACKING_REQUIRES_BATCH"]
+    J1 --> C
+    J -->|Đã có| K["Tạo hoặc khớp bản ghi product_batches"]
+    K --> L["Tăng quantity trong stock_locations"]
+    L --> Mn["Ghi inventory_transactions loại RECEIPT"]
+    Mn --> N["Đổi trạng thái CONFIRMED, COMMIT"]
+    N --> End2(["Kết thúc: Nhập kho thành công"])
 ```
 
 **(4) Sơ đồ trạng thái**
 
+Sơ đồ trả lời câu hỏi: phiếu nhập kho có những trạng thái nào và thao tác đảo giao dịch đưa phiếu về đâu.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'labelBackgroundColor': '#ffffff'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12 },
+  'state': { 'padding': 12, 'useMaxWidth': false }
+}}%%
 stateDiagram-v2
-    [*] --> DRAFT: tạo
+    [*] --> DRAFT: tạo phiếu nhập
     DRAFT --> PENDING: gửi duyệt
     DRAFT --> CONFIRMED: xác nhận
+    DRAFT --> CANCELLED: hủy phiếu
     PENDING --> CONFIRMED: xác nhận
-    DRAFT --> CANCELLED: hủy
-    PENDING --> CANCELLED: hủy
-    CONFIRMED --> CONFIRMED: đảo (sinh REVERSAL)
+    PENDING --> CANCELLED: hủy phiếu
+    CONFIRMED --> CANCELLED: đảo giao dịch, sinh REVERSAL
     CONFIRMED --> [*]
     CANCELLED --> [*]
 ```
@@ -1088,67 +1873,165 @@ stateDiagram-v2
 
 **(2) Sơ đồ tuần tự**
 
+Sơ đồ trả lời câu hỏi: xác nhận phiếu xuất gọi qua những lớp nào và trả mã lỗi gì khi tồn không đủ.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
     actor M as Quản lý kho
-    participant MW as Middleware
+    participant MW as Middleware xác thực và phân quyền
     participant S as goods-issues.service
-    participant Repo as repository
+    participant Repo as goods-issues.repository
     participant DB as MySQL
 
     M->>MW: POST /goods-issues/:id/confirm
     MW->>MW: requirePermission(goods_issues:confirm)
     MW->>S: confirmGoodsIssue(id)
-    S->>Repo: confirmGoodsIssueTransaction
-    Repo->>DB: BEGIN
+    S->>Repo: confirmGoodsIssueTransaction(id)
+    Repo->>DB: BEGIN TRANSACTION
     loop Mỗi dòng hàng
-        Repo->>DB: SELECT stock_locations ORDER BY expiry ASC FOR UPDATE
+        Repo->>DB: SELECT stock_locations ORDER BY expiry_date ASC FOR UPDATE
+        DB-->>Repo: các lô khả dụng theo FEFO
         alt Tồn khả dụng không đủ
             Repo->>DB: ROLLBACK
             Repo-->>S: INSUFFICIENT_STOCK
-        else Đủ
-            Repo->>DB: UPDATE quantity -= ? WHERE available >= ?
-            Repo->>DB: INSERT inventory_transactions (ISSUE)
+            S-->>M: 409 INSUFFICIENT_STOCK
+        else Tồn khả dụng đủ
+            Repo->>DB: UPDATE stock_locations SET quantity = quantity - ?
+            Repo->>DB: INSERT inventory_transactions loại ISSUE
         end
     end
-    Repo->>DB: UPDATE goods_issues SET status='CONFIRMED'
+    Repo->>DB: UPDATE goods_issues SET status = 'CONFIRMED'
     Repo->>DB: COMMIT
-    Repo-->>S: ok
-    S-->>M: 200 CONFIRMED
+    Repo-->>S: thành công
+    S-->>M: 200 phiếu CONFIRMED
 ```
 
 **(3) Sơ đồ hoạt động**
 
+Sơ đồ trả lời câu hỏi: người dùng thao tác theo trình tự nào để xuất kho và hệ thống lặp xử lý từng dòng hàng ra sao.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    A([Bắt đầu]) --> B[Tạo phiếu + chọn FEFO/FIFO]
-    B --> C[Thêm dòng SKU + SL]
-    C --> D[Lưu DRAFT]
-    D --> E[Xác nhận]
-    E --> F[BEGIN + khóa tồn FOR UPDATE]
-    F --> G{Tồn khả dụng đủ?}
-    G -- Không --> H[INSUFFICIENT_STOCK, ROLLBACK]:::err
-    G -- Có --> I[Phân bổ lô hết hạn sớm trước]
-    I --> J[Giảm tồn từng lô]
-    J --> K[Ghi giao dịch ISSUE]
-    K --> L{Còn dòng?}
-    L -- Còn --> F
-    L -- Hết --> M[CONFIRMED, COMMIT]
-    M --> N([Kết thúc])
-    classDef err fill:#fee,stroke:#c00;
+    Start(["Bắt đầu"]) --> B["Tạo phiếu xuất, chọn kho và lý do xuất"]
+    B --> C["Thêm dòng hàng: SKU và số lượng"]
+    C --> Dn["Lưu phiếu, trạng thái DRAFT"]
+    Dn --> E{"Người xác nhận có quyền goods_issues:confirm?"}
+    E -->|Không| E1["Trả 403 FORBIDDEN"]
+    E1 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    E -->|Có| F["BEGIN TRANSACTION"]
+    F --> G["Chọn dòng hàng tiếp theo, khóa tồn FOR UPDATE"]
+    G --> H{"Tồn khả dụng đủ?"}
+    H -->|Không đủ| H1["ROLLBACK, trả INSUFFICIENT_STOCK"]
+    H1 --> End2(["Kết thúc: Tồn kho không đổi"])
+    H -->|Đủ| I["Phân bổ theo FEFO: lô hết hạn sớm trước"]
+    I --> J["Giảm quantity của từng lô"]
+    J --> K["Ghi inventory_transactions loại ISSUE"]
+    K --> L{"Còn dòng hàng chưa xử lý?"}
+    L -->|Còn| G
+    L -->|Hết| Mn["Đổi trạng thái CONFIRMED, COMMIT"]
+    Mn --> End3(["Kết thúc: Xuất kho thành công"])
 ```
 
 **(4) Sơ đồ trạng thái**
 
+Sơ đồ trả lời câu hỏi: phiếu xuất kho có những trạng thái nào và thao tác đảo giao dịch đưa phiếu về đâu.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'labelBackgroundColor': '#ffffff'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12 },
+  'state': { 'padding': 12, 'useMaxWidth': false }
+}}%%
 stateDiagram-v2
-    [*] --> DRAFT: tạo
+    [*] --> DRAFT: tạo phiếu xuất
     DRAFT --> PENDING: gửi duyệt
     DRAFT --> CONFIRMED: xác nhận
+    DRAFT --> CANCELLED: hủy phiếu
     PENDING --> CONFIRMED: xác nhận
-    DRAFT --> CANCELLED: hủy
-    PENDING --> CANCELLED: hủy
-    CONFIRMED --> CONFIRMED: đảo (REVERSAL)
+    PENDING --> CANCELLED: hủy phiếu
+    CONFIRMED --> CANCELLED: đảo giao dịch, sinh REVERSAL
     CONFIRMED --> [*]
     CANCELLED --> [*]
 ```
@@ -1169,64 +2052,163 @@ stateDiagram-v2
 
 **(2) Sơ đồ tuần tự**
 
+Sơ đồ trả lời câu hỏi: một lần chuyển kho sinh cặp giao dịch TRANSFER_OUT và TRANSFER_IN ở bước nào.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
     actor M as Quản lý kho
-    participant MW as Middleware
+    participant MW as Middleware xác thực và phân quyền
     participant S as stock-transfers.service
-    participant Repo as repository
+    participant Repo as stock-transfers.repository
     participant DB as MySQL
 
     M->>MW: POST /stock-transfers/:id/confirm
     MW->>MW: requirePermission(stock_transfers:confirm)
     MW->>S: confirmStockTransfer(id)
-    S->>Repo: confirmTransaction
-    Repo->>DB: BEGIN
-    loop Mỗi dòng
-        Repo->>DB: SELECT stock_locations nguồn FOR UPDATE
-        alt Không đủ
+    S->>Repo: confirmTransaction(id)
+    Repo->>DB: BEGIN TRANSACTION
+    loop Mỗi dòng hàng
+        Repo->>DB: SELECT stock_locations tại vị trí nguồn FOR UPDATE
+        DB-->>Repo: tồn khả dụng tại nguồn
+        alt Tồn nguồn không đủ
             Repo->>DB: ROLLBACK
             Repo-->>S: INSUFFICIENT_STOCK
-        else Đủ
-            Repo->>DB: UPDATE tồn nguồn (quantity -= ?)
-            Repo->>DB: INSERT inventory_transactions (TRANSFER_OUT)
-            Repo->>DB: UPSERT tồn đích (quantity += ?)
-            Repo->>DB: INSERT inventory_transactions (TRANSFER_IN)
+            S-->>M: 409 INSUFFICIENT_STOCK
+        else Tồn nguồn đủ
+            Repo->>DB: UPDATE tồn nguồn, quantity giảm
+            Repo->>DB: INSERT inventory_transactions loại TRANSFER_OUT
+            Repo->>DB: UPSERT tồn đích, quantity tăng
+            Repo->>DB: INSERT inventory_transactions loại TRANSFER_IN
         end
     end
-    Repo->>DB: UPDATE status='CONFIRMED'
+    Repo->>DB: UPDATE stock_transfers SET status = 'CONFIRMED'
     Repo->>DB: COMMIT
-    S-->>M: 200 CONFIRMED
+    Repo-->>S: thành công
+    S-->>M: 200 phiếu CONFIRMED
 ```
 
 **(3) Sơ đồ hoạt động**
 
+Sơ đồ trả lời câu hỏi: người dùng thao tác theo trình tự nào để chuyển hàng giữa hai vị trí.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    A([Bắt đầu]) --> B[Chọn vị trí nguồn và đích]
-    B --> C[Thêm dòng SKU + SL]
-    C --> D[Lưu DRAFT]
-    D --> E[Xác nhận]
-    E --> F{Tồn nguồn đủ?}
-    F -- Không --> G[Lỗi, ROLLBACK]:::err
-    F -- Có --> H[Giảm tồn nguồn + ghi TRANSFER_OUT]
-    H --> I[Tăng tồn đích + ghi TRANSFER_IN]
-    I --> J[CONFIRMED, COMMIT]
-    J --> K([Kết thúc])
-    classDef err fill:#fee,stroke:#c00;
+    Start(["Bắt đầu"]) --> B["Chọn vị trí nguồn và vị trí đích"]
+    B --> C["Thêm dòng hàng: SKU và số lượng"]
+    C --> Dn["Lưu phiếu, trạng thái DRAFT"]
+    Dn --> E{"Người xác nhận có quyền stock_transfers:confirm?"}
+    E -->|Không| E1["Trả 403 FORBIDDEN"]
+    E1 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    E -->|Có| F["BEGIN TRANSACTION, khóa tồn nguồn FOR UPDATE"]
+    F --> G{"Tồn khả dụng tại nguồn đủ?"}
+    G -->|Không đủ| G1["ROLLBACK, trả INSUFFICIENT_STOCK"]
+    G1 --> End2(["Kết thúc: Tồn kho không đổi"])
+    G -->|Đủ| H["Giảm tồn nguồn, ghi TRANSFER_OUT"]
+    H --> I["Tăng tồn đích, ghi TRANSFER_IN"]
+    I --> J["Đổi trạng thái CONFIRMED, COMMIT"]
+    J --> End3(["Kết thúc: Hàng đã sang vị trí đích"])
 ```
 
 **(4) Sơ đồ trạng thái**
 
+Sơ đồ trả lời câu hỏi: phiếu chuyển kho có những trạng thái nào và thao tác đảo giao dịch đưa phiếu về đâu.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'labelBackgroundColor': '#ffffff'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12 },
+  'state': { 'padding': 12, 'useMaxWidth': false }
+}}%%
 stateDiagram-v2
-    [*] --> DRAFT: tạo
+    [*] --> DRAFT: tạo phiếu chuyển
     DRAFT --> PENDING: gửi duyệt
     DRAFT --> CONFIRMED: xác nhận
+    DRAFT --> CANCELLED: hủy phiếu
     PENDING --> CONFIRMED: xác nhận
-    DRAFT --> CANCELLED: hủy
-    PENDING --> CANCELLED: hủy
-    CONFIRMED --> CONFIRMED: đảo (REVERSAL)
+    PENDING --> CANCELLED: hủy phiếu
+    CONFIRMED --> CANCELLED: đảo giao dịch, sinh REVERSAL
     CONFIRMED --> [*]
     CANCELLED --> [*]
 ```
@@ -1247,71 +2229,172 @@ stateDiagram-v2
 
 **(2) Sơ đồ tuần tự**
 
+Sơ đồ trả lời câu hỏi: nhân viên và quản lý lần lượt tham gia vào những bước nào của một đợt kiểm kê.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
-    actor St as Nhân viên
-    actor M as Quản lý
+    actor St as Nhân viên kho
+    actor M as Quản lý kho
     participant S as stock-counts.service
-    participant Repo as repository
+    participant Repo as stock-counts.repository
     participant DB as MySQL
 
-    St->>S: POST /:id/start
-    S->>Repo: startCount
-    Repo->>DB: chốt danh sách dòng (snapshot tồn hệ thống)
-    loop Đếm từng dòng
-        St->>S: PATCH /:id/items/:itemId/count
-        S->>Repo: recordCount(counted_qty)
-        Repo->>DB: UPDATE stock_count_items
+    St->>S: POST /stock-counts/:id/start
+    S->>Repo: startCount(id)
+    Repo->>DB: INSERT stock_count_items, chốt tồn hệ thống
+    DB-->>Repo: số dòng đã chốt
+    Repo-->>S: danh sách dòng cần đếm
+    S-->>St: 200 phiếu IN_PROGRESS
+    loop Mỗi dòng cần đếm
+        St->>S: PATCH /stock-counts/:id/items/:itemId/count
+        S->>Repo: recordCount(itemId, counted_quantity)
+        Repo->>DB: UPDATE stock_count_items SET counted_quantity = ?
+        Repo-->>S: dòng đã ghi nhận
+        S-->>St: 200 đã lưu số đếm
     end
-    St->>S: POST /:id/submit
-    S->>Repo: UPDATE status='SUBMITTED'
-    M->>S: POST /:id/approve
-    S->>Repo: approveCount
-    Repo->>DB: BEGIN
-    loop Mỗi dòng chênh lệch
-        Repo->>DB: UPDATE stock_locations theo số đếm
-        Repo->>DB: INSERT inventory_transactions (COUNT_ADJUSTMENT_IN/OUT)
+    St->>S: POST /stock-counts/:id/submit
+    S->>Repo: submitCount(id)
+    Repo->>DB: UPDATE stock_counts SET status = 'SUBMITTED'
+    Repo-->>S: thành công
+    S-->>St: 200 phiếu SUBMITTED
+    M->>S: POST /stock-counts/:id/approve
+    S->>Repo: approveCount(id)
+    Repo->>DB: BEGIN TRANSACTION
+    loop Mỗi dòng có chênh lệch
+        Repo->>DB: UPDATE stock_locations theo số thực đếm
+        Repo->>DB: INSERT inventory_transactions COUNT_ADJUSTMENT_IN hoặc OUT
     end
-    Repo->>DB: UPDATE status='APPROVED'
+    Repo->>DB: UPDATE stock_counts SET status = 'APPROVED'
     Repo->>DB: COMMIT
-    S-->>M: 200 APPROVED
+    Repo-->>S: thành công
+    S-->>M: 200 phiếu APPROVED
 ```
 
 **(3) Sơ đồ hoạt động**
 
+Sơ đồ trả lời câu hỏi: chênh lệch giữa số thực đếm và tồn hệ thống được xử lý theo hướng nào.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    A([Tạo phiếu DRAFT]) --> B[start: chốt danh sách SKU]
-    B --> C[Đếm và ghi số thực tế]
-    C --> D{Đếm xong?}
-    D -- Chưa --> C
-    D -- Rồi --> E[submit: SUBMITTED]
-    E --> F{Duyệt?}
-    F -- Từ chối --> G[REJECTED]:::err
-    F -- Duyệt --> H[So sánh đếm vs hệ thống]
-    H --> I{Chênh lệch?}
-    I -- Không --> K[APPROVED]
-    I -- Dương --> J1[COUNT_ADJUSTMENT_IN]
-    I -- Âm --> J2[COUNT_ADJUSTMENT_OUT]
-    J1 --> K
-    J2 --> K
-    K --> L([Kết thúc])
-    G --> L
-    classDef err fill:#fee,stroke:#c00;
+    Start(["Bắt đầu: Tạo phiếu kiểm kê DRAFT"]) --> B["Bắt đầu đếm, chốt danh sách dòng, IN_PROGRESS"]
+    B --> C["Ghi số lượng thực đếm cho từng dòng"]
+    C --> Dq{"Đã đếm hết các dòng?"}
+    Dq -->|Chưa| C
+    Dq -->|Rồi| E["Nộp kết quả, chuyển SUBMITTED"]
+    E --> F{"Quản lý duyệt kết quả?"}
+    F -->|Từ chối| F1["Chuyển REJECTED, tồn kho không đổi"]
+    F1 --> End1(["Kết thúc: Phiếu bị từ chối"])
+    F -->|Duyệt| G["So sánh số thực đếm với tồn hệ thống"]
+    G --> H{"Có chênh lệch không?"}
+    H -->|Không| K["Chuyển APPROVED, giữ nguyên tồn"]
+    H -->|Thừa| I1["Ghi COUNT_ADJUSTMENT_IN, tăng tồn"]
+    H -->|Thiếu| I2["Ghi COUNT_ADJUSTMENT_OUT, giảm tồn"]
+    I1 --> K
+    I2 --> K
+    K --> End2(["Kết thúc: Kiểm kê đã được duyệt"])
 ```
 
 **(4) Sơ đồ trạng thái**
 
+Sơ đồ trả lời câu hỏi: phiếu kiểm kê chuyển trạng thái theo những sự kiện nào.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'labelBackgroundColor': '#ffffff'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12 },
+  'state': { 'padding': 12, 'useMaxWidth': false }
+}}%%
 stateDiagram-v2
-    [*] --> DRAFT: tạo
-    DRAFT --> IN_PROGRESS: bắt đầu
-    IN_PROGRESS --> IN_PROGRESS: ghi số đếm
+    [*] --> DRAFT: tạo phiếu kiểm kê
+    DRAFT --> IN_PROGRESS: bắt đầu đếm, chốt danh sách SKU
+    DRAFT --> CANCELLED: hủy phiếu
+    IN_PROGRESS --> IN_PROGRESS: ghi số đếm từng dòng
     IN_PROGRESS --> SUBMITTED: nộp kết quả
-    SUBMITTED --> APPROVED: duyệt
-    SUBMITTED --> REJECTED: từ chối
-    DRAFT --> CANCELLED: hủy
-    IN_PROGRESS --> CANCELLED: hủy
+    IN_PROGRESS --> CANCELLED: hủy phiếu
+    SUBMITTED --> APPROVED: duyệt, sinh điều chỉnh chênh lệch
+    SUBMITTED --> REJECTED: từ chối kết quả
     APPROVED --> [*]
     REJECTED --> [*]
     CANCELLED --> [*]
@@ -1334,61 +2417,164 @@ stateDiagram-v2
 
 **(2) Sơ đồ tuần tự**
 
+Sơ đồ trả lời câu hỏi: người tạo và người duyệt tham gia vào những bước nào của một phiếu điều chỉnh.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
-    actor A as Người tạo
+    actor A as Người tạo phiếu
     actor B as Người duyệt
     participant S as stock-adjustments.service
-    participant Repo as repository
+    participant Repo as stock-adjustments.repository
     participant DB as MySQL
 
-    A->>S: POST /stock-adjustments (DRAFT)
-    A->>S: POST /:id/submit → PENDING
-    B->>S: POST /:id/approve
-    S->>S: Kiểm tra người duyệt ≠ người tạo
-    alt Tự duyệt
+    A->>S: POST /stock-adjustments
+    S->>Repo: insertAdjustment(input)
+    Repo->>DB: INSERT stock_adjustments, status = 'DRAFT'
+    DB-->>Repo: id phiếu
+    Repo-->>S: id phiếu
+    S-->>A: 201 Created, phiếu DRAFT
+    A->>S: POST /stock-adjustments/:id/submit
+    S->>Repo: submitAdjustment(id)
+    Repo->>DB: UPDATE stock_adjustments SET status = 'PENDING'
+    Repo-->>S: thành công
+    S-->>A: 200 phiếu PENDING
+    B->>S: POST /stock-adjustments/:id/approve
+    S->>S: Kiểm tra người duyệt khác người tạo
+    alt Người duyệt trùng người tạo
         S-->>B: 403 SELF_APPROVAL_FORBIDDEN
-    else Hợp lệ
-        S->>Repo: approveTransaction
-        Repo->>DB: BEGIN
-        Repo->>DB: UPDATE stock_locations (tăng/giảm)
-        Repo->>DB: INSERT inventory_transactions (MANUAL_ADJUSTMENT_IN/OUT)
-        Repo->>DB: UPDATE status='APPROVED'
+    else Người duyệt hợp lệ
+        S->>Repo: approveTransaction(id)
+        Repo->>DB: BEGIN TRANSACTION
+        Repo->>DB: UPDATE stock_locations tăng hoặc giảm quantity
+        Repo->>DB: INSERT inventory_transactions MANUAL_ADJUSTMENT_IN hoặc OUT
+        Repo->>DB: UPDATE stock_adjustments SET status = 'APPROVED'
         Repo->>DB: COMMIT
-        S-->>B: 200 APPROVED
+        Repo-->>S: thành công
+        S-->>B: 200 phiếu APPROVED
     end
 ```
 
 **(3) Sơ đồ hoạt động**
 
+Sơ đồ trả lời câu hỏi: người duyệt có những lựa chọn nào và mỗi lựa chọn đưa phiếu tới trạng thái nào.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    A([Tạo DRAFT]) --> B[submit: PENDING]
-    B --> C{Người duyệt = người tạo?}
-    C -- Đúng --> D[403 từ chối tự duyệt]:::err
-    C -- Khác --> E{Quyết định}
-    E -- Reject --> F[REJECTED]:::err
-    E -- Cancel --> G[CANCELLED]
-    E -- Approve --> H[BEGIN]
-    H --> I[Cập nhật tồn]
-    I --> J[Ghi MANUAL_ADJUSTMENT_IN/OUT]
-    J --> K[APPROVED, COMMIT]
-    K --> L([Kết thúc])
-    F --> L
-    G --> L
-    classDef err fill:#fee,stroke:#c00;
+    Start(["Bắt đầu: Tạo phiếu điều chỉnh DRAFT"]) --> B["Gửi duyệt, chuyển PENDING"]
+    B --> C{"Người duyệt trùng người tạo?"}
+    C -->|Trùng| C1["Trả 403 SELF_APPROVAL_FORBIDDEN"]
+    C1 --> End1(["Kết thúc: Phiếu giữ nguyên PENDING"])
+    C -->|Khác| Dq{"Quyết định của người duyệt"}
+    Dq -->|Từ chối| D1["Chuyển REJECTED"]
+    D1 --> End2(["Kết thúc: Phiếu bị từ chối"])
+    Dq -->|Hủy| D2["Chuyển CANCELLED"]
+    D2 --> End3(["Kết thúc: Phiếu đã hủy"])
+    Dq -->|Duyệt| E["BEGIN TRANSACTION"]
+    E --> F["Cập nhật quantity trong stock_locations"]
+    F --> G["Ghi MANUAL_ADJUSTMENT_IN hoặc MANUAL_ADJUSTMENT_OUT"]
+    G --> H["Chuyển APPROVED, COMMIT"]
+    H --> End4(["Kết thúc: Tồn kho đã điều chỉnh"])
 ```
 
 **(4) Sơ đồ trạng thái**
 
+Sơ đồ trả lời câu hỏi: phiếu điều chỉnh tồn chuyển trạng thái theo những sự kiện nào.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'labelBackgroundColor': '#ffffff'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12 },
+  'state': { 'padding': 12, 'useMaxWidth': false }
+}}%%
 stateDiagram-v2
-    [*] --> DRAFT: tạo
+    [*] --> DRAFT: tạo phiếu điều chỉnh
     DRAFT --> PENDING: gửi duyệt
-    PENDING --> APPROVED: duyệt
+    DRAFT --> CANCELLED: hủy phiếu
+    PENDING --> APPROVED: duyệt bởi người khác người tạo
     PENDING --> REJECTED: từ chối
-    DRAFT --> CANCELLED: hủy
-    PENDING --> CANCELLED: hủy
+    PENDING --> CANCELLED: hủy phiếu
     APPROVED --> [*]
     REJECTED --> [*]
     CANCELLED --> [*]
@@ -1410,59 +2596,154 @@ stateDiagram-v2
 
 **(2) Sơ đồ tuần tự**
 
+Sơ đồ trả lời câu hỏi: dữ liệu sản phẩm và SKU được kiểm tra trùng ở lớp nào.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
     actor Ad as Quản trị viên
     participant FE as Frontend
     participant C as catalog.controller
-    participant V as validation (Zod)
+    participant V as Lớp kiểm tra dữ liệu Zod
     participant S as catalog.service
-    participant Repo as repository
+    participant Repo as catalog.repository
     participant DB as MySQL
 
-    Ad->>FE: Nhập thông tin SKU
-    FE->>C: POST /catalog/products (hoặc variants)
-    C->>V: validate
-    alt Sai dữ liệu / trùng SKU
-        V-->>C: 400 / 409 DUPLICATE
-        C-->>FE: error
-    else Hợp lệ
-        C->>S: createProduct/Variant
-        S->>Repo: insert
-        Repo->>DB: INSERT products / product_variants
+    Ad->>FE: Nhập thông tin sản phẩm và SKU
+    FE->>C: POST /catalog/products hoặc /catalog/variants
+    C->>V: validate(body)
+    alt Dữ liệu sai hoặc SKU trùng
+        V-->>C: 400 VALIDATION_ERROR hoặc 409 DUPLICATE_SKU
+        C-->>FE: mã lỗi kèm thông điệp
+        FE-->>Ad: Hiện lỗi ngay trên form
+    else Dữ liệu hợp lệ
+        C->>S: createProduct hoặc createVariant
+        S->>Repo: insert(input)
+        Repo->>DB: INSERT products hoặc product_variants
         DB-->>Repo: id
-        Repo-->>S: { id }
-        S-->>C: { id }
+        Repo-->>S: id
+        S-->>C: id
         C-->>FE: 201 Created
+        FE-->>Ad: Hiện SKU vừa tạo
     end
 ```
 
 **(3) Sơ đồ hoạt động**
 
+Sơ đồ trả lời câu hỏi: quản trị viên khai báo một SKU mới theo trình tự nào và bị chặn ở đâu khi mã trùng.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    A([Bắt đầu]) --> B[Chọn/ tạo danh mục + nhãn hiệu]
-    B --> C[Nhập thông tin sản phẩm]
-    C --> D[Tạo biến thể SKU: đơn vị, lô/hạn, min/max]
-    D --> E{SKU/barcode trùng?}
-    E -- Trùng --> F[Báo lỗi UNIQUE]:::err
-    E -- Không --> G[Lưu sản phẩm/SKU]
-    G --> H([Kết thúc])
-    F --> C
-    classDef err fill:#fee,stroke:#c00;
+    Start(["Bắt đầu"]) --> B["Chọn hoặc tạo danh mục và nhãn hiệu"]
+    B --> C["Nhập thông tin sản phẩm"]
+    C --> Dn["Tạo biến thể SKU: đơn vị tính, lô, hạn dùng, tồn tối thiểu"]
+    Dn --> E{"Mã SKU hoặc barcode đã tồn tại?"}
+    E -->|Trùng| E1["Trả 409 DUPLICATE_SKU"]
+    E1 --> Dn
+    E -->|Không trùng| F["Lưu sản phẩm và biến thể SKU"]
+    F --> End1(["Kết thúc: SKU sẵn sàng dùng cho nghiệp vụ kho"])
 ```
 
 **(4) Sơ đồ trạng thái (vòng đời SKU)**
 
+Sơ đồ trả lời câu hỏi: sản phẩm và SKU có những trạng thái kinh doanh nào.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'labelBackgroundColor': '#ffffff'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12 },
+  'state': { 'padding': 12, 'useMaxWidth': false }
+}}%%
 stateDiagram-v2
-    [*] --> ACTIVE: tạo
-    ACTIVE --> INACTIVE: tạm ngừng
+    [*] --> ACTIVE: tạo sản phẩm hoặc SKU
+    ACTIVE --> INACTIVE: tạm ngừng kinh doanh
     INACTIVE --> ACTIVE: kích hoạt lại
     ACTIVE --> DISCONTINUED: ngừng kinh doanh
     INACTIVE --> DISCONTINUED: ngừng kinh doanh
-    ACTIVE --> [*]: xóa mềm (deleted_at)
-    DISCONTINUED --> [*]
+    ACTIVE --> [*]: xóa mềm, ghi deleted_at
+    INACTIVE --> [*]: xóa mềm, ghi deleted_at
+    DISCONTINUED --> [*]: xóa mềm, ghi deleted_at
 ```
 
 ### 3.3.7 Chức năng: Quản lý người dùng và phân quyền
@@ -1481,59 +2762,159 @@ stateDiagram-v2
 
 **(2) Sơ đồ tuần tự**
 
+Sơ đồ trả lời câu hỏi: tạo tài khoản mới đi qua những lớp nào và trả gì về khi email đã tồn tại.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
     actor Ad as Quản trị viên
-    participant MW as Middleware
+    participant MW as Middleware xác thực và phân quyền
     participant C as auth.controller
     participant S as auth.service
-    participant Repo as repository
+    participant Repo as auth.repository
     participant DB as MySQL
 
-    Ad->>MW: POST /auth/users (Bearer token)
+    Ad->>MW: POST /auth/users kèm Bearer token
     MW->>MW: requirePermission(users:create)
-    MW->>C: createUserController
+    MW->>C: createUserController(body)
     C->>S: createUser(input)
     S->>S: bcrypt.hash(password)
-    S->>Repo: insertUser + gán role_id
-    alt Email trùng
-        Repo->>DB: INSERT users → lỗi UNIQUE
-        Repo-->>S: 409 DUPLICATE_EMAIL
-    else Hợp lệ
+    S->>Repo: insertUser(input, role_id)
+    alt Email đã tồn tại
+        Repo->>DB: INSERT users vi phạm ràng buộc UNIQUE email
+        DB-->>Repo: lỗi ER_DUP_ENTRY
+        Repo-->>S: DUPLICATE_EMAIL
+        S-->>C: 409 DUPLICATE_EMAIL
+        C-->>Ad: 409 DUPLICATE_EMAIL
+    else Email chưa tồn tại
         Repo->>DB: INSERT users
         DB-->>Repo: id
         Repo-->>S: user
         S-->>C: user
-        C-->>Ad: 201 Created
+        C-->>Ad: 201 Created, tài khoản ACTIVE
     end
 ```
 
 **(3) Sơ đồ hoạt động**
 
+Sơ đồ trả lời câu hỏi: quản trị viên tạo tài khoản theo trình tự nào và bị chặn ở đâu khi thiếu quyền.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    A([Bắt đầu]) --> B[Nhập thông tin user + chọn role]
-    B --> C[verifyToken + requirePermission users:create]
-    C --> D{Đủ quyền?}
-    D -- Không --> E[403]:::err
-    D -- Có --> F[Hash mật khẩu bcrypt]
-    F --> G{Email trùng?}
-    G -- Trùng --> H[Lỗi DUPLICATE_EMAIL]:::err
-    G -- Không --> I[Lưu user + gán role]
-    I --> J[Cấu hình role_permissions nếu cần]
-    J --> K([Kết thúc])
-    classDef err fill:#fee,stroke:#c00;
+    Start(["Bắt đầu"]) --> B["Nhập thông tin người dùng và chọn vai trò"]
+    B --> C["Middleware verifyToken và requirePermission users:create"]
+    C --> Dq{"Có quyền users:create?"}
+    Dq -->|Không| D1["Trả 403 FORBIDDEN"]
+    D1 --> End1(["Kết thúc: Không tạo được tài khoản"])
+    Dq -->|Có| E["Băm mật khẩu bằng bcrypt"]
+    E --> F{"Email đã tồn tại?"}
+    F -->|Trùng| F1["Trả 409 DUPLICATE_EMAIL"]
+    F1 --> B
+    F -->|Không trùng| G["Lưu bản ghi users và gán role_id"]
+    G --> H["Cập nhật role_permissions nếu tạo vai trò mới"]
+    H --> End2(["Kết thúc: Tài khoản ở trạng thái ACTIVE"])
 ```
 
 **(4) Sơ đồ trạng thái (vòng đời tài khoản)**
 
+Sơ đồ trả lời câu hỏi: tài khoản người dùng có những trạng thái nào và sự kiện nào làm nó chuyển trạng thái.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'labelBackgroundColor': '#ffffff'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12 },
+  'state': { 'padding': 12, 'useMaxWidth': false }
+}}%%
 stateDiagram-v2
-    [*] --> ACTIVE: tạo / đăng ký
-    ACTIVE --> INACTIVE: khóa tài khoản
-    INACTIVE --> ACTIVE: mở khóa
-    ACTIVE --> [*]: xóa mềm (deleted_at)
-    INACTIVE --> [*]: xóa mềm (deleted_at)
+    [*] --> ACTIVE: tạo tài khoản
+    ACTIVE --> LOCKED: khóa tài khoản
+    LOCKED --> ACTIVE: mở khóa
+    ACTIVE --> INACTIVE: ngừng sử dụng
+    INACTIVE --> ACTIVE: kích hoạt lại
+    ACTIVE --> [*]: xóa mềm, ghi deleted_at
+    INACTIVE --> [*]: xóa mềm, ghi deleted_at
+    LOCKED --> [*]: xóa mềm, ghi deleted_at
 ```
 ---
 
@@ -1556,18 +2937,41 @@ Chương 2 và 3 đã phủ nhóm sơ đồ cốt lõi (Use case, Activity, Sequ
 Hệ thống nhìn như một hộp đen, cho biết ai/ cái gì tương tác với nó.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TB
-    Staff([Nhân viên kho])
-    Manager([Quản lý kho])
-    Admin([Quản trị viên])
-    WMS[Hệ thống Bambi WMS]
-    DB[(CSDL MySQL)]
+    Staff(["Nhân viên kho"])
+    Manager(["Quản lý kho"])
+    Admin(["Quản trị viên"])
+    WMS["Hệ thống Bambi WMS"]
+    DB[("Cơ sở dữ liệu MySQL")]
 
     Staff -->|Nhập, xuất, chuyển, kiểm kê| WMS
     Manager -->|Xác nhận, duyệt, xem báo cáo| WMS
     Admin -->|Quản trị danh mục, người dùng, cấu hình| WMS
-    WMS -->|Đọc/ghi tồn kho, chứng từ| DB
-    DB -->|Dữ liệu tồn, lịch sử, báo cáo| WMS
+    WMS -->|Đọc và ghi tồn kho, chứng từ| DB
+    DB -->|Số liệu tồn, lịch sử, báo cáo| WMS
 ```
 
 ## 4.2 Sơ đồ BPMN (Business Process — quy trình nhập kho, dạng lane)
@@ -1575,26 +2979,48 @@ flowchart TB
 Trình bày quy trình nghiệp vụ theo làn trách nhiệm (swimlane): ai làm bước nào.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TB
-    subgraph LNV[Làn: Nhân viên kho]
-        direction LR
-        A[Tạo phiếu nhập] --> B[Thêm dòng hàng, lô/hạn]
-        B --> C[Lưu phiếu DRAFT]
+    subgraph L1["Làn: Nhân viên kho"]
+        Start(["Bắt đầu: Hàng về kho"]) --> A["Tạo phiếu nhập"]
+        A --> B["Thêm dòng hàng, lô và hạn dùng"]
+        B --> C["Lưu phiếu, trạng thái DRAFT"]
     end
-    subgraph LQL[Làn: Quản lý kho]
-        direction LR
-        D{Xác nhận phiếu?}
+    subgraph L2["Làn: Quản lý kho"]
+        Dg{"Xác nhận phiếu nhập?"}
     end
-    subgraph LHT[Làn: Hệ thống]
-        direction LR
-        E[Tạo/khớp lô] --> F[Tăng tồn stock_locations]
-        F --> G[Ghi inventory_transactions RECEIPT]
-        G --> H[Phiếu chuyển CONFIRMED]
+    subgraph L3["Làn: Hệ thống"]
+        E["Tạo hoặc khớp bản ghi lô"] --> F["Tăng tồn trong stock_locations"]
+        F --> G["Ghi inventory_transactions loại RECEIPT"]
+        G --> H["Đổi trạng thái phiếu sang CONFIRMED"]
+        H --> End1(["Kết thúc: Hàng đã nhập kho"])
     end
 
-    C --> D
-    D -->|Đồng ý| E
-    D -->|Từ chối| C
+    C --> Dg
+    Dg -->|Đồng ý| E
+    Dg -->|Từ chối, yêu cầu sửa| B
 ```
 
 ## 4.3 Sơ đồ luồng dữ liệu (Data Flow Diagram — DFD)
@@ -1603,25 +3029,50 @@ Cho biết dữ liệu tồn kho di chuyển giữa tác nhân, tiến trình v�
 
 **DFD mức 0 (tổng quát)**
 
-```mermaid
-flowchart LR
-    Staff([Nhân viên kho])
-    Manager([Quản lý kho])
-    P1((1.0 Xử lý nhập kho))
-    P2((2.0 Xử lý xuất kho))
-    P3((3.0 Tổng hợp báo cáo))
-    D1[(stock_locations)]
-    D2[(inventory_transactions)]
+Sơ đồ trả lời câu hỏi: dữ liệu chảy từ tác nhân qua tiến trình nào tới kho dữ liệu nào.
 
-    Staff -->|Phiếu nhập| P1
-    Staff -->|Phiếu xuất| P2
+```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart LR
+    Staff(["Nhân viên kho"])
+    Manager(["Quản lý kho"])
+    P1(("1.0 Xử lý nhập kho"))
+    P2(("2.0 Xử lý xuất kho"))
+    P3(("3.0 Tổng hợp báo cáo"))
+    D1[("D1 stock_locations")]
+    D2[("D2 inventory_transactions")]
+
+    Staff -->|Dữ liệu phiếu nhập| P1
+    Staff -->|Dữ liệu phiếu xuất| P2
     P1 -->|Tăng tồn| D1
     P2 -->|Giảm tồn| D1
     P1 -->|Ghi biến động| D2
     P2 -->|Ghi biến động| D2
     D1 -->|Tồn hiện tại| P3
     D2 -->|Lịch sử biến động| P3
-    P3 -->|Báo cáo tồn, near-expiry| Manager
+    P3 -->|Báo cáo tồn và hàng cận hạn| Manager
 ```
 
 ## 4.4 Sơ đồ lớp (Class Diagram — mô hình miền)
@@ -1629,6 +3080,30 @@ flowchart LR
 Mô hình miền (domain model) suy ra từ các `*.model.ts` và service. Thuộc tính/phương thức đặt theo tên miền; giá trị enum giữ tiếng Anh.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'classText': '#000000'
+  },
+  'class': { 'useMaxWidth': false }
+}}%%
 classDiagram
     class Product {
         +bigint id
@@ -1677,12 +3152,12 @@ classDiagram
         +decimal quantity
     }
 
-    Product "1" --> "*" ProductVariant : có
+    Product "1" --> "*" ProductVariant : có biến thể
     ProductVariant "1" --> "*" ProductBatch : chia lô
-    ProductVariant "1" --> "*" StockLocation : tồn tại
+    ProductVariant "1" --> "*" StockLocation : tồn tại ở
     WarehouseLocation "1" --> "*" StockLocation : chứa
     ProductBatch "0..1" --> "*" StockLocation : theo lô
-    ProductVariant "1" --> "*" InventoryTransaction : biến động
+    ProductVariant "1" --> "*" InventoryTransaction : phát sinh
     GoodsReceipt "1" --> "*" GoodsReceiptItem : gồm
 ```
 
@@ -1693,24 +3168,47 @@ classDiagram
 Các thành phần phần mềm và quan hệ phụ thuộc.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TB
-    subgraph FEc[Frontend React + Vite]
-        direction LR
-        UI[Feature UI Components]
-        SVC[Service layer httpClient]
+    subgraph FEc["Frontend: React và Vite"]
+        direction TB
+        UI["Thành phần giao diện theo tính năng"]
+        SVC["Lớp gọi API httpClient"]
     end
-    subgraph BEc[Backend Express + TypeScript]
-        direction LR
-        RT[Routes]
-        MW[Middleware auth + permission]
-        CTRL[Controller]
-        SRV[Service]
-        REPO[Repository]
+    subgraph BEc["Backend: Express và TypeScript"]
+        direction TB
+        RT["Routes"]
+        MW["Middleware xác thực và phân quyền"]
+        CTRL["Controller"]
+        SRV["Service"]
+        REPO["Repository"]
     end
-    DB[(MySQL)]
+    DB[("MySQL")]
 
     UI --> SVC
-    SVC -->|REST + JWT| RT
+    SVC -->|REST kèm JWT| RT
     RT --> MW
     MW --> CTRL
     CTRL --> SRV
@@ -1723,63 +3221,137 @@ flowchart TB
 Ánh xạ phần mềm lên hạ tầng chạy thật (theo `docker-compose.yml` và `Dockerfile`).
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TB
-    subgraph Client[Máy người dùng]
-        Browser[Trình duyệt web]
+    subgraph Client["Nút: Máy người dùng"]
+        Browser["Trình duyệt web"]
     end
-    subgraph Host[Máy chủ / Docker host]
-        subgraph N1[Static host - Nginx]
-            SPA[frontend/dist React SPA]
+    subgraph Host["Nút: Máy chủ Docker host"]
+        subgraph N1["Nginx phục vụ tệp tĩnh"]
+            SPA["frontend/dist, ứng dụng React SPA"]
         end
-        subgraph N2[Container Node 22 - Express]
-            API[API :3000]
+        subgraph N2["Container Node 22 và Express"]
+            API["API cổng 3000"]
         end
-        subgraph N3[Container MySQL 8.4]
-            DB[(warehouse_management :3306)]
+        subgraph N3["Container MySQL 8.4"]
+            DB[("warehouse_management, cổng 3306")]
         end
     end
 
     Browser -->|HTTPS tải SPA| SPA
-    Browser -->|REST JSON + JWT| API
-    API -->|mysql2/promise :3306| DB
+    Browser -->|REST JSON kèm JWT| API
+    API -->|mysql2/promise, cổng 3306| DB
 ```
 
 ## 4.7 C4 Model
 
 **C4 mức 2 — Container**
 
+Sơ đồ trả lời câu hỏi: hệ thống gồm những container nào và chúng gọi nhau qua giao thức gì.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TB
-    User([Người dùng])
-    subgraph WMS[Hệ thống Bambi WMS]
-        SPA[Web: React + Vite<br/>SPA tĩnh]
-        API[Ứng dụng: Express + TS<br/>REST API]
-        DB[(CSDL: MySQL 8)]
+    User(["Người dùng"])
+    subgraph WMS["Hệ thống Bambi WMS"]
+        direction TB
+        SPA["Container Web: React và Vite, SPA tĩnh"]
+        API["Container Ứng dụng: Express và TypeScript, REST API"]
+        DB[("Container Dữ liệu: MySQL 8")]
     end
 
     User -->|HTTPS| SPA
-    SPA -->|JSON/REST + JWT| API
+    SPA -->|REST JSON kèm JWT| API
     API -->|SQL| DB
 ```
 
 **C4 mức 3 — Component (bên trong API)**
 
+Sơ đồ trả lời câu hỏi: bên trong container API có những thành phần nào và thứ tự gọi giữa chúng ra sao.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TB
-    Gateway[Express App / Router]
-    Guard[Middleware verifyToken + requirePermission]
-    subgraph Mods[Các module nghiệp vụ]
+    Gateway["Express App và Router"]
+    Guard["Middleware verifyToken và requirePermission"]
+    subgraph Mods["Các module nghiệp vụ"]
         direction LR
-        Auth[auth]
-        Cat[catalog]
-        Stk[stock]
-        GR[goods-receipts]
-        GI[goods-issues]
-        Rep[reports]
+        Auth["auth"]
+        Cat["catalog"]
+        Stk["stock"]
+        GR["goods-receipts"]
+        GI["goods-issues"]
+        Rep["reports"]
         Auth ~~~ Cat ~~~ Stk ~~~ GR ~~~ GI ~~~ Rep
     end
-    RepoL[Repository layer]
-    DB[(MySQL)]
+    RepoL["Lớp Repository"]
+    DB[("MySQL")]
 
     Gateway --> Guard
     Guard --> Mods
@@ -1789,29 +3361,54 @@ flowchart TB
 
 ## 4.8 Sơ đồ gói (Package Diagram — cấu trúc mã nguồn)
 
+Sơ đồ trả lời câu hỏi: mã nguồn được tổ chức thành những gói nào ở hai phía frontend và backend.
+
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TB
-    subgraph BE[backend/src/modules]
+    subgraph BE["backend/src/modules"]
         direction LR
-        b1[auth, authorization]
-        b2[catalog, batches, suppliers]
-        b3[warehouses, locations]
-        b4[stock, inventory-transactions]
-        b5[goods-receipts, goods-issues,<br/>stock-transfers, stock-counts,<br/>stock-adjustments]
-        b6[reports, alerts, notifications,<br/>audit-logs, attachments, settings]
+        b1["auth, authorization"]
+        b2["catalog, batches, suppliers"]
+        b3["warehouses, locations"]
+        b4["stock, inventory-transactions"]
+        b5["goods-receipts, goods-issues,<br/>stock-transfers, stock-counts,<br/>stock-adjustments"]
+        b6["reports, alerts, notifications,<br/>audit-logs, attachments, settings"]
         b1 ~~~ b2 ~~~ b3 ~~~ b4 ~~~ b5 ~~~ b6
     end
-    subgraph FE[frontend/src/features]
+    subgraph FE["frontend/src/features"]
         direction LR
-        f1[auth, authorization, staff]
-        f2[products, batches, partners]
-        f3[locations, warehouses]
-        f4[stock, transactions, stock-counts]
-        f5[reports, alerts, notifications,<br/>audit-logs, settings]
+        f1["auth, authorization, staff"]
+        f2["products, batches, partners"]
+        f3["locations, warehouses"]
+        f4["stock, transactions, stock-counts"]
+        f5["reports, alerts, notifications,<br/>audit-logs, settings"]
         f1 ~~~ f2 ~~~ f3 ~~~ f4 ~~~ f5
     end
 
-    FE -->|REST API| BE
+    FE -->|Gọi REST API| BE
 ```
 
 ## 4.9 Sơ đồ luồng người dùng (User Flow)
@@ -1819,21 +3416,48 @@ flowchart TB
 Hành trình điển hình của nhân viên kho từ khi đăng nhập đến khi hoàn tất một nghiệp vụ.
 
 ```mermaid
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TB
-    A[Mở ứng dụng] --> B[Đăng nhập]
-    B --> C{Xác thực hợp lệ?}
-    C -->|Không| B
-    C -->|Có| D[Trang tổng quan Dashboard]
-    D --> E[Chọn chức năng từ menu]
-    E --> F[Sản phẩm / SKU]
-    E --> G[Cấu trúc kho]
-    E --> H[Nhập / Xuất / Chuyển]
-    E --> I[Kiểm kê / Điều chỉnh]
-    E --> J[Báo cáo]
-    H --> K[Soạn phiếu, thêm dòng hàng]
-    K --> L[Lưu phiếu DRAFT]
-    L --> M[Quản lý xác nhận/duyệt]
-    M --> N[Xem kết quả cập nhật tồn]
-    N --> D
+    Start(["Bắt đầu: Mở ứng dụng"]) --> A["Nhập email và mật khẩu"]
+    A --> B{"Xác thực hợp lệ?"}
+    B -->|Không| A
+    B -->|Có| C["Xem trang tổng quan Dashboard"]
+    C --> Dm{"Chọn nhóm chức năng"}
+    Dm -->|Danh mục| F1["Quản lý sản phẩm và SKU"]
+    Dm -->|Cấu trúc kho| F2["Quản lý kho, khu vực, vị trí"]
+    Dm -->|Chứng từ kho| F3["Soạn phiếu nhập, xuất hoặc chuyển"]
+    Dm -->|Kiểm kê| F4["Kiểm kê và điều chỉnh tồn"]
+    Dm -->|Báo cáo| F5["Xem báo cáo tồn và hàng cận hạn"]
+    Dm -->|Đăng xuất| End1(["Kết thúc: Đã đăng xuất"])
+    F3 --> G["Lưu phiếu, trạng thái DRAFT"]
+    G --> H["Quản lý xác nhận hoặc duyệt phiếu"]
+    H --> I["Xem tồn kho đã cập nhật"]
+    I --> C
+    F1 --> C
+    F2 --> C
+    F4 --> C
+    F5 --> C
 ```
 

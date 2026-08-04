@@ -1,13 +1,39 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    Start([Bắt đầu]) --> S1[Tạo phiếu xuất, chọn kho,<br/>lý do xuất, chiến lược FEFO/FIFO]
-    S1 --> S2[Thêm dòng: SKU + số lượng cần xuất]
-    S2 --> S3[Lưu phiếu DRAFT]
-    S3 --> S4[Người có quyền xác nhận<br/>goods_issues:confirm]
-    S4 --> S5[Khóa các bản ghi tồn FOR UPDATE]
-    S5 --> S6{Tồn khả dụng<br/>đủ không?}
-    S6 -- Không đủ --> S7[Lỗi INSUFFICIENT_STOCK<br/>ROLLBACK]
-    S6 -- Đủ --> S8[Phân bổ theo FEFO:<br/>lô hết hạn sớm xuất trước]
-    S8 --> S9[Giảm quantity theo từng lô/vị trí]
-    S9 --> S10[Ghi inventory_transactions<br/>type = ISSUE cho từng dòng phân bổ]
-    S10 --> S11[Phiếu CONFIRMED, COMMIT]
-    S11 --> End([Kết thúc])
+    Start(["Bắt đầu: Có nhu cầu xuất hàng"]) --> S1["Tạo phiếu xuất, chọn kho và lý do xuất"]
+    S1 --> S2["Thêm dòng hàng: SKU và số lượng cần xuất"]
+    S2 --> S3["Lưu phiếu, trạng thái DRAFT"]
+    S3 --> S4{"Người xác nhận có quyền goods_issues:confirm?"}
+    S4 -->|Không| S5["Trả lỗi 403 FORBIDDEN"]
+    S5 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    S4 -->|Có| S6["BEGIN TRANSACTION, khóa bản ghi tồn FOR UPDATE"]
+    S6 --> S7{"Tồn khả dụng đủ số lượng cần xuất?"}
+    S7 -->|Không đủ| S8["ROLLBACK, trả lỗi INSUFFICIENT_STOCK"]
+    S8 --> End2(["Kết thúc: Tồn kho không đổi"])
+    S7 -->|Đủ| S9["Phân bổ theo FEFO: lô hết hạn sớm xuất trước"]
+    S9 --> S10["Giảm quantity theo từng lô và vị trí"]
+    S10 --> S11["Ghi inventory_transactions loại ISSUE"]
+    S11 --> S12["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
+    S12 --> End3(["Kết thúc: Tồn kho đã giảm"])

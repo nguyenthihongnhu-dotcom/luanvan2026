@@ -1,15 +1,38 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    Start([HTTP request]) --> A[app.ts định tuyến]
-    A --> B{Route cần quyền?}
-    B -- Không --> F[Vào controller]
-    B -- Có --> C[verifyToken: giải mã JWT]
-    C --> D{Token hợp lệ?}
-    D -- Không --> E1[401 TOKEN_INVALID]:::err
-    D -- Có --> G[requirePermission: tra role_permissions]
-    G --> H{Role có quyền?}
-    H -- Không --> E2[403 Forbidden]:::err
-    H -- Có --> F[Vào controller → service → repository]
-    F --> I[Trả JSON wrapper data]
-    I --> End([Kết thúc])
-
-    classDef err fill:#fee,stroke:#c00;
+    Start(["Bắt đầu: Nhận HTTP request"]) --> A["app.ts định tuyến request"]
+    A --> B{"Route yêu cầu quyền?"}
+    B -->|Không| F["Chuyển vào controller, service, repository"]
+    B -->|Có| C["verifyToken: giải mã và kiểm tra JWT"]
+    C --> Dq{"Token hợp lệ và còn hạn?"}
+    Dq -->|Không| D1["Trả 401 TOKEN_INVALID"]
+    D1 --> End1(["Kết thúc: Từ chối truy cập"])
+    Dq -->|Có| G["requirePermission: tra bảng role_permissions"]
+    G --> H{"Vai trò có quyền yêu cầu?"}
+    H -->|Không| H1["Trả 403 FORBIDDEN"]
+    H1 --> End1
+    H -->|Có| F
+    F --> I["Trả JSON bọc trong trường data"]
+    I --> End2(["Kết thúc: Trả dữ liệu thành công"])

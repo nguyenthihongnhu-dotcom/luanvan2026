@@ -38,7 +38,8 @@ VALUES
 ((SELECT id FROM warehouses WHERE code='KHO-HCM-01'), 'A', 'Khu A - Sữa và bột ăn dặm', 'Hàng khô, ưu tiên hạn sử dụng gần', 'ACTIVE', 1),
 ((SELECT id FROM warehouses WHERE code='KHO-HCM-01'), 'B', 'Khu B - Tã và vệ sinh', 'Hàng cồng kềnh, xuất nhanh', 'ACTIVE', 2),
 ((SELECT id FROM warehouses WHERE code='KHO-HCM-01'), 'C', 'Khu C - Đồ sơ sinh', 'Đồ dùng trẻ em và phụ kiện', 'ACTIVE', 3),
-((SELECT id FROM warehouses WHERE code='KHO-HCM-02'), 'A', 'Khu A - Hàng bán chạy', 'Khu picking chi nhánh', 'ACTIVE', 1)
+((SELECT id FROM warehouses WHERE code='KHO-HCM-02'), 'A', 'Khu A - Hàng bán chạy', 'Khu picking chi nhánh', 'ACTIVE', 1),
+((SELECT id FROM warehouses WHERE code='KHO-HCM-02'), 'B', 'Khu B - Dự trữ chi nhánh', 'Khu lưu trữ bổ sung chi nhánh Q.7', 'ACTIVE', 2)
 ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status), sort_order = VALUES(sort_order);
 
 INSERT INTO warehouse_shelves (zone_id, code, name, status, sort_order)
@@ -47,7 +48,9 @@ VALUES
 ((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='A'), 'A02', 'Kệ A02', 'ACTIVE', 2),
 ((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='B'), 'B01', 'Kệ B01', 'ACTIVE', 1),
 ((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='C'), 'C01', 'Kệ C01', 'ACTIVE', 1),
-((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A'), 'A01', 'Kệ A01 chi nhánh', 'ACTIVE', 1)
+((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A'), 'A01', 'Kệ A01 chi nhánh', 'ACTIVE', 1),
+((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A'), 'A02', 'Kệ A02 chi nhánh', 'ACTIVE', 2),
+((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='B'), 'B01', 'Kệ B01 chi nhánh', 'ACTIVE', 1)
 ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status), sort_order = VALUES(sort_order);
 
 INSERT INTO warehouse_locations (shelf_id, code, layer_no, name, location_type, capacity_control_enabled, max_capacity, current_capacity, status, qr_code_value, notes)
@@ -57,7 +60,9 @@ VALUES
 ((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='A' AND s.code='A02'), 'HCM01-A-A02-01', 1, 'A02 tầng 1', 'STANDARD', TRUE, 450, 210, 'ACTIVE', 'QR-HCM01-A-A02-01', 'Sữa bột'),
 ((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='B' AND s.code='B01'), 'HCM01-B-B01-01', 1, 'B01 tầng 1', 'BULKY', TRUE, 800, 620, 'ACTIVE', 'QR-HCM01-B-B01-01', 'Tã bỉm'),
 ((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='C' AND s.code='C01'), 'HCM01-C-C01-01', 1, 'C01 tầng 1', 'STANDARD', TRUE, 300, 95, 'ACTIVE', 'QR-HCM01-C-C01-01', 'Đồ sơ sinh'),
-((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A' AND s.code='A01'), 'HCM02-A-A01-01', 1, 'A01 tầng 1 chi nhánh', 'STANDARD', TRUE, 350, 140, 'ACTIVE', 'QR-HCM02-A-A01-01', 'Hàng bán chạy')
+((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A' AND s.code='A01'), 'HCM02-A-A01-01', 1, 'A01 tầng 1 chi nhánh', 'STANDARD', TRUE, 350, 140, 'ACTIVE', 'QR-HCM02-A-A01-01', 'Hàng bán chạy'),
+((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A' AND s.code='A02'), 'HCM02-A-A02-01', 1, 'A02 tầng 1 chi nhánh', 'STANDARD', TRUE, 350, 0, 'ACTIVE', 'QR-HCM02-A-A02-01', 'Ô trống chi nhánh'),
+((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='B' AND s.code='B01'), 'HCM02-B-B01-01', 1, 'B01 tầng 1 chi nhánh', 'BULKY', TRUE, 500, 0, 'ACTIVE', 'QR-HCM02-B-B01-01', 'Khu hàng cồng kềnh')
 ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status), current_capacity = VALUES(current_capacity), notes = VALUES(notes);
 
 -- 3) Danh muc, thuong hieu, nha cung cap
@@ -165,6 +170,7 @@ FROM (
     UNION ALL SELECT 'PN-202607-001', 'SUA-FRISO-4', 'LOT-FRISO4-202605', 'HCM01-A-A02-01', 64.000, 510000.00, 'Nhập mới'
     UNION ALL SELECT 'PN-202607-002', 'BIM-HUG-M', 'LOT-HUG-M-202607', 'HCM01-B-B01-01', 150.000, 205000.00, 'Nhập mới'
     UNION ALL SELECT 'PN-202607-002', 'BIM-HUG-L', 'LOT-HUG-L-202607', 'HCM01-B-B01-01', 95.000, 219000.00, 'Nhập mới'
+    UNION ALL SELECT 'PN-202607-003', 'BIM-MOONY-M', 'LOT-MOONY-M-202607', 'HCM02-A-A01-01', 42.000, 350000.00, 'Nhập bổ sung chi nhánh'
 ) x
 JOIN goods_receipts gr ON gr.receipt_code=x.receipt_code
 JOIN product_variants v ON v.sku=x.sku

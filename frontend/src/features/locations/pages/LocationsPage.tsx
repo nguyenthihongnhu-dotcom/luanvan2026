@@ -11,6 +11,9 @@ import WarehouseGridEditor from "@/features/locations/components/WarehouseGridEd
 export default function WarehouseMapping() {
     const [isStructureSidebarOpen, setIsStructureSidebarOpen] = useState(true);
     const {
+        warehouses,
+        selectedWarehouseId,
+        setSelectedWarehouseId,
         selectedZone,
         setSelectedZone,
         layers,
@@ -39,9 +42,13 @@ export default function WarehouseMapping() {
                 {isLoading && <div className="border-b border-gray-200 bg-white px-4 py-2 text-sm text-gray-500">Đang tải sơ đồ kho...</div>}
 
                 <ZoneSelector
+                    warehouses={warehouses}
+                    selectedWarehouseId={selectedWarehouseId}
+                    setSelectedWarehouseId={setSelectedWarehouseId}
                     selectedZone={selectedZone}
                     setSelectedZone={setSelectedZone}
                     onAddZone={handleAddZone}
+                    locations={locations}
                 />
 
                 {!selectedZone ? (

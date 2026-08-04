@@ -41,8 +41,9 @@ function toLocationStatus(row: BackendLocation): ViTriKho['TrangThai'] {
     return 'DangChua';
 }
 
-export async function listWarehouseLocations(): Promise<ViTriKho[]> {
-    const response = await httpClient.get<{ data: BackendLocation[] }>('/locations');
+export async function listWarehouseLocations(warehouseId?: number): Promise<ViTriKho[]> {
+    const url = warehouseId ? `/locations?warehouseId=${warehouseId}` : '/locations';
+    const response = await httpClient.get<{ data: BackendLocation[] }>(url);
 
     return unwrapData(response).map(row => ({
         MaViTri: row.id,
@@ -63,7 +64,7 @@ export function deriveShelves(locations: ViTriKho[]): Shelf[] {
             byCode.set(location.Ke, { id: String(location.MaKe ?? location.Ke), code: location.Ke, name: `Kệ ${location.Ke}` });
         }
     }
-    return [...byCode.values()].sort((a, b) => a.code.localeCompare(b.code));
+    return [...byCode.values()];
 }
 
 export function deriveLayers(locations: ViTriKho[]): Layer[] {
@@ -97,7 +98,7 @@ export async function syncLocationMatrix(input: { zoneCode: string }): Promise<{
     return unwrapData(response);
 }
 
-export async function createZone(input: { code: string; name?: string; shelfCount?: number; layerCount?: number }): Promise<void> {
+export async function createZone(input: { warehouseId?: number; code: string; name?: string; shelfCount?: number; layerCount?: number }): Promise<void> {
     await httpClient.post('/locations/zones', input);
 }
 

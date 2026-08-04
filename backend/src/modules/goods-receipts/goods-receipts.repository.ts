@@ -34,24 +34,35 @@ export async function findGoodsReceipts(
   const params: QueryParams = {};
 
   if (filters.id) {
-    where.push('id = :id');
+    where.push('gr.id = :id');
     params.id = filters.id;
   }
 
   if (filters.search) {
-    where.push('receipt_code LIKE :search');
+    where.push('gr.receipt_code LIKE :search');
     params.search = `%${filters.search}%`;
   }
 
   if (filters.status) {
-    where.push('status = :status');
+    where.push('gr.status = :status');
     params.status = filters.status;
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
   const [rows] = await db.query<GoodsReceiptsRow[]>({
-    sql: `SELECT * FROM ${tableName} ${whereSql} LIMIT 100`,
+    sql: `
+      SELECT
+        gr.*,
+        u_created.full_name AS created_by_name,
+        u_confirmed.full_name AS confirmed_by_name
+      FROM goods_receipts gr
+      LEFT JOIN users u_created ON u_created.id = gr.created_by
+      LEFT JOIN users u_confirmed ON u_confirmed.id = gr.confirmed_by
+      ${whereSql}
+      ORDER BY gr.id DESC
+      LIMIT 100
+    `,
     values: params,
   });
 
@@ -63,10 +74,20 @@ export async function findGoodsReceiptDetail(
 ): Promise<{ header: RowDataPacket; items: RowDataPacket[] } | undefined> {
   const [headers] = await db.query<RowDataPacket[]>(
     `
-      SELECT gr.*, w.code AS warehouse_code, w.name AS warehouse_name, s.name AS supplier_name
+      SELECT
+        gr.*,
+        w.code AS warehouse_code,
+        w.name AS warehouse_name,
+        s.name AS supplier_name,
+        u_created.full_name AS created_by_name,
+        u_confirmed.full_name AS confirmed_by_name,
+        u_cancelled.full_name AS cancelled_by_name
       FROM goods_receipts gr
       LEFT JOIN warehouses w ON w.id = gr.warehouse_id
       LEFT JOIN suppliers s ON s.id = gr.supplier_id
+      LEFT JOIN users u_created ON u_created.id = gr.created_by
+      LEFT JOIN users u_confirmed ON u_confirmed.id = gr.confirmed_by
+      LEFT JOIN users u_cancelled ON u_cancelled.id = gr.cancelled_by
       WHERE gr.id = ?
       LIMIT 1
     `,

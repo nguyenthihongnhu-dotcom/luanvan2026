@@ -57,24 +57,35 @@ export async function findStockAdjustments(
   const params: QueryParams = {};
 
   if (filters.id) {
-    where.push('id = :id');
+    where.push('sa.id = :id');
     params.id = filters.id;
   }
 
   if (filters.search) {
-    where.push('adjustment_code LIKE :search');
+    where.push('sa.adjustment_code LIKE :search');
     params.search = `%${filters.search}%`;
   }
 
   if (filters.status) {
-    where.push('status = :status');
+    where.push('sa.status = :status');
     params.status = filters.status;
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
   const [rows] = await db.query<StockAdjustmentsRow[]>({
-    sql: `SELECT * FROM ${tableName} ${whereSql} LIMIT 100`,
+    sql: `
+      SELECT
+        sa.*,
+        u_created.full_name AS created_by_name,
+        u_approved.full_name AS approved_by_name
+      FROM stock_adjustments sa
+      LEFT JOIN users u_created ON u_created.id = sa.created_by
+      LEFT JOIN users u_approved ON u_approved.id = sa.approved_by
+      ${whereSql}
+      ORDER BY sa.id DESC
+      LIMIT 100
+    `,
     values: params,
   });
 
@@ -86,9 +97,18 @@ export async function findStockAdjustmentDetail(
 ): Promise<{ header: RowDataPacket; items: RowDataPacket[] } | undefined> {
   const [headers] = await db.query<RowDataPacket[]>(
     `
-      SELECT sa.*, w.code AS warehouse_code, w.name AS warehouse_name
+      SELECT
+        sa.*,
+        w.code AS warehouse_code,
+        w.name AS warehouse_name,
+        u_created.full_name AS created_by_name,
+        u_approved.full_name AS approved_by_name,
+        u_rejected.full_name AS rejected_by_name
       FROM stock_adjustments sa
       LEFT JOIN warehouses w ON w.id = sa.warehouse_id
+      LEFT JOIN users u_created ON u_created.id = sa.created_by
+      LEFT JOIN users u_approved ON u_approved.id = sa.approved_by
+      LEFT JOIN users u_rejected ON u_rejected.id = sa.rejected_by
       WHERE sa.id = ?
       LIMIT 1
     `,

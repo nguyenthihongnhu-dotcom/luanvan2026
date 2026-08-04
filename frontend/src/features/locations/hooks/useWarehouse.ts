@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { warehouseService } from "@/features/locations/services/warehouseService";
+import { warehouseService as masterWarehouseService, type WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
 export interface ViTriKho {
@@ -26,12 +27,30 @@ export interface Layer {
 }
 
 export function useWarehouse() {
+    const [warehouses, setWarehouses] = useState<WarehouseOption[]>([]);
+    const [selectedWarehouseId, setSelectedWarehouseId] = useState<number | null>(null);
     const [selectedZone, setSelectedZone] = useState<string | null>(null);
     const [locations, setLocations] = useState<ViTriKho[]>([]);
     const [activeLocation, setActiveLocation] = useState<ViTriKho | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+
+    const loadWarehouses = async () => {
+        try {
+            const list = await masterWarehouseService.listWarehouses({ status: 'ACTIVE' });
+            setWarehouses(list);
+            if (list.length > 0 && !selectedWarehouseId) {
+                setSelectedWarehouseId(list[0].id);
+            }
+        } catch (err) {
+            console.error('Failed to load warehouses:', err);
+        }
+    };
+
+    useEffect(() => {
+        void loadWarehouses();
+    }, []);
 
     const zoneLocations = useMemo(() => {
         if (!selectedZone) return locations;
@@ -41,11 +60,12 @@ export function useWarehouse() {
     const shelves = useMemo(() => warehouseService.deriveShelves(zoneLocations), [zoneLocations]);
     const layers = useMemo(() => warehouseService.deriveLayers(zoneLocations), [zoneLocations]);
 
-    const loadLocations = async () => {
+    const loadLocations = async (whId?: number | null) => {
         setIsLoading(true);
         setError(null);
         try {
-            const result = await warehouseService.listWarehouseLocations();
+            const targetWhId = whId ?? selectedWarehouseId ?? undefined;
+            const result = await warehouseService.listWarehouseLocations(targetWhId);
             setLocations(result);
         } catch (err) {
             console.error('Failed to load locations from backend:', err);
@@ -55,7 +75,13 @@ export function useWarehouse() {
         }
     };
 
-    useEffect(() => { void loadLocations(); }, []);
+    useEffect(() => {
+        if (selectedWarehouseId !== null) {
+            void loadLocations(selectedWarehouseId);
+        } else {
+            void loadLocations();
+        }
+    }, [selectedWarehouseId]);
 
     const runMutation = async (operation: () => Promise<void>, fallback: string) => {
         if (isSaving) return;
@@ -63,7 +89,7 @@ export function useWarehouse() {
         setError(null);
         try {
             await operation();
-            await loadLocations();
+            await loadLocations(selectedWarehouseId);
         } catch (err) {
             console.error(fallback, err);
             setError(getHttpErrorMessage(err, fallback));
@@ -73,9 +99,15 @@ export function useWarehouse() {
         }
     };
 
-    const handleAddZone = async (code: string, name?: string) => {
+    const handleAddZone = async (code: string, name?: string, shelfCount = 4, layerCount = 4) => {
         await runMutation(async () => {
-            await warehouseService.createZone({ code, name, shelfCount: 1, layerCount: 3 });
+            await warehouseService.createZone({
+                warehouseId: selectedWarehouseId ?? undefined,
+                code,
+                name,
+                shelfCount,
+                layerCount,
+            });
             setSelectedZone(code);
         }, 'Không thêm được khu vực kho.');
     };
@@ -89,6 +121,7 @@ export function useWarehouse() {
         await runMutation(async () => {
             if (zoneLocations.length === 0) {
                 await warehouseService.createZone({
+                    warehouseId: selectedWarehouseId ?? undefined,
                     code: selectedZone,
                     name: `Khu vực ${selectedZone}`,
                     shelfCount: 1,
@@ -116,6 +149,7 @@ export function useWarehouse() {
         await runMutation(async () => {
             if (zoneLocations.length === 0) {
                 await warehouseService.createZone({
+                    warehouseId: selectedWarehouseId ?? undefined,
                     code: selectedZone,
                     name: `Khu vực ${selectedZone}`,
                     shelfCount: 1,
@@ -191,6 +225,9 @@ export function useWarehouse() {
     };
 
     return {
+        warehouses,
+        selectedWarehouseId,
+        setSelectedWarehouseId,
         selectedZone,
         setSelectedZone,
         layers,

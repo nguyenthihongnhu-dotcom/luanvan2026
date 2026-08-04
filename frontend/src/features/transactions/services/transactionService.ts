@@ -68,17 +68,26 @@ function toTransaction(row: BackendReceipt | BackendIssue | BackendAdjustment, t
             ? (row as BackendIssue).issue_code
             : (row as BackendAdjustment).adjustment_code;
 
+    const createdByName = typeof row.created_by_name === 'string' && row.created_by_name.trim()
+        ? row.created_by_name
+        : (row.created_by ? `#${row.created_by}` : '');
+    const approvedByName = typeof row.approved_by_name === 'string' && row.approved_by_name.trim()
+        ? row.approved_by_name
+        : typeof row.confirmed_by_name === 'string' && row.confirmed_by_name.trim()
+            ? row.confirmed_by_name
+            : (row.approved_by ? `#${row.approved_by}` : '');
+
     return {
         id: Number(row.id ?? 0),
         soPhieu: code ?? `${type}-${row.id ?? ''}`,
         loai: type,
         ngay: dateOnly(row.created_at),
         status: String(row.status ?? ''),
-        nguoiTao: String(row.created_by ?? ''),
+        nguoiTao: createdByName,
         maNCC: type === 'NHAP' ? String((row as BackendReceipt).supplier_id ?? '') : undefined,
         maDonHangThamChieu: type === 'XUAT' ? (row as BackendIssue).external_reference : undefined,
         lyDo: type === 'DIEU_CHINH' ? (row as BackendAdjustment).reason_code : undefined,
-        nguoiPheDuyet: type === 'DIEU_CHINH' ? String((row as BackendAdjustment).approved_by ?? '') : undefined,
+        nguoiPheDuyet: approvedByName,
     };
 }
 

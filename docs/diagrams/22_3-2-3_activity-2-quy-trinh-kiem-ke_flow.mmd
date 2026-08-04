@@ -1,20 +1,41 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    Start([Tạo phiếu kiểm kê]) --> A[DRAFT: chọn phạm vi SKU/vị trí]
-    A --> B[start → IN_PROGRESS<br/>chốt danh sách dòng cần đếm]
-    B --> C[Nhân viên đếm và ghi số thực tế]
-    C --> D{Đếm xong hết?}
-    D -- Chưa --> C
-    D -- Rồi --> E[submit → SUBMITTED]
-    E --> F{Quản lý duyệt?}
-    F -- Từ chối --> G[REJECTED]:::err
-    F -- Duyệt --> H[approve → so sánh đếm vs hệ thống]
-    H --> I{Có chênh lệch?}
-    I -- Không --> K[APPROVED, không đổi tồn]
-    I -- Dương --> J1[Sinh COUNT_ADJUSTMENT_IN]
-    I -- Âm --> J2[Sinh COUNT_ADJUSTMENT_OUT]
-    J1 --> K
-    J2 --> K
-    K --> End([Kết thúc])
-    G --> End
-
-    classDef err fill:#fee,stroke:#c00;
+    Start(["Bắt đầu: Tạo phiếu kiểm kê DRAFT"]) --> A["Chọn phạm vi kiểm kê: kho, khu vực hoặc SKU"]
+    A --> B["Bắt đầu đếm, chuyển IN_PROGRESS, chốt danh sách dòng"]
+    B --> C["Nhân viên ghi số lượng thực đếm từng dòng"]
+    C --> Dq{"Đã đếm hết các dòng?"}
+    Dq -->|Chưa| C
+    Dq -->|Rồi| E["Nộp kết quả, chuyển SUBMITTED"]
+    E --> F{"Quản lý duyệt kết quả?"}
+    F -->|Từ chối| F1["Chuyển REJECTED, tồn kho không đổi"]
+    F1 --> End1(["Kết thúc: Phiếu bị từ chối"])
+    F -->|Duyệt| G["So sánh số thực đếm với tồn hệ thống"]
+    G --> H{"Có chênh lệch không?"}
+    H -->|Không| K["Chuyển APPROVED, giữ nguyên tồn"]
+    H -->|Thừa| I1["Ghi COUNT_ADJUSTMENT_IN, tăng tồn"]
+    H -->|Thiếu| I2["Ghi COUNT_ADJUSTMENT_OUT, giảm tồn"]
+    I1 --> K
+    I2 --> K
+    K --> End2(["Kết thúc: Kiểm kê đã được duyệt"])

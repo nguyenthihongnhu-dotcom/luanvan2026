@@ -1,4 +1,4 @@
-﻿import { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
@@ -94,8 +94,12 @@ export default function Transactions() {
         handleApproveAdjustment,
         handleRejectAdjustment,
         handleCancelAdjustment,
+        handleRecreateTransaction,
         items,
         warehouses,
+        suppliers,
+        productVariants,
+        locationOptions,
         selectedWarehouseId,
         setSelectedWarehouseId,
         handleAddItemRow,
@@ -162,6 +166,7 @@ export default function Transactions() {
                 const canApproveAdjustment = record.loai === 'DIEU_CHINH' && ['PENDING_APPROVAL', 'SUBMITTED', 'PENDING'].includes(status) && hasPermission('stock_adjustments:approve');
                 const canRejectAdjustment = record.loai === 'DIEU_CHINH' && ['PENDING_APPROVAL', 'SUBMITTED', 'PENDING'].includes(status) && hasPermission('stock_adjustments:reject');
                 const canCancelAdjustment = record.loai === 'DIEU_CHINH' && ['DRAFT', 'MOI_TAO', 'PENDING_APPROVAL', 'PENDING'].includes(status) && hasPermission('stock_adjustments:cancel');
+                const canRecreate = ['REVERSED', 'CANCELLED', 'DA_DAO_PHIEU', 'DA_HUY'].includes(status);
 
                 return (
                     <div className="flex flex-wrap gap-2">
@@ -171,6 +176,7 @@ export default function Transactions() {
                         {canApproveAdjustment && <button type="button" onClick={() => handleApproveAdjustment(record)} className="text-xs font-medium text-green-700 hover:text-green-900">Duyệt</button>}
                         {canRejectAdjustment && <button type="button" onClick={() => handleRejectAdjustment(record)} className="text-xs font-medium text-red-600 hover:text-red-900">Từ chối</button>}
                         {canCancelAdjustment && <button type="button" onClick={() => handleCancelAdjustment(record)} className="text-xs font-medium text-gray-600 hover:text-gray-900">Hủy</button>}
+                        {canRecreate && <button type="button" onClick={() => void handleRecreateTransaction(record)} className="text-xs font-medium font-semibold text-pink-600 hover:text-pink-900">Thêm lại phiếu</button>}
                     </div>
                 );
             },
@@ -221,6 +227,9 @@ export default function Transactions() {
                     onClose={() => setShowModal(false)}
                     items={items}
                     warehouses={warehouses}
+                    suppliers={suppliers}
+                    productVariants={productVariants}
+                    locationOptions={locationOptions}
                     selectedWarehouseId={selectedWarehouseId}
                     setSelectedWarehouseId={setSelectedWarehouseId}
                     handleAddItemRow={handleAddItemRow}

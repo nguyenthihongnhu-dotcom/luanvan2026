@@ -1,4 +1,4 @@
-﻿import type { ResultSetHeader } from 'mysql2';
+import type { ResultSetHeader } from 'mysql2';
 import { db } from '../../database/db';
 import type {
   QueryParams,
@@ -49,6 +49,8 @@ export async function findWarehouses(
   return rows;
 }
 
+import { insertZone } from '../locations/locations.repository';
+
 export async function createWarehouseRepository(
   input: WarehouseInput,
 ): Promise<WarehouseMutationResult> {
@@ -89,6 +91,15 @@ export async function createWarehouseRepository(
       description: optionalValue(input.description),
     },
   });
+
+  if (result.insertId) {
+    try {
+      await insertZone({ warehouseId: result.insertId, code: 'A', name: 'Khu A - Tiêu chuẩn', shelfCount: 4, layerCount: 4 });
+      await insertZone({ warehouseId: result.insertId, code: 'B', name: 'Khu B - Hàng nặng', shelfCount: 4, layerCount: 4 });
+    } catch (err) {
+      console.error('Failed to initialize default warehouse zones layout:', err);
+    }
+  }
 
   return { affectedRows: result.affectedRows, insertId: result.insertId };
 }

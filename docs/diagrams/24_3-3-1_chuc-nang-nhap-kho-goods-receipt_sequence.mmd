@@ -1,30 +1,71 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
 sequenceDiagram
     actor M as Quản lý kho
-    participant MW as Middleware auth+perm
+    participant MW as Middleware xác thực và phân quyền
     participant C as goods-receipts.controller
     participant S as goods-receipts.service
-    participant Repo as repository
+    participant Repo as goods-receipts.repository
     participant DB as MySQL
 
     M->>MW: POST /goods-receipts/:id/confirm
-    MW->>MW: verifyToken + requirePermission(goods_receipts:confirm)
-    MW->>C: confirmGoodsReceiptController
+    MW->>MW: verifyToken và requirePermission(goods_receipts:confirm)
+    MW->>C: confirmGoodsReceiptController(id)
     C->>S: confirmGoodsReceipt(id)
-    S->>S: Kiểm tra phiếu tồn tại, đang DRAFT/PENDING, có dòng hàng
+    S->>S: Kiểm tra phiếu đang DRAFT hoặc PENDING và có dòng hàng
     S->>Repo: confirmTransaction(id)
-    Repo->>DB: BEGIN
+    Repo->>DB: BEGIN TRANSACTION
     loop Mỗi dòng hàng
-        alt SKU tracking lô và thiếu batch_id
+        alt SKU cần theo lô nhưng thiếu batch_id
             Repo->>DB: ROLLBACK
             Repo-->>S: LOT_TRACKING_REQUIRES_BATCH
-        else Hợp lệ
-            Repo->>DB: INSERT/UPDATE product_batches
-            Repo->>DB: UPSERT stock_locations (quantity += SL)
-            Repo->>DB: INSERT inventory_transactions (RECEIPT)
+            S-->>C: 422 LOT_TRACKING_REQUIRES_BATCH
+            C-->>M: 422 kèm dòng hàng bị lỗi
+        else Dòng hàng hợp lệ
+            Repo->>DB: INSERT hoặc UPDATE product_batches
+            Repo->>DB: UPSERT stock_locations, tăng quantity
+            Repo->>DB: INSERT inventory_transactions loại RECEIPT
         end
     end
-    Repo->>DB: UPDATE goods_receipts SET status='CONFIRMED'
+    Repo->>DB: UPDATE goods_receipts SET status = 'CONFIRMED'
     Repo->>DB: COMMIT
-    Repo-->>S: ok
-    S-->>C: ok
-    C-->>M: 200 CONFIRMED
+    Repo-->>S: thành công
+    S-->>C: thành công
+    C-->>M: 200 phiếu CONFIRMED

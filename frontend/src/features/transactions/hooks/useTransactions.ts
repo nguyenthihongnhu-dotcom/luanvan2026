@@ -60,6 +60,10 @@ function makeEmptyItem(): TransactionItem {
     return { ...emptyItem };
 }
 
+import { partnerService, type Partner } from "@/features/partners/services/partnerService";
+import { productService, type LocationOption } from "@/features/products/services/productService";
+import type { ProductItem } from "@/features/products/hooks/useProducts";
+
 export function useTransactions() {
     const [showModal, setShowModal] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -68,6 +72,9 @@ export function useTransactions() {
     const [selectedTransaction, setSelectedTransaction] = useState<Transaction | null>(null);
     const [items, setItems] = useState<TransactionItem[]>([makeEmptyItem()]);
     const [warehouses, setWarehouses] = useState<WarehouseOption[]>([]);
+    const [suppliers, setSuppliers] = useState<Partner[]>([]);
+    const [productVariants, setProductVariants] = useState<ProductItem[]>([]);
+    const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
     const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
     const [allocationStrategy, setAllocationStrategy] = useState<AllocationStrategy>("FEFO");
     const [allocationPreview, setAllocationPreview] = useState<AllocationPreviewResult | null>(null);
@@ -89,14 +96,20 @@ export function useTransactions() {
             setIsLoading(true);
             setError(null);
             try {
-                const [result, warehouseRows] = await Promise.all([
+                const [result, warehouseRows, supplierRows, productRows, locationRows] = await Promise.all([
                     transactionService.listTransactions(),
                     transactionService.listWarehouses(),
+                    partnerService.listPartners(),
+                    productService.listProducts(),
+                    productService.listLocationOptions(),
                 ]);
 
                 if (isMounted) {
                     setData(result);
                     setWarehouses(warehouseRows);
+                    setSuppliers(supplierRows);
+                    setProductVariants(productRows);
+                    setLocationOptions(locationRows);
                     setSelectedWarehouseId((current) => current || (warehouseRows[0] ? String(warehouseRows[0].id) : ""));
                 }
             } catch (err) {
@@ -213,6 +226,55 @@ export function useTransactions() {
         await runTransactionAction(() => transactionService.cancelAdjustment(transaction.id), "Không hủy được phiếu điều chỉnh.");
     };
 
+    const handleRecreateTransaction = async (transaction: Transaction) => {
+        setIsLoading(true);
+        setError(null);
+        try {
+            const detail = await transactionService.getTransactionDetail(transaction.loai, transaction.id);
+            const prefix = transaction.loai === 'NHAP' ? 'PN' : transaction.loai === 'XUAT' ? 'PX' : 'DC';
+            const yearMonth = new Date().toISOString().slice(2, 7).replace('-', '');
+            const randSuffix = Math.floor(100 + Math.random() * 900);
+            const newCode = `${prefix}-${yearMonth}-${randSuffix}`;
+
+            setFormData({
+                soPhieu: newCode,
+                loai: transaction.loai,
+                status: 'MOI_TAO',
+                ngay: new Date().toISOString().slice(0, 10),
+                nguoiTao: '',
+                maNCC: detail.header.supplier_id ? String(detail.header.supplier_id) : '',
+                maDonHangThamChieu: detail.header.reference_no ? String(detail.header.reference_no) : (detail.header.external_reference ? String(detail.header.external_reference) : ''),
+                maTonKho: detail.header.warehouse_id ? String(detail.header.warehouse_id) : selectedWarehouseId,
+                soLuongCu: '',
+                soLuongMoi: '',
+                lyDo: `Tạo lại từ phiếu ${transaction.soPhieu}`,
+                nguoiPheDuyet: '',
+            });
+
+            if (detail.header.warehouse_id) {
+                setSelectedWarehouseId(String(detail.header.warehouse_id));
+            }
+
+            const mappedItems: TransactionItem[] = detail.items.map((line) => ({
+                productVariantId: String(line.product_variant_id ?? ''),
+                batchId: line.batch_id ? String(line.batch_id) : '',
+                locationId: line.location_id ? String(line.location_id) : '',
+                quantity: String(line.quantity ?? ''),
+                adjustmentDirection: (line.adjustment_direction as 'IN' | 'OUT') || 'IN',
+                note: line.note || '',
+            }));
+
+            setItems(mappedItems.length > 0 ? mappedItems : [makeEmptyItem()]);
+            setEditingTransaction(null);
+            setShowModal(true);
+        } catch (err) {
+            console.error('Không nạp được thông tin phiếu để tạo lại:', err);
+            setError(getHttpErrorMessage(err, 'Không tải được chi tiết chứng từ để tạo lại phiếu mới.'));
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
     const handleAddItemRow = () => setItems([...items, makeEmptyItem()]);
 
     const handleRemoveItemRow = (index: number) => {
@@ -298,12 +360,16 @@ export function useTransactions() {
         handleApproveAdjustment,
         handleRejectAdjustment,
         handleCancelAdjustment,
+        handleRecreateTransaction,
         items,
         setItems,
         handleAddItemRow,
         handleRemoveItemRow,
         handleItemChange,
         warehouses,
+        suppliers,
+        productVariants,
+        locationOptions,
         selectedWarehouseId,
         setSelectedWarehouseId,
         allocationStrategy,

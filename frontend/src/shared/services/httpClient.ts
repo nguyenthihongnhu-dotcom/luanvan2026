@@ -33,6 +33,23 @@ export class HttpError extends Error {
     }
 }
 
+const domainErrorMessages: Record<string, string> = {
+    GOODS_RECEIPT_HAS_NO_ITEMS: 'Phiếu nhập kho chưa có mặt hàng nào. Vui lòng kiểm tra lại danh sách sản phẩm trong phiếu trước khi xác nhận.',
+    GOODS_RECEIPT_NOT_FOUND: 'Không tìm thấy phiếu nhập kho.',
+    GOODS_RECEIPT_NOT_CONFIRMABLE: 'Phiếu nhập kho không ở trạng thái có thể xác nhận.',
+    GOODS_RECEIPT_NOT_REVERSIBLE: 'Phiếu nhập kho không ở trạng thái có thể đảo phiếu.',
+    GOODS_ISSUE_HAS_NO_ITEMS: 'Phiếu xuất kho chưa có mặt hàng nào.',
+    GOODS_ISSUE_NOT_CONFIRMABLE: 'Phiếu xuất kho không ở trạng thái có thể xác nhận.',
+    GOODS_ISSUE_NOT_REVERSIBLE: 'Phiếu xuất kho không ở trạng thái có thể đảo phiếu.',
+    REVERSAL_INSUFFICIENT_STOCK: 'Tồn kho khả dụng hiện tại không đủ để thực hiện đảo phiếu (hàng đã xuất bán hoặc điều chuyển sang vị trí khác).',
+    LOCATION_WAREHOUSE_MISMATCH: 'Vị trí kho không thuộc Kho được chọn trên chứng từ.',
+    INSUFFICIENT_STOCK: 'Tồn kho khả dụng không đủ để xuất hàng.',
+    BATCH_REQUIRED: 'Sản phẩm này yêu cầu chọn Lô hàng.',
+    EXPIRY_DATE_REQUIRED: 'Sản phẩm này yêu cầu nhập Hạn sử dụng.',
+    STOCK_COUNT_SNAPSHOT_EMPTY: 'Không tạo được phiếu kiểm kê vì Kho / Phạm vi được chọn hiện chưa có sản phẩm tồn kho nào để chụp dữ liệu đếm (Snapshot).',
+    STOCK_COUNT_NOT_IN_PROGRESS: 'Phiếu kiểm kê chưa ở trạng thái Đang kiểm kê. Vui lòng bấm Bắt đầu trước khi nhập số liệu đếm.',
+};
+
 /**
  * Shared formatter for turning a caught error from an API call into a
  * user-facing Vietnamese message. Distinguishes network failure, expired
@@ -56,11 +73,11 @@ export function getHttpErrorMessage(error: unknown, fallback: string): string {
 
         const payload = error.payload as { error?: { code?: string; message?: string; requestId?: string } } | undefined;
         const backendError = payload?.error;
-        const detail = backendError?.message ?? error.message;
-        const requestId = backendError?.requestId ? ` Request ID: ${backendError.requestId}.` : '';
-        const code = backendError?.code ? ` (${backendError.code})` : '';
+        const mappedMessage = backendError?.code ? domainErrorMessages[backendError.code] : undefined;
+        const detail = mappedMessage ?? backendError?.message ?? error.message;
+        const requestId = backendError?.requestId ? ` (Mã yêu cầu: ${backendError.requestId})` : '';
 
-        return `${fallback}: HTTP ${error.status}${code} - ${detail}.${requestId}`;
+        return `${fallback}: ${detail}${requestId}`;
     }
 
     return fallback;

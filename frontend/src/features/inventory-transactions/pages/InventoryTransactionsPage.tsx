@@ -55,15 +55,50 @@ export default function InventoryTransactionsPage() {
     useEffect(() => { void loadRows(''); }, []);
 
     const columns: ColumnProps<InventoryTransaction>[] = [
-        { key: 'transaction_code', title: 'Mã giao dịch', className: 'font-semibold text-gray-900' },
+        {
+            key: 'transaction_code',
+            title: 'Mã giao dịch',
+            className: 'font-semibold text-gray-900',
+            render: (value) => (
+                <span className="font-mono text-xs text-slate-800" title={String(value)}>
+                    {String(value)}
+                </span>
+            ),
+        },
         { key: 'transaction_type', title: 'Loại', render: (value) => typeLabel(String(value)) },
-        { key: 'warehouse_id', title: 'Kho', render: (value) => `#${String(value)}` },
-        { key: 'product_variant_id', title: 'Variant', render: (value) => `#${String(value)}` },
-        { key: 'source_location_id', title: 'Vị trí nguồn', render: (value) => value ? `#${String(value)}` : '-' },
-        { key: 'destination_location_id', title: 'Vị trí đích', render: (value) => value ? `#${String(value)}` : '-' },
+        {
+            key: 'warehouse_id',
+            title: 'Kho',
+            render: (_, record) => record.warehouse_name ? (record.warehouse_code ? `${record.warehouse_code} - ${record.warehouse_name}` : record.warehouse_name) : (record.warehouse_id ? `#${record.warehouse_id}` : '-'),
+        },
+        {
+            key: 'product_variant_id',
+            title: 'Sản phẩm / Variant',
+            render: (_, record) => {
+                if (record.sku || record.variant_name || record.product_name) {
+                    const variantText = record.variant_name ? ` (${record.variant_name})` : '';
+                    return `${record.sku || ''} - ${record.product_name || ''}${variantText}`.replace(/^- /, '');
+                }
+                return record.product_variant_id ? `#${record.product_variant_id}` : '-';
+            },
+        },
+        {
+            key: 'source_location_id',
+            title: 'Vị trí nguồn',
+            render: (_, record) => record.source_location_code || (record.source_location_id ? `#${record.source_location_id}` : '-'),
+        },
+        {
+            key: 'destination_location_id',
+            title: 'Vị trí đích',
+            render: (_, record) => record.destination_location_code || (record.destination_location_id ? `#${record.destination_location_id}` : '-'),
+        },
         { key: 'quantity', title: 'Số lượng', render: (value) => formatNumber(value) },
         { key: 'reference_type', title: 'Tham chiếu', render: (_, record) => record.reference_type ? `${record.reference_type} #${record.reference_id ?? '-'}` : '-' },
-        { key: 'performed_by', title: 'Người thực hiện', render: (value) => `#${String(value)}` },
+        {
+            key: 'performed_by',
+            title: 'Người thực hiện',
+            render: (_, record) => record.performed_by_name || (record.performed_by ? `#${record.performed_by}` : 'Hệ thống'),
+        },
         { key: 'created_at', title: 'Thời gian', render: (value) => formatDateTime(String(value)) },
     ];
 

@@ -65,8 +65,16 @@ export default function WarehouseGrid({
 
                             <div className="flex gap-4">
                                 {shelves.map((shelf) => {
-                                    const location = getLocationInfo(shelf.code, layer.code);
-                                    if (!location) return null;
+                                    const location = getLocationInfo(shelf.code, layer.code) ?? {
+                                        MaViTri: 0,
+                                        KhuVuc: selectedZone,
+                                        Ke: shelf.code,
+                                        Tang: layer.code,
+                                        MaViTriCha: null,
+                                        MaKe: Number(shelf.id) || 0,
+                                        TrangThai: 'Trong' as const,
+                                        SanPhamLuuTru: '',
+                                    };
                                     const storedProducts = parseStoredProducts(location.SanPhamLuuTru);
                                     const productSummary = getLocationSummary(storedProducts);
 
@@ -74,8 +82,8 @@ export default function WarehouseGrid({
                                         <button
                                             key={`${shelf.code}-${layer.code}`}
                                             type="button"
-                                            onClick={() => setActiveLocation(location)}
-                                            className={`flex h-24 w-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 p-2 shadow-sm transition-all ${getLocationStyle(location.TrangThai)} ${activeLocation?.MaViTri === location.MaViTri ? "scale-105 ring-4 ring-pink-500" : ""} ${draggedShelfId === shelf.id ? "opacity-50" : ""}`}
+                                            onClick={() => location.MaViTri > 0 && setActiveLocation(location)}
+                                            className={`flex h-24 w-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 p-2 shadow-sm transition-all ${getLocationStyle(location.TrangThai)} ${activeLocation?.MaViTri === location.MaViTri && location.MaViTri > 0 ? "scale-105 ring-4 ring-pink-500" : ""} ${draggedShelfId === shelf.id ? "opacity-50" : ""}`}
                                             title={storedProducts.join("\n") || "Trống"}>
                                             <span className="text-xs font-bold tracking-wider">{selectedZone}-{location.Ke}-{location.Tang}</span>
                                             <span className="mt-1 max-w-full truncate text-[10px] font-semibold leading-tight">
@@ -108,7 +116,7 @@ export default function WarehouseGrid({
                                     onDragOver={(event) => event.preventDefault()}
                                     onDrop={() => handleShelfDrop(shelf.id)}
                                     onDragEnd={() => setDraggedShelfId(null)}
-                                    className={`w-28 cursor-move rounded-md border border-transparent py-1 text-center text-sm font-semibold text-gray-500 hover:border-pink-200 hover:bg-pink-50 ${draggedShelfId === shelf.id ? "opacity-50" : ""}`}
+                                    className={`w-32 cursor-move rounded-md border border-transparent py-1 text-center text-sm font-semibold text-gray-500 hover:border-pink-200 hover:bg-pink-50 ${draggedShelfId === shelf.id ? "opacity-50" : ""}`}
                                     title="Kéo tên kệ để đổi thứ tự cột"
                                 >
                                     {shelf.name}

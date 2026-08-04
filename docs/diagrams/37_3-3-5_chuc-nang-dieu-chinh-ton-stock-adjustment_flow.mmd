@@ -1,15 +1,38 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    A([Tạo DRAFT]) --> B[submit: PENDING]
-    B --> C{Người duyệt = người tạo?}
-    C -- Đúng --> D[403 từ chối tự duyệt]:::err
-    C -- Khác --> E{Quyết định}
-    E -- Reject --> F[REJECTED]:::err
-    E -- Cancel --> G[CANCELLED]
-    E -- Approve --> H[BEGIN]
-    H --> I[Cập nhật tồn]
-    I --> J[Ghi MANUAL_ADJUSTMENT_IN/OUT]
-    J --> K[APPROVED, COMMIT]
-    K --> L([Kết thúc])
-    F --> L
-    G --> L
-    classDef err fill:#fee,stroke:#c00;
+    Start(["Bắt đầu: Tạo phiếu điều chỉnh DRAFT"]) --> B["Gửi duyệt, chuyển PENDING"]
+    B --> C{"Người duyệt trùng người tạo?"}
+    C -->|Trùng| C1["Trả 403 SELF_APPROVAL_FORBIDDEN"]
+    C1 --> End1(["Kết thúc: Phiếu giữ nguyên PENDING"])
+    C -->|Khác| Dq{"Quyết định của người duyệt"}
+    Dq -->|Từ chối| D1["Chuyển REJECTED"]
+    D1 --> End2(["Kết thúc: Phiếu bị từ chối"])
+    Dq -->|Hủy| D2["Chuyển CANCELLED"]
+    D2 --> End3(["Kết thúc: Phiếu đã hủy"])
+    Dq -->|Duyệt| E["BEGIN TRANSACTION"]
+    E --> F["Cập nhật quantity trong stock_locations"]
+    F --> G["Ghi MANUAL_ADJUSTMENT_IN hoặc MANUAL_ADJUSTMENT_OUT"]
+    G --> H["Chuyển APPROVED, COMMIT"]
+    H --> End4(["Kết thúc: Tồn kho đã điều chỉnh"])

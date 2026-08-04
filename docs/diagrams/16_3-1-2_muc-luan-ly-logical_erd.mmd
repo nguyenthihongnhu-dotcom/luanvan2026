@@ -1,3 +1,28 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'attributeBackgroundColorOdd': '#ffffff',
+    'attributeBackgroundColorEven': '#ffffff'
+  },
+  'er': { 'entityPadding': 12, 'minEntityWidth': 130, 'useMaxWidth': false }
+}}%%
 erDiagram
     goods_receipts ||--o{ goods_receipt_items : goods_receipt_id
     goods_issues ||--o{ goods_issue_items : goods_issue_id
@@ -30,6 +55,8 @@ erDiagram
     }
     stock_transfers {
         bigint id PK
+        bigint from_location_id FK
+        bigint to_location_id FK
         enum status
     }
     stock_transfer_items {
@@ -40,16 +67,20 @@ erDiagram
     }
     stock_counts {
         bigint id PK
+        bigint warehouse_id FK
+        enum scope_type
         enum status
     }
     stock_count_items {
         bigint id PK
         bigint stock_count_id FK
         bigint product_variant_id FK
+        decimal system_quantity
         decimal counted_quantity
     }
     stock_adjustments {
         bigint id PK
+        bigint warehouse_id FK
         enum status
     }
     stock_adjustment_items {

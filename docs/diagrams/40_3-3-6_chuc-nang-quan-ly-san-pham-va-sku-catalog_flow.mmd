@@ -1,10 +1,32 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    A([Bắt đầu]) --> B[Chọn/ tạo danh mục + nhãn hiệu]
-    B --> C[Nhập thông tin sản phẩm]
-    C --> D[Tạo biến thể SKU: đơn vị, lô/hạn, min/max]
-    D --> E{SKU/barcode trùng?}
-    E -- Trùng --> F[Báo lỗi UNIQUE]:::err
-    E -- Không --> G[Lưu sản phẩm/SKU]
-    G --> H([Kết thúc])
-    F --> C
-    classDef err fill:#fee,stroke:#c00;
+    Start(["Bắt đầu"]) --> B["Chọn hoặc tạo danh mục và nhãn hiệu"]
+    B --> C["Nhập thông tin sản phẩm"]
+    C --> Dn["Tạo biến thể SKU: đơn vị tính, lô, hạn dùng, tồn tối thiểu"]
+    Dn --> E{"Mã SKU hoặc barcode đã tồn tại?"}
+    E -->|Trùng| E1["Trả 409 DUPLICATE_SKU"]
+    E1 --> Dn
+    E -->|Không trùng| F["Lưu sản phẩm và biến thể SKU"]
+    F --> End1(["Kết thúc: SKU sẵn sàng dùng cho nghiệp vụ kho"])

@@ -49,6 +49,43 @@ function warehouseLabel(warehouse: WarehouseOption): string {
     return `${warehouse.code} - ${warehouse.name ?? "Không tên"}`;
 }
 
+function getScopeReferenceConfig(scopeType: StockCountScopeType) {
+    switch (scopeType) {
+        case "ZONE":
+            return {
+                label: "Mã ID Khu kho (Zone ID)",
+                placeholder: "Nhập ID khu (VD: 1)",
+                helpText: "Nhập mã số ID của Khu kho cần kiểm kê trong kho đã chọn.",
+            };
+        case "SHELF":
+            return {
+                label: "Mã ID Kệ kho (Shelf ID)",
+                placeholder: "Nhập ID kệ (VD: 5)",
+                helpText: "Nhập mã số ID của Kệ kho cần kiểm kê.",
+            };
+        case "LOCATION":
+            return {
+                label: "Mã ID Vị trí (Location ID)",
+                placeholder: "Nhập ID vị trí (VD: 12)",
+                helpText: "Nhập mã số ID của Vị trí lưu trữ chính xác cần kiểm kê.",
+            };
+        case "SKU":
+            return {
+                label: "Mã ID Biến thể sản phẩm (Variant / SKU ID)",
+                placeholder: "Nhập ID biến thể (VD: 102)",
+                helpText: "Nhập mã số ID của Biến thể sản phẩm (product_variant_id) cần kiểm kê.",
+            };
+        case "CATEGORY":
+            return {
+                label: "Mã ID Danh mục sản phẩm (Category ID)",
+                placeholder: "Nhập ID danh mục (VD: 3)",
+                helpText: "Nhập mã số ID của Danh mục sản phẩm cần kiểm kê.",
+            };
+        default:
+            return null;
+    }
+}
+
 export default function StockCountsPage() {
     const [counts, setCounts] = useState<StockCount[]>([]);
     const [items, setItems] = useState<StockCountItem[]>([]);
@@ -227,12 +264,17 @@ export default function StockCountsPage() {
                                     <option value="CATEGORY">Theo danh mục</option>
                                 </select>
                             </div>
-                            {formData.scopeType !== "WAREHOUSE" && (
-                                <div>
-                                    <label className="mb-1 block text-sm font-medium text-gray-700">ID tham chiếu phạm vi</label>
-                                    <input required type="number" min="1" value={formData.scopeReferenceId} onChange={(event) => setFormData({ ...formData, scopeReferenceId: event.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
-                                </div>
-                            )}
+                            {formData.scopeType !== "WAREHOUSE" && (() => {
+                                const scopeConfig = getScopeReferenceConfig(formData.scopeType);
+                                if (!scopeConfig) return null;
+                                return (
+                                    <div>
+                                        <label className="mb-1 block text-sm font-medium text-gray-700">{scopeConfig.label}</label>
+                                        <input required type="number" min="1" placeholder={scopeConfig.placeholder} value={formData.scopeReferenceId} onChange={(event) => setFormData({ ...formData, scopeReferenceId: event.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                                        <p className="mt-1 text-xs text-gray-500">{scopeConfig.helpText}</p>
+                                    </div>
+                                );
+                            })()}
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-gray-700">Ghi chú</label>
                                 <textarea value={formData.note} onChange={(event) => setFormData({ ...formData, note: event.target.value })} className="min-h-[80px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
@@ -274,8 +316,8 @@ export default function StockCountsPage() {
                                             const draft = itemDrafts[item.id] ?? { actualQuantity: "", reasonCode: "", note: "" };
                                             return (
                                                 <tr key={item.id}>
-                                                    <td className="py-2">#{item.product_variant_id}</td>
-                                                    <td className="py-2">#{item.location_id}</td>
+                                                    <td className="py-2 font-medium text-gray-900">{item.sku ? `${item.sku} - ${item.product_name || ''}` : `#${item.product_variant_id}`}</td>
+                                                    <td className="py-2 font-mono text-xs text-gray-700">{item.location_code || `#${item.location_id}`}</td>
                                                     <td className="py-2">{formatNumber(item.system_quantity)}</td>
                                                     <td className="py-2">
                                                         <input type="number" min="0" step="0.001" value={draft.actualQuantity} onChange={(event) => setItemDrafts({ ...itemDrafts, [item.id]: { ...draft, actualQuantity: event.target.value } })} disabled={selectedCount.status !== "IN_PROGRESS"} className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm disabled:bg-gray-50" />

@@ -1,14 +1,42 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    Start([Bắt đầu]) --> S1[Nhân viên tạo phiếu nhập<br/>chọn kho + nhà cung cấp]
-    S1 --> S2[Thêm dòng: SKU, số lượng,<br/>lô/hạn sử dụng, vị trí nhập]
-    S2 --> S3{SKU có<br/>tracking lô/hạn?}
-    S3 -- Có --> S4[Bắt buộc nhập lô + hạn dùng]
-    S3 -- Không --> S5[Bỏ qua lô]
-    S4 --> S6[Lưu phiếu DRAFT]
+    Start(["Bắt đầu: Hàng về kho"]) --> S1["Nhân viên tạo phiếu nhập, chọn kho và nhà cung cấp"]
+    S1 --> S2["Thêm dòng hàng: SKU, số lượng, vị trí nhập"]
+    S2 --> S3{"SKU yêu cầu theo dõi lô và hạn dùng?"}
+    S3 -->|Có| S4["Nhập số lô và hạn sử dụng"]
+    S3 -->|Không| S5["Bỏ qua thông tin lô"]
+    S4 --> S6["Lưu phiếu, trạng thái DRAFT"]
     S5 --> S6
-    S6 --> S7[Người quản lý xác nhận phiếu<br/>quyền goods_receipts:confirm]
-    S7 --> S8[Tạo/khớp product_batches]
-    S8 --> S9[Tăng quantity ở stock_locations]
-    S9 --> S10[Ghi inventory_transactions<br/>type = RECEIPT]
-    S10 --> S11[Phiếu chuyển CONFIRMED]
-    S11 --> End([Kết thúc])
+    S6 --> S7{"Người xác nhận có quyền goods_receipts:confirm?"}
+    S7 -->|Không| S8["Trả lỗi 403 FORBIDDEN"]
+    S8 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    S7 -->|Có| S9{"Dòng cần lô đã có batch_id?"}
+    S9 -->|Chưa có| S10["ROLLBACK, trả lỗi LOT_TRACKING_REQUIRES_BATCH"]
+    S10 --> S2
+    S9 -->|Đã có| S11["Tạo mới hoặc khớp bản ghi product_batches"]
+    S11 --> S12["Tăng quantity trong stock_locations"]
+    S12 --> S13["Ghi inventory_transactions loại RECEIPT"]
+    S13 --> S14["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
+    S14 --> End2(["Kết thúc: Tồn kho đã tăng"])

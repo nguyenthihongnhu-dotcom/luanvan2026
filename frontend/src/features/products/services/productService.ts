@@ -58,7 +58,7 @@ export async function listProducts(): Promise<ProductItem[]> {
         return {
             id: variantId,
             sku: row.sku ?? `SKU-${variantId}`,
-            name: row.variant_name || row.product_name || 'Sản phẩm',
+            name: row.product_name ? (row.variant_name ? `${row.product_name} - ${row.variant_name}` : row.product_name) : (row.variant_name || 'Sản phẩm'),
             category: row.category_name || 'Chưa phân loại',
             stock,
             minStock,

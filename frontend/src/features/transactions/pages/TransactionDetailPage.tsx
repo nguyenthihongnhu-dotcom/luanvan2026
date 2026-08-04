@@ -32,6 +32,38 @@ function formatValue(value: unknown): string {
     return String(value);
 }
 
+function formatHeaderValue(key: string, value: unknown, header: Record<string, unknown>): string {
+    if (key === 'status') {
+        const statusStr = String(value ?? '').toUpperCase();
+        const statusMap: Record<string, string> = {
+            DRAFT: 'Nháp',
+            PENDING: 'Chờ xử lý',
+            PENDING_APPROVAL: 'Chờ duyệt',
+            CONFIRMED: 'Đã xác nhận',
+            APPROVED: 'Đã duyệt',
+            REJECTED: 'Đã từ chối',
+            CANCELLED: 'Đã hủy',
+            REVERSED: 'Đã đảo phiếu',
+            COMPLETED: 'Hoàn tất',
+        };
+        return statusMap[statusStr] ?? String(value ?? '-');
+    }
+
+    if (key === 'created_by') {
+        return String(header.created_by_name ?? (value ? `#${String(value)}` : '-'));
+    }
+
+    if (key === 'confirmed_by') {
+        return String(header.confirmed_by_name ?? (value ? `#${String(value)}` : '-'));
+    }
+
+    if (key === 'approved_by') {
+        return String(header.approved_by_name ?? (value ? `#${String(value)}` : '-'));
+    }
+
+    return formatValue(value);
+}
+
 function headerLabel(key: string): string {
     const labels: Record<string, string> = {
         receipt_code: 'Số phiếu nhập',
@@ -127,7 +159,7 @@ export default function TransactionDetailPage() {
                             {headerEntries.map((entry) => (
                                 <div key={entry.key}>
                                     <div className="text-xs font-semibold uppercase text-gray-500">{headerLabel(entry.key)}</div>
-                                    <div className="mt-1 text-sm font-medium text-gray-900">{formatValue(entry.value)}</div>
+                                    <div className="mt-1 text-sm font-medium text-gray-900">{formatHeaderValue(entry.key, entry.value, detail.header)}</div>
                                 </div>
                             ))}
                         </div>

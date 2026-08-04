@@ -1,11 +1,39 @@
-flowchart LR
-    A[Người dùng nhập email/mật khẩu] --> B[POST /auth/login]
-    B --> C[bcrypt.compare mật khẩu]
-    C -- Sai --> D[401 Invalid credentials]
-    C -- Đúng --> E[Sinh access token JWT<br/>+ refresh token]
-    E --> F[Lưu phiên user_sessions]
-    F --> G[Trả token cho client]
-    G --> H[Client gắn Bearer token mỗi request]
-    H --> I[Middleware verifyToken + requirePermission]
-    I -- Thiếu quyền --> J[403 Forbidden]
-    I -- Đủ quyền --> K[Vào controller nghiệp vụ]
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu: Người dùng mở trang đăng nhập"]) --> A["Nhập email và mật khẩu"]
+    A --> B["Gửi POST /auth/login"]
+    B --> C{"bcrypt.compare mật khẩu khớp?"}
+    C -->|Không khớp| C1["Trả 401 INVALID_CREDENTIALS"]
+    C1 --> A
+    C -->|Khớp| Dn["Sinh access token JWT và refresh token"]
+    Dn --> E["Lưu phiên vào bảng user_sessions"]
+    E --> F["Trả cặp token về client"]
+    F --> G["Client gắn Bearer token vào mỗi request"]
+    G --> H["Middleware verifyToken và requirePermission"]
+    H --> I{"Vai trò có đủ quyền cho route?"}
+    I -->|Không đủ| I1["Trả 403 FORBIDDEN"]
+    I1 --> End1(["Kết thúc: Từ chối truy cập"])
+    I -->|Đủ| J["Chuyển vào controller nghiệp vụ"]
+    J --> End2(["Kết thúc: Trả dữ liệu cho client"])

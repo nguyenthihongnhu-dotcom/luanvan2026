@@ -1,18 +1,43 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    A([Bắt đầu]) --> B[Tạo phiếu: kho + NCC]
-    B --> C[Thêm dòng hàng]
-    C --> D{SKU cần lô/hạn?}
-    D -- Có --> E[Nhập lô + hạn dùng]
-    D -- Không --> F[Bỏ qua lô]
-    E --> G[Lưu DRAFT]
+    Start(["Bắt đầu"]) --> B["Tạo phiếu: chọn kho và nhà cung cấp"]
+    B --> C["Thêm dòng hàng: SKU, số lượng, vị trí nhập"]
+    C --> Dq{"SKU yêu cầu theo dõi lô và hạn dùng?"}
+    Dq -->|Có| E["Nhập số lô và hạn sử dụng"]
+    Dq -->|Không| F["Bỏ qua thông tin lô"]
+    E --> G["Lưu phiếu, trạng thái DRAFT"]
     F --> G
-    G --> H[Quản lý xác nhận]
-    H --> I{Đủ quyền và hợp lệ?}
-    I -- Không --> J[Báo lỗi / 403]:::err
-    I -- Có --> K[BEGIN]
-    K --> L[Tạo/khớp lô]
-    L --> M[Tăng tồn stock_locations]
-    M --> N[Ghi giao dịch RECEIPT]
-    N --> O[status = CONFIRMED, COMMIT]
-    O --> P([Kết thúc])
-    classDef err fill:#fee,stroke:#c00;
+    G --> H{"Người xác nhận có quyền goods_receipts:confirm?"}
+    H -->|Không| H1["Trả 403 FORBIDDEN"]
+    H1 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    H -->|Có| I["BEGIN TRANSACTION"]
+    I --> J{"Dòng cần lô đã có batch_id?"}
+    J -->|Chưa có| J1["ROLLBACK, trả LOT_TRACKING_REQUIRES_BATCH"]
+    J1 --> C
+    J -->|Đã có| K["Tạo hoặc khớp bản ghi product_batches"]
+    K --> L["Tăng quantity trong stock_locations"]
+    L --> Mn["Ghi inventory_transactions loại RECEIPT"]
+    Mn --> N["Đổi trạng thái CONFIRMED, COMMIT"]
+    N --> End2(["Kết thúc: Nhập kho thành công"])

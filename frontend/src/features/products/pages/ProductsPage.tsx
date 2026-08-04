@@ -134,7 +134,7 @@ export default function ProductsPage() {
     const columns: ColumnProps<ProductItem>[] = [
         { key: "id", title: "ID" },
         { key: "sku", title: "SKU" },
-        { key: "name", title: "Tên sản phẩm", render: (value) => getProductNameLabel(value) },
+        { key: "name", title: "Sản phẩm / Biến thể", render: (value) => getProductNameLabel(value) },
         { key: "category", title: "Danh mục", render: (value) => getProductCategoryLabel(value) },
         { key: "stock", title: "Số lượng tồn kho", render: (value) => formatNumber(value as number) },
         { key: "minStock", title: "Tồn kho tối thiểu", render: (value) => formatNumber(value as number) },

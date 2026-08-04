@@ -76,24 +76,35 @@ export async function findGoodsIssues(
   const params: QueryParams = {};
 
   if (filters.id) {
-    where.push('id = :id');
+    where.push('gi.id = :id');
     params.id = filters.id;
   }
 
   if (filters.search) {
-    where.push('issue_code LIKE :search');
+    where.push('gi.issue_code LIKE :search');
     params.search = `%${filters.search}%`;
   }
 
   if (filters.status) {
-    where.push('status = :status');
+    where.push('gi.status = :status');
     params.status = filters.status;
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
   const [rows] = await db.query<GoodsIssuesRow[]>({
-    sql: `SELECT * FROM ${tableName} ${whereSql} LIMIT 100`,
+    sql: `
+      SELECT
+        gi.*,
+        u_created.full_name AS created_by_name,
+        u_confirmed.full_name AS confirmed_by_name
+      FROM goods_issues gi
+      LEFT JOIN users u_created ON u_created.id = gi.created_by
+      LEFT JOIN users u_confirmed ON u_confirmed.id = gi.confirmed_by
+      ${whereSql}
+      ORDER BY gi.id DESC
+      LIMIT 100
+    `,
     values: params,
   });
 
@@ -105,9 +116,18 @@ export async function findGoodsIssueDetail(
 ): Promise<{ header: RowDataPacket; items: RowDataPacket[] } | undefined> {
   const [headers] = await db.query<RowDataPacket[]>(
     `
-      SELECT gi.*, w.code AS warehouse_code, w.name AS warehouse_name
+      SELECT
+        gi.*,
+        w.code AS warehouse_code,
+        w.name AS warehouse_name,
+        u_created.full_name AS created_by_name,
+        u_confirmed.full_name AS confirmed_by_name,
+        u_cancelled.full_name AS cancelled_by_name
       FROM goods_issues gi
       LEFT JOIN warehouses w ON w.id = gi.warehouse_id
+      LEFT JOIN users u_created ON u_created.id = gi.created_by
+      LEFT JOIN users u_confirmed ON u_confirmed.id = gi.confirmed_by
+      LEFT JOIN users u_cancelled ON u_cancelled.id = gi.cancelled_by
       WHERE gi.id = ?
       LIMIT 1
     `,

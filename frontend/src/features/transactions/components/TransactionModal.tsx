@@ -1,7 +1,6 @@
-import React from "react";
-import type { Transaction, TransactionItem } from "@/features/transactions/hooks/useTransactions";
-import type { AllocationPreviewResult, AllocationStrategy } from "@/features/transactions/services/transactionService";
-import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
+import type { Partner } from "@/features/partners/services/partnerService";
+import type { ProductItem } from "@/features/products/hooks/useProducts";
+import type { LocationOption } from "@/features/products/services/productService";
 
 interface TransactionModalProps {
     editingTransaction: Transaction | null;
@@ -27,6 +26,9 @@ interface TransactionModalProps {
     handleRemoveItemRow: (index: number) => void;
     handleItemChange: (index: number, field: keyof TransactionItem, value: string) => void;
     warehouses: WarehouseOption[];
+    suppliers?: Partner[];
+    productVariants?: ProductItem[];
+    locationOptions?: LocationOption[];
     selectedWarehouseId: string;
     setSelectedWarehouseId: (warehouseId: string) => void;
     allocationStrategy: AllocationStrategy;
@@ -52,6 +54,9 @@ export default function TransactionModal({
     handleRemoveItemRow,
     handleItemChange,
     warehouses,
+    suppliers = [],
+    productVariants = [],
+    locationOptions = [],
     selectedWarehouseId,
     setSelectedWarehouseId,
     allocationStrategy,
@@ -63,6 +68,22 @@ export default function TransactionModal({
     const isIssue = formData.loai === "XUAT";
     const isAdjustment = formData.loai === "DIEU_CHINH";
     const isShortAllocated = allocationPreview ? allocationPreview.allocatedQuantity < allocationPreview.requestedQuantity : false;
+
+    const selectedSupplier = suppliers.find((s) => String(s.MaNCC) === String(formData.maNCC));
+
+    const isSupplierMatch = (pv: ProductItem) => {
+        if (!formData.maNCC) return true;
+        const sId = String(formData.maNCC);
+        const skuName = `${pv.sku} ${pv.name}`.toUpperCase();
+        if (sId === "1") return skuName.includes("FRISO") || skuName.includes("SUA");
+        if (sId === "2") return skuName.includes("HUG");
+        if (sId === "3") return skuName.includes("CHICCO") || skuName.includes("HEINZ") || skuName.includes("PIGEON") || skuName.includes("MOONY");
+        return true;
+    };
+
+    const supplierMatchedVariants = productVariants.filter(isSupplierMatch);
+    const otherVariants = productVariants.filter((pv) => !isSupplierMatch(pv));
+    const filteredLocations = locationOptions.filter((loc) => !selectedWarehouseId || String(loc.warehouseId) === String(selectedWarehouseId));
 
     return (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md">
@@ -91,8 +112,15 @@ export default function TransactionModal({
                         </div>
                         {formData.loai === "NHAP" && (
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">Mã nhà cung cấp</label>
-                                <input type="text" name="maNCC" value={formData.maNCC} onChange={handleInputChange} placeholder="ID nhà cung cấp" className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                                <label className="mb-1 block text-sm font-medium text-gray-700">Nhà cung cấp</label>
+                                <select name="maNCC" value={formData.maNCC} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
+                                    <option value="">-- Chọn Nhà cung cấp --</option>
+                                    {suppliers.map((supplier) => (
+                                        <option key={supplier.MaNCC} value={supplier.MaNCC}>
+                                            {supplier.TenNCC} ({supplier.NguoiLienHe ? `LH: ${supplier.NguoiLienHe}` : `ID: #${supplier.MaNCC}`})
+                                        </option>
+                                    ))}
+                                </select>
                             </div>
                         )}
                         {isIssue && (
@@ -109,7 +137,14 @@ export default function TransactionModal({
 
                     <div className="border-t border-gray-200 pt-4">
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                            <label className="block text-sm font-semibold text-pink-700">Dòng hàng chi tiết</label>
+                            <div>
+                                <label className="block text-sm font-semibold text-pink-700">Dòng hàng chi tiết</label>
+                                {formData.loai === "NHAP" && selectedSupplier && (
+                                    <p className="mt-0.5 text-xs text-pink-600 font-medium">
+                                        📌 Đang ưu tiên sản phẩm thuộc <strong>{selectedSupplier.TenNCC}</strong>
+                                    </p>
+                                )}
+                            </div>
                             <div className="flex flex-wrap items-center gap-2">
                                 {isIssue && (
                                     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs">
@@ -133,17 +168,52 @@ export default function TransactionModal({
                         <div className="space-y-3">
                             {items.map((item, index) => (
                                 <div key={index} className="grid grid-cols-12 items-end gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                                    <div className="col-span-6 md:col-span-2">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Variant ID</label>
-                                        <input required type="number" min="1" value={item.productVariantId} onChange={(e) => handleItemChange(index, "productVariantId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" />
+                                    <div className="col-span-12 md:col-span-4">
+                                        <label className="mb-1 block text-xs font-medium text-gray-600">Sản phẩm / Biến thể</label>
+                                        <select required value={item.productVariantId} onChange={(e) => handleItemChange(index, "productVariantId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500">
+                                            <option value="">-- Chọn sản phẩm --</option>
+                                            {formData.maNCC && supplierMatchedVariants.length > 0 ? (
+                                                <>
+                                                    <optgroup label={`Sản phẩm thuộc ${selectedSupplier ? selectedSupplier.TenNCC : "Nhà cung cấp đã chọn"}`}>
+                                                        {supplierMatchedVariants.map((pv) => (
+                                                            <option key={pv.id} value={pv.id}>
+                                                                {pv.sku} - {pv.name}
+                                                            </option>
+                                                        ))}
+                                                    </optgroup>
+                                                    {otherVariants.length > 0 && (
+                                                        <optgroup label="Tất cả sản phẩm khác">
+                                                            {otherVariants.map((pv) => (
+                                                                <option key={pv.id} value={pv.id}>
+                                                                    {pv.sku} - {pv.name}
+                                                                </option>
+                                                            ))}
+                                                        </optgroup>
+                                                    )}
+                                                </>
+                                            ) : (
+                                                productVariants.map((pv) => (
+                                                    <option key={pv.id} value={pv.id}>
+                                                        {pv.sku} - {pv.name}
+                                                    </option>
+                                                ))
+                                            )}
+                                        </select>
                                     </div>
                                     <div className="col-span-6 md:col-span-2">
                                         <label className="mb-1 block text-xs font-medium text-gray-600">Batch ID</label>
                                         <input type="number" min="1" value={item.batchId} onChange={(e) => handleItemChange(index, "batchId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" placeholder="Nếu có" />
                                     </div>
                                     <div className="col-span-6 md:col-span-2">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Vị trí ID</label>
-                                        <input required type="number" min="1" value={item.locationId} onChange={(e) => handleItemChange(index, "locationId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" />
+                                        <label className="mb-1 block text-xs font-medium text-gray-600">Vị trí kho</label>
+                                        <select required value={item.locationId} onChange={(e) => handleItemChange(index, "locationId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500">
+                                            <option value="">-- Chọn vị trí --</option>
+                                            {filteredLocations.map((loc) => (
+                                                <option key={loc.id} value={loc.id}>
+                                                    {loc.label} (ID #{loc.id})
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
                                     <div className="col-span-6 md:col-span-2">
                                         <label className="mb-1 block text-xs font-medium text-gray-600">Số lượng</label>
@@ -158,7 +228,7 @@ export default function TransactionModal({
                                             </select>
                                         </div>
                                     )}
-                                    <div className={isAdjustment ? "col-span-6 md:col-span-1" : isIssue ? "col-span-6 md:col-span-2" : "col-span-10 md:col-span-3"}>
+                                    <div className={isAdjustment ? "col-span-6 md:col-span-1" : isIssue ? "col-span-6 md:col-span-2" : "col-span-10 md:col-span-1"}>
                                         <label className="mb-1 block text-xs font-medium text-gray-600">Ghi chú</label>
                                         <input value={item.note} onChange={(e) => handleItemChange(index, "note", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" />
                                     </div>

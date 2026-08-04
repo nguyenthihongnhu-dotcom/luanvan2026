@@ -1,32 +1,52 @@
 import { useMemo, useState } from "react";
+import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
+import type { ViTriKho } from "@/features/locations/hooks/useWarehouse";
 
 interface ZoneSelectorProps {
+    warehouses?: WarehouseOption[];
+    selectedWarehouseId?: number | null;
+    setSelectedWarehouseId?: (id: number) => void;
     selectedZone: string | null;
     setSelectedZone: (zone: string | null) => void;
-    onAddZone: (code: string, name?: string) => Promise<void>;
+    onAddZone: (code: string, name?: string, shelfCount?: number, layerCount?: number) => Promise<void>;
+    locations?: ViTriKho[];
 }
 
-const defaultZoneOptions = ["A", "B", "C", "D", "E"];
-
-export default function ZoneSelector({ selectedZone, setSelectedZone, onAddZone }: ZoneSelectorProps) {
+export default function ZoneSelector({
+    warehouses = [],
+    selectedWarehouseId,
+    setSelectedWarehouseId,
+    selectedZone,
+    setSelectedZone,
+    onAddZone,
+    locations = [],
+}: ZoneSelectorProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [newZoneCode, setNewZoneCode] = useState("");
     const [newZoneName, setNewZoneName] = useState("");
+    const [shelfCount, setShelfCount] = useState(4);
+    const [layerCount, setLayerCount] = useState(4);
     const [isSaving, setIsSaving] = useState(false);
 
     const zoneOptions = useMemo(() => {
-        const selected = selectedZone ? [selectedZone] : [];
-        return Array.from(new Set([...defaultZoneOptions, ...selected]));
-    }, [selectedZone]);
+        const dbZones = Array.from(new Set(locations.map((loc) => loc.KhuVuc).filter(Boolean)));
+        const combined = new Set([...dbZones, ...(selectedZone ? [selectedZone] : [])]);
+        if (combined.size === 0) {
+            return ["A", "B", "C", "D", "E"];
+        }
+        return Array.from(combined).sort();
+    }, [locations, selectedZone]);
 
     const submitZone = async () => {
         const code = newZoneCode.trim().toUpperCase();
         if (!code || isSaving) return;
         setIsSaving(true);
         try {
-            await onAddZone(code, newZoneName.trim() || `Khu vực ${code}`);
+            await onAddZone(code, newZoneName.trim() || `Khu vực ${code}`, shelfCount, layerCount);
             setNewZoneCode("");
             setNewZoneName("");
+            setShelfCount(4);
+            setLayerCount(4);
             setIsAdding(false);
         } finally {
             setIsSaving(false);
@@ -52,6 +72,27 @@ export default function ZoneSelector({ selectedZone, setSelectedZone, onAddZone 
                     {selectedZone && <span className="rounded-full border border-pink-100 bg-pink-50 px-2 py-0.5 text-sm font-bold text-pink-600">Khu {selectedZone}</span>}
                 </h1>
 
+                {warehouses.length > 0 && (
+                    <select
+                        value={selectedWarehouseId ?? ""}
+                        onChange={(e) => {
+                            const val = Number(e.target.value);
+                            if (val) {
+                                setSelectedWarehouseId?.(val);
+                                setSelectedZone(null);
+                            }
+                        }}
+                        className="cursor-pointer rounded-lg border border-pink-300 bg-pink-50 px-3 py-1.5 text-sm font-bold text-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
+                        title="Chọn kho cần xem sơ đồ"
+                    >
+                        {warehouses.map((wh) => (
+                            <option key={wh.id} value={wh.id}>
+                                {wh.name || wh.code} ({wh.code})
+                            </option>
+                        ))}
+                    </select>
+                )}
+
                 <select
                     value={selectedZone || "map"}
                     onChange={(e) => {
@@ -69,9 +110,17 @@ export default function ZoneSelector({ selectedZone, setSelectedZone, onAddZone 
 
                 {isAdding && (
                     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-pink-100 bg-pink-50 p-2">
-                        <input value={newZoneCode} onChange={(e) => setNewZoneCode(e.target.value)} placeholder="Mã khu" className="w-20 rounded-md border border-gray-300 px-2 py-1 text-sm" />
-                        <input value={newZoneName} onChange={(e) => setNewZoneName(e.target.value)} placeholder="Tên khu vực" className="w-44 rounded-md border border-gray-300 px-2 py-1 text-sm" />
-                        <button type="button" onClick={submitZone} disabled={isSaving} className="rounded-md bg-pink-600 px-3 py-1 text-sm font-semibold text-white hover:bg-pink-700 disabled:opacity-60">{isSaving ? "Đang lưu" : "Lưu"}</button>
+                        <input value={newZoneCode} onChange={(e) => setNewZoneCode(e.target.value)} placeholder="Mã khu (VD: F)" className="w-24 rounded-md border border-gray-300 px-2 py-1 text-sm font-semibold" />
+                        <input value={newZoneName} onChange={(e) => setNewZoneName(e.target.value)} placeholder="Tên khu vực" className="w-40 rounded-md border border-gray-300 px-2 py-1 text-sm" />
+                        <div className="flex items-center gap-1 text-xs font-semibold text-gray-600">
+                            <span>Số kệ:</span>
+                            <input type="number" min={1} max={20} value={shelfCount} onChange={(e) => setShelfCount(Math.max(1, Number(e.target.value)))} className="w-12 rounded-md border border-gray-300 px-1 py-1 text-center text-sm" />
+                        </div>
+                        <div className="flex items-center gap-1 text-xs font-semibold text-gray-600">
+                            <span>Số tầng:</span>
+                            <input type="number" min={1} max={20} value={layerCount} onChange={(e) => setLayerCount(Math.max(1, Number(e.target.value)))} className="w-12 rounded-md border border-gray-300 px-1 py-1 text-center text-sm" />
+                        </div>
+                        <button type="button" onClick={submitZone} disabled={isSaving} className="rounded-md bg-pink-600 px-3 py-1 text-sm font-semibold text-white hover:bg-pink-700 disabled:opacity-60">{isSaving ? "Đang lưu..." : "Lưu khu vực"}</button>
                         <button type="button" onClick={() => setIsAdding(false)} className="rounded-md border border-gray-300 bg-white px-3 py-1 text-sm text-gray-600 hover:bg-gray-50">Hủy</button>
                     </div>
                 )}

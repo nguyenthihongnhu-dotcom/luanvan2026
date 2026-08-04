@@ -27,7 +27,7 @@ const DEFAULT_ZONES: Zone[] = [
     {
         id: "zone-a",
         code: "A",
-        name: "Zone A - Sữa và tã",
+        name: "Khu A - Sữa và tã",
         color: "#3b82f6",
         size: 4,
         row: 1,
@@ -42,7 +42,7 @@ const DEFAULT_ZONES: Zone[] = [
     {
         id: "zone-b",
         code: "B",
-        name: "Zone B - Đồ chơi và xe đẩy",
+        name: "Khu B - Đồ chơi và xe đẩy",
         color: "#a855f7",
         size: 4,
         row: 3,
@@ -57,7 +57,7 @@ const DEFAULT_ZONES: Zone[] = [
     {
         id: "zone-c",
         code: "C",
-        name: "Zone C - Thời trang trẻ em",
+        name: "Khu C - Thời trang trẻ em",
         color: "#10b981",
         size: 3,
         row: 5,
@@ -71,7 +71,7 @@ const DEFAULT_ZONES: Zone[] = [
     {
         id: "zone-d",
         code: "D",
-        name: "Zone D - Thực phẩm ăn dặm",
+        name: "Khu D - Thực phẩm ăn dặm",
         color: "#f59e0b",
         size: 3,
         row: 1,
@@ -85,7 +85,7 @@ const DEFAULT_ZONES: Zone[] = [
     {
         id: "zone-e",
         code: "E",
-        name: "Zone E - Chăm sóc sức khỏe",
+        name: "Khu E - Chăm sóc sức khỏe",
         color: "#ef4444",
         size: 2,
         row: 5,
@@ -124,12 +124,44 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
         return Array.from(new Set(locations.map((location) => location.KhuVuc).filter(Boolean))).sort();
     }, [locations]);
 
+    useEffect(() => {
+        if (backendZoneCodes.length === 0) return;
+        setZones((existingZones) => {
+            const existingCodes = new Set(existingZones.map((z) => z.code));
+            const missingCodes = backendZoneCodes.filter((code) => !existingCodes.has(code));
+            if (missingCodes.length === 0) return existingZones;
+
+            const newZones: Zone[] = missingCodes.map((code, idx) => {
+                const totalIndex = existingZones.length + idx;
+                const zoneShelvesCount = new Set(locations.filter(l => l.KhuVuc === code).map(l => l.Ke)).size || 4;
+                const row = Math.floor(totalIndex / 3) * 2 + 1;
+                const col = (totalIndex % 3) * 4 + 1;
+                const occupiedCells: CellPosition[] = [];
+                for (let i = 0; i < zoneShelvesCount; i++) {
+                    occupiedCells.push({ row, col: col + i });
+                }
+
+                return {
+                    id: `zone-${code.toLowerCase()}`,
+                    code,
+                    name: `Khu ${code}`,
+                    color: getColor(totalIndex),
+                    size: zoneShelvesCount,
+                    row,
+                    col,
+                    occupiedCells,
+                };
+            });
+            return [...existingZones, ...newZones];
+        });
+    }, [backendZoneCodes, locations]);
+
     const createNewZone = useCallback(() => {
         const code = getNextZoneCode(zones);
         const zone: Zone = {
             id: `zone-${code.toLowerCase()}`,
             code,
-            name: newZoneName.trim() || `Zone ${code}`,
+            name: newZoneName.trim() || `Khu ${code}`,
             color: getColor(zones.length),
             size: newZoneSize,
             row: -1,

@@ -1,10 +1,37 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
 flowchart TD
-    Start([Bắt đầu]) --> S1[Tạo phiếu chuyển:<br/>vị trí nguồn → vị trí đích]
-    S1 --> S2[Thêm dòng SKU + số lượng]
-    S2 --> S3[Xác nhận phiếu<br/>stock_transfers:confirm]
-    S3 --> S4{Tồn nguồn đủ?}
-    S4 -- Không --> S5[Lỗi, ROLLBACK]
-    S4 -- Có --> S6[Giảm tồn vị trí nguồn<br/>ghi TRANSFER_OUT]
-    S6 --> S7[Tăng tồn vị trí đích<br/>ghi TRANSFER_IN]
-    S7 --> S8[Phiếu CONFIRMED, COMMIT]
-    S8 --> End([Kết thúc])
+    Start(["Bắt đầu: Có yêu cầu chuyển hàng"]) --> S1["Tạo phiếu chuyển, chọn vị trí nguồn và vị trí đích"]
+    S1 --> S2["Thêm dòng hàng: SKU và số lượng"]
+    S2 --> S3["Lưu phiếu, trạng thái DRAFT"]
+    S3 --> S4{"Người xác nhận có quyền stock_transfers:confirm?"}
+    S4 -->|Không| S5["Trả lỗi 403 FORBIDDEN"]
+    S5 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    S4 -->|Có| S6{"Tồn khả dụng tại vị trí nguồn đủ?"}
+    S6 -->|Không đủ| S7["ROLLBACK, trả lỗi INSUFFICIENT_STOCK"]
+    S7 --> End2(["Kết thúc: Tồn kho không đổi"])
+    S6 -->|Đủ| S8["Giảm tồn vị trí nguồn, ghi TRANSFER_OUT"]
+    S8 --> S9["Tăng tồn vị trí đích, ghi TRANSFER_IN"]
+    S9 --> S10["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
+    S10 --> End3(["Kết thúc: Hàng đã sang vị trí đích"])

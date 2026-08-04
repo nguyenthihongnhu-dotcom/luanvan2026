@@ -20,8 +20,13 @@ export interface StockCountItem {
     id: number;
     stock_count_id: number;
     product_variant_id: number;
+    sku?: string | null;
+    product_name?: string | null;
+    variant_name?: string | null;
     batch_id: number | null;
+    lot_number?: string | null;
     location_id: number;
+    location_code?: string | null;
     system_quantity: string | number;
     actual_quantity: string | number | null;
     difference_quantity: string | number | null;

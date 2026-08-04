@@ -68,10 +68,20 @@ export async function findStockCountItems(
 ): Promise<StockCountItemRow[]> {
   const [rows] = await db.query<StockCountItemRow[]>(
     `
-      SELECT *
-      FROM stock_count_items
-      WHERE stock_count_id = ?
-      ORDER BY id
+      SELECT
+        sci.*,
+        pv.sku,
+        p.name AS product_name,
+        pv.variant_name,
+        wl.code AS location_code,
+        pb.lot_number
+      FROM stock_count_items sci
+      JOIN product_variants pv ON pv.id = sci.product_variant_id
+      JOIN products p ON p.id = pv.product_id
+      JOIN warehouse_locations wl ON wl.id = sci.location_id
+      LEFT JOIN product_batches pb ON pb.id = sci.batch_id
+      WHERE sci.stock_count_id = ?
+      ORDER BY sci.id
     `,
     [stockCountId],
   );

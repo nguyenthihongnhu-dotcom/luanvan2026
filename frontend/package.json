@@ -11,6 +11,8 @@
   },
   "dependencies": {
     "@ant-design/icons": "^6.2.5",
+    "ag-grid-community": "^36.0.2",
+    "ag-grid-react": "^36.0.2",
     "antd": "^6.4.3",
     "axios": "^1.18.1",
     "qrcode": "^1.5.4",
