@@ -1,5 +1,5 @@
 import { useState } from "react";
-import QRCode from "qrcode";
+// import QRCode from "qrcode";
 import type { ViTriKho } from "@/features/locations/hooks/useWarehouse";
 import { warehouseService } from "@/features/locations/services/warehouseService";
 import type { LocationHistoryItem } from "@/features/locations/services/warehouseService";
@@ -103,6 +103,7 @@ export default function LocationDetailSidebar({
         }
     };
 
+    /*
     const handlePrintLabel = async () => {
         const qrPayload = JSON.stringify({
             type: "WAREHOUSE_LOCATION",
@@ -148,6 +149,7 @@ export default function LocationDetailSidebar({
         `);
         printWindow.document.close();
     };
+    */
 
     return (
         <>
@@ -191,9 +193,9 @@ export default function LocationDetailSidebar({
                     <button type="button" onClick={() => void handleShowHistory()} disabled={isHistoryLoading} className="w-full rounded-lg bg-pink-600 px-3 py-2 text-center text-sm font-medium leading-5 text-white transition hover:bg-pink-700 disabled:cursor-not-allowed disabled:opacity-60">
                         {isHistoryLoading ? "Đang tải lịch sử..." : "Xem lịch sử nhập/xuất"}
                     </button>
-                    <button type="button" onClick={() => void handlePrintLabel()} className="w-full rounded-lg bg-gray-100 px-3 py-2 text-center text-sm font-medium leading-5 text-gray-700 transition hover:bg-gray-200">
+                    {/* <button type="button" onClick={() => void handlePrintLabel()} className="w-full rounded-lg bg-gray-100 px-3 py-2 text-center text-sm font-medium leading-5 text-gray-700 transition hover:bg-gray-200">
                         In nhãn Barcode/QR Code
-                    </button>
+                    </button> */}
                 </div>
             </aside>
 

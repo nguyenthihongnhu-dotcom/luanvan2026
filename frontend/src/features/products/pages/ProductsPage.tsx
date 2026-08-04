@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
-import QRCode from "qrcode";
+// import QRCode from "qrcode";
 import DashboardLayout from "@/layouts/dashboard/DashboardLayout";
 import Tablelayout from "@/shared/ui/Table/TableLayout";
 import { useFormatters } from "@/shared/hooks";
@@ -31,6 +31,7 @@ export default function ProductsPage() {
     const {
         products,
         locationOptions,
+        categoryOptions,
         showModal,
         setShowModal,
         editingProduct,
@@ -56,7 +57,7 @@ export default function ProductsPage() {
                         onChange={(e) => setFilterCategory(e.target.value)}
                     >
                         <option value="All">Tất cả</option>
-                        {productCategoryOptions.map((category) => (
+                        {categoryOptions.map((category) => (
                             <option key={category} value={category}>{category}</option>
                         ))}
                     </select>
@@ -79,8 +80,9 @@ export default function ProductsPage() {
             </div>
         );
         return () => setExtraContent(null);
-    }, [filterCategory, filterStatus, setExtraContent]);
+    }, [filterCategory, filterStatus, categoryOptions, setExtraContent]);
 
+    /*
     const handlePrintProductQr = async (product: ProductItem) => {
         const displayName = getProductNameLabel(product.name);
         const payload = JSON.stringify({
@@ -130,6 +132,7 @@ export default function ProductsPage() {
         `);
         printWindow.document.close();
     };
+    */
 
     const columns: ColumnProps<ProductItem>[] = [
         { key: "id", title: "ID" },
@@ -183,7 +186,7 @@ export default function ProductsPage() {
             className: "text-right",
             render: (_, record: ProductItem) => (
                 <div className="flex justify-end space-x-2">
-                    <button onClick={() => void handlePrintProductQr(record)} className="text-xs font-medium text-pink-600 hover:text-pink-900">In QR</button>
+                    {/* <button onClick={() => void handlePrintProductQr(record)} className="text-xs font-medium text-pink-600 hover:text-pink-900">In QR</button> */}
                     <button onClick={() => handleEdit(record)} className="text-xs font-medium text-blue-600 hover:text-blue-900">Sửa</button>
                     <button onClick={() => handleDelete(record.id)} className="text-xs font-medium text-red-600 hover:text-red-900">Xóa</button>
                 </div>
@@ -304,10 +307,10 @@ export default function ProductsPage() {
                                             )}
                                         </div>
 
-                                        <div className="mt-4 grid grid-cols-3 gap-2">
-                                            <button onClick={() => void handlePrintProductQr(product)} className="rounded-md border border-pink-200 px-2 py-2 text-xs font-semibold text-pink-700">
+                                        <div className="mt-4 grid grid-cols-2 gap-2">
+                                            {/* <button onClick={() => void handlePrintProductQr(product)} className="rounded-md border border-pink-200 px-2 py-2 text-xs font-semibold text-pink-700">
                                                 In QR
-                                            </button>
+                                            </button> */}
                                             <button onClick={() => handleEdit(product)} className="rounded-md border border-blue-200 px-2 py-2 text-xs font-semibold text-blue-700">
                                                 Sửa
                                             </button>
@@ -330,6 +333,7 @@ export default function ProductsPage() {
                     editingProduct={editingProduct}
                     formData={formData}
                     locationOptions={locationOptions}
+                    categoryOptions={categoryOptions}
                     handleInputChange={handleInputChange}
                     handleSubmit={handleSubmit}
                     onClose={() => setShowModal(false)}

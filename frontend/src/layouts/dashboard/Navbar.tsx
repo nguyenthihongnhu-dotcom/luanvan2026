@@ -36,7 +36,7 @@ const navbarGroups = [
             { label: 'Sơ đồ kho', path: '/locations', icon: PartitionOutlined },
             { label: 'Kho master', path: '/warehouses', icon: DatabaseOutlined },
             { label: 'Tồn kho', path: '/stock', icon: InboxOutlined },
-            { label: 'Nhập nhanh', path: '/quick-receive', icon: ScanOutlined },
+            // { label: 'Nhập nhanh', path: '/quick-receive', icon: ScanOutlined },
             { label: 'Log tồn', path: '/inventory-transactions', icon: HistoryOutlined },
             { label: 'Lô hàng', path: '/batches', icon: TagsOutlined },
         ],
@@ -204,11 +204,10 @@ export default function Navbar(): ReactNode {
                                         setOpenGroup(isOpen ? null : group.name);
                                     }}
                                     aria-expanded={isOpen}
-                                    className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${
-                                        isOpen || isGroupActive
+                                    className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${isOpen || isGroupActive
                                             ? 'bg-pink-50 text-pink-700'
                                             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                                    }`}
+                                        }`}
                                 >
                                     <span>{group.name}</span>
                                     <DownOutlined className={`text-[10px] transition-transform ${isOpen ? 'rotate-180' : ''}`} />
@@ -223,11 +222,10 @@ export default function Navbar(): ReactNode {
                                                 <Link
                                                     key={item.path}
                                                     to={item.path}
-                                                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${
-                                                        isActive
+                                                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${isActive
                                                             ? 'bg-pink-600 font-semibold text-white'
                                                             : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
-                                                    }`}
+                                                        }`}
                                                 >
                                                     <Icon className={`text-sm ${isActive ? 'text-white' : 'text-slate-400'}`} />
                                                     <span className="flex-1">{item.label}</span>
@@ -257,18 +255,16 @@ export default function Navbar(): ReactNode {
                                             setOpenGroup(null);
                                             setNotificationOpen((open) => !open);
                                         }}
-                                        className={`relative flex h-9 w-9 items-center justify-center rounded-full text-base transition-colors ${
-                                            isNotificationOpen || isActive
+                                        className={`relative flex h-9 w-9 items-center justify-center rounded-full text-base transition-colors ${isNotificationOpen || isActive
                                                 ? 'bg-pink-600 text-white shadow-sm shadow-pink-200'
                                                 : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                                        }`}
+                                            }`}
                                     >
                                         <Icon />
                                         {unreadCount > 0 && (
                                             <span
-                                                className={`absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${
-                                                    isNotificationOpen || isActive ? 'bg-white text-pink-700' : 'bg-rose-600 text-white'
-                                                }`}
+                                                className={`absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-bold ${isNotificationOpen || isActive ? 'bg-white text-pink-700' : 'bg-rose-600 text-white'
+                                                    }`}
                                             >
                                                 {unreadCount > 99 ? '99+' : unreadCount}
                                             </span>
@@ -342,11 +338,10 @@ export default function Navbar(): ReactNode {
                                 key={item.path}
                                 to={item.path}
                                 title={item.label}
-                                className={`relative flex h-9 w-9 items-center justify-center rounded-full text-base transition-colors ${
-                                    isActive
+                                className={`relative flex h-9 w-9 items-center justify-center rounded-full text-base transition-colors ${isActive
                                         ? 'bg-pink-600 text-white shadow-sm shadow-pink-200'
                                         : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
-                                }`}
+                                    }`}
                             >
                                 <Icon />
                             </Link>
