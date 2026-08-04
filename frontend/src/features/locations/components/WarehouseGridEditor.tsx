@@ -304,11 +304,30 @@ export default function WarehouseGridEditor({ onSelectZone, locations = [] }: Wa
 
     return (
         <div className="flex h-[calc(100vh-180px)] flex-1 flex-col overflow-auto rounded-xl border border-gray-200 bg-gray-100 p-6">
-            <div className="mb-4">
-                <h3 className="text-base font-bold uppercase tracking-wide text-gray-800">Mặt bằng kho (dòng/cột)</h3>
-                <p className="text-xs text-gray-500">
-                    Dòng/cột chỉ dùng để bố trí khu trên mặt bằng. Khi vào từng khu, cấu trúc lưu hàng sẽ hiển thị theo kệ và tầng riêng.
-                </p>
+            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+                <div>
+                    <h3 className="text-base font-bold uppercase tracking-wide text-gray-800">Mặt bằng kho tổng thể (Layout Grid)</h3>
+                    <p className="text-xs text-gray-500">
+                        Bấm vào một Khu trên sơ đồ hoặc chọn nút bên dưới để vào chi tiết Kệ/Tầng của khu đó.
+                    </p>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-2">
+                    <span className="text-xs font-semibold text-gray-500">Truy cập nhanh Khu:</span>
+                    {zones.map((zone) => (
+                        <button
+                            key={zone.id}
+                            type="button"
+                            onClick={() => onSelectZone?.(zone.code)}
+                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold shadow-sm transition hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600"
+                        >
+                            <span className="flex h-4 w-4 items-center justify-center rounded text-[10px] text-white" style={{ backgroundColor: zone.color }}>
+                                {zone.code}
+                            </span>
+                            <span>{zone.name}</span>
+                        </button>
+                    ))}
+                </div>
             </div>
 
             <div className="flex flex-1 items-start justify-start overflow-auto">

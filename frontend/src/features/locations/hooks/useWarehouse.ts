@@ -137,6 +137,7 @@ export function useWarehouse() {
 
             await warehouseService.createShelf({
                 zoneCode: selectedZone,
+                warehouseId: selectedWarehouseId ?? undefined,
                 code: shelfCode,
                 name: `Kệ ${shelfCode}`,
                 layerCount: Math.max(layers.length, 1),
@@ -164,6 +165,7 @@ export function useWarehouse() {
             if (targetShelves.length === 0) {
                 await warehouseService.createShelf({
                     zoneCode: selectedZone,
+                    warehouseId: selectedWarehouseId ?? undefined,
                     code: '01',
                     name: 'Kệ 01',
                     layerCount: nextCodeInt,
@@ -173,6 +175,7 @@ export function useWarehouse() {
 
             await warehouseService.createLayer({
                 zoneCode: selectedZone,
+                warehouseId: selectedWarehouseId ?? undefined,
                 layerNo: nextCodeInt,
             });
         }, 'Không thêm được tầng. Kiểm tra khu vực/kệ trong MySQL.');
@@ -181,7 +184,10 @@ export function useWarehouse() {
     const handleSyncMatrix = async () => {
         if (!selectedZone) return;
         await runMutation(async () => {
-            await warehouseService.syncLocationMatrix({ zoneCode: selectedZone });
+            await warehouseService.syncLocationMatrix({
+                zoneCode: selectedZone,
+                warehouseId: selectedWarehouseId ?? undefined,
+            });
         }, 'Không đồng bộ được ma trận kệ/tầng.');
     };
 

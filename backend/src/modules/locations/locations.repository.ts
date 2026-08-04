@@ -17,6 +17,8 @@ import type {
   QueryParams,
   SyncLocationMatrixInput,
   SyncLocationMatrixResult,
+  ZoneRow,
+  UpdateZoneLayoutInput,
 } from './location.model';
 
 export async function findLocations(
@@ -212,21 +214,40 @@ async function findZoneForWrite(
   connection: PoolConnection,
   input: { zoneCode: string; warehouseId?: number },
 ): Promise<{ id: number; code: string }> {
+  // Mã khu chỉ duy nhất trong phạm vi một kho (uq_zone_code UNIQUE(warehouse_id, code)),
+  // nên bắt buộc phải lọc theo kho. Trước đây dùng COALESCE(?, w.id) rồi ORDER BY w.id LIMIT 1:
+  // khi client không gửi warehouseId thì mọi thao tác thêm kệ/tầng đều rơi vào kho có id nhỏ nhất,
+  // gây ra hiện tượng thêm kệ ở kho này lại mọc sang kho khác.
   const [zoneRows] = await connection.query<
-    Array<RowDataPacket & { id: number; code: string }>
+    Array<RowDataPacket & { id: number; code: string; warehouse_id: number }>
   >(
-    `
-      SELECT wz.id, wz.code
-      FROM warehouse_zones wz
-      JOIN warehouses w ON w.id = wz.warehouse_id
-      WHERE wz.code = ?
-        AND wz.deleted_at IS NULL
-        AND w.id = COALESCE(?, w.id)
-      ORDER BY w.id
-      LIMIT 1
-    `,
-    [input.zoneCode, input.warehouseId ?? null],
+    input.warehouseId
+      ? `
+        SELECT wz.id, wz.code, wz.warehouse_id
+        FROM warehouse_zones wz
+        WHERE wz.code = ?
+          AND wz.warehouse_id = ?
+          AND wz.deleted_at IS NULL
+        LIMIT 1
+      `
+      : `
+        SELECT wz.id, wz.code, wz.warehouse_id
+        FROM warehouse_zones wz
+        JOIN warehouses w ON w.id = wz.warehouse_id
+        WHERE wz.code = ?
+          AND wz.deleted_at IS NULL
+          AND w.deleted_at IS NULL
+        LIMIT 2
+      `,
+    input.warehouseId ? [input.zoneCode, input.warehouseId] : [input.zoneCode],
   );
+
+  // Không gửi warehouseId mà mã khu tồn tại ở nhiều kho thì phải báo lỗi,
+  // không được đoán bừa một kho.
+  if (!input.warehouseId && zoneRows.length > 1) {
+    throw new Error('ZONE_AMBIGUOUS');
+  }
+
   const zone = zoneRows[0];
 
   if (!zone) {
@@ -486,6 +507,70 @@ export async function syncLocationMatrixRepository(
   }
 }
 
+export async function findZonesByWarehouse(
+  warehouseId: number,
+): Promise<ZoneRow[]> {
+  // Đọc thẳng từ warehouse_zones chứ không suy ra từ warehouse_locations:
+  // khu vừa tạo mà chưa có kệ/vị trí nào vẫn phải hiện trên mặt bằng.
+  const [rows] = await db.query<ZoneRow[]>({
+    sql: `
+      SELECT
+        wz.id,
+        wz.warehouse_id,
+        wz.code,
+        wz.name,
+        wz.status,
+        wz.sort_order,
+        wz.grid_row,
+        wz.grid_col,
+        wz.grid_size,
+        COUNT(DISTINCT ws.id) AS shelf_count,
+        COUNT(DISTINCT wl.id) AS location_count
+      FROM warehouse_zones wz
+      LEFT JOIN warehouse_shelves ws
+        ON ws.zone_id = wz.id AND ws.deleted_at IS NULL
+      LEFT JOIN warehouse_locations wl
+        ON wl.shelf_id = ws.id AND wl.deleted_at IS NULL
+      WHERE wz.warehouse_id = :warehouseId
+        AND wz.deleted_at IS NULL
+      GROUP BY
+        wz.id, wz.warehouse_id, wz.code, wz.name, wz.status,
+        wz.sort_order, wz.grid_row, wz.grid_col, wz.grid_size
+      ORDER BY wz.sort_order, wz.code
+    `,
+    values: { warehouseId } satisfies QueryParams,
+  });
+
+  return rows;
+}
+
+export async function updateZoneLayoutRepository(
+  input: UpdateZoneLayoutInput,
+): Promise<MutationResult> {
+  const [result] = await db.query<ResultSetHeader>({
+    sql: `
+      UPDATE warehouse_zones
+      SET grid_row = :gridRow,
+          grid_col = :gridCol,
+          grid_size = :gridSize
+      WHERE id = :zoneId
+        AND deleted_at IS NULL
+    `,
+    values: {
+      zoneId: input.zoneId,
+      gridRow: input.gridRow ?? null,
+      gridCol: input.gridCol ?? null,
+      gridSize: input.gridSize ?? null,
+    } satisfies QueryParams,
+  });
+
+  if (result.affectedRows === 0) {
+    throw new Error('ZONE_NOT_FOUND');
+  }
+
+  return { affectedRows: result.affectedRows };
+}
+
 export async function insertZone(
   input: CreateZoneInput,
 ): Promise<CreateZoneResult> {
@@ -506,6 +591,17 @@ export async function insertZone(
       throw new Error('WAREHOUSE_NOT_FOUND');
     }
 
+    const [dupRows] = await connection.query<
+      Array<RowDataPacket & { id: number; deleted_at: Date | null }>
+    >(
+      `SELECT id, deleted_at FROM warehouse_zones WHERE warehouse_id = ? AND code = ? LIMIT 1`,
+      [warehouseId, input.code],
+    );
+
+    if (dupRows[0] && dupRows[0].deleted_at === null) {
+      throw new Error('ZONE_CODE_EXISTS');
+    }
+
     const [sortRows] = await connection.query<
       Array<RowDataPacket & { max_sort: number | null }>
     >(
@@ -513,46 +609,73 @@ export async function insertZone(
       [warehouseId],
     );
 
-    const [zoneResult] = await connection.query<ResultSetHeader>(
-      `INSERT INTO warehouse_zones (warehouse_id, code, name, status, sort_order) VALUES (?, ?, ?, 'ACTIVE', ?)`,
-      [
-        warehouseId,
-        input.code,
-        input.name ?? `Khu ${input.code}`,
-        (sortRows[0]?.max_sort ?? 0) + 1,
-      ],
-    );
+    const zoneName = input.name ?? `Khu ${input.code}`;
+    const sortOrder = (sortRows[0]?.max_sort ?? 0) + 1;
+    let zoneId: number;
+
+    // Mã khu đã từng bị xóa mềm thì dùng lại bản ghi cũ, nếu không sẽ vướng
+    // ràng buộc uq_zone_code UNIQUE(warehouse_id, code).
+    if (dupRows[0]) {
+      zoneId = dupRows[0].id;
+      await connection.query(
+        `UPDATE warehouse_zones
+         SET name = ?, status = 'ACTIVE', sort_order = ?, deleted_at = NULL,
+             grid_row = ?, grid_col = ?, grid_size = ?
+         WHERE id = ?`,
+        [
+          zoneName,
+          sortOrder,
+          input.gridRow ?? null,
+          input.gridCol ?? null,
+          input.gridSize ?? null,
+          zoneId,
+        ],
+      );
+    } else {
+      const [zoneResult] = await connection.query<ResultSetHeader>(
+        `INSERT INTO warehouse_zones (warehouse_id, code, name, status, sort_order, grid_row, grid_col, grid_size)
+         VALUES (?, ?, ?, 'ACTIVE', ?, ?, ?, ?)`,
+        [
+          warehouseId,
+          input.code,
+          zoneName,
+          sortOrder,
+          input.gridRow ?? null,
+          input.gridCol ?? null,
+          input.gridSize ?? null,
+        ],
+      );
+      zoneId = zoneResult.insertId;
+    }
 
     const shelfCount = input.shelfCount ?? 1;
     const layerCount = input.layerCount ?? 3;
-    let createdLocationCount = 0;
 
     for (let shelfNo = 1; shelfNo <= shelfCount; shelfNo += 1) {
       const shelfCode = String(shelfNo).padStart(2, '0');
-      const [shelfResult] = await connection.query<ResultSetHeader>(
-        `INSERT INTO warehouse_shelves (zone_id, code, name, status, sort_order) VALUES (?, ?, ?, 'ACTIVE', ?)`,
-        [zoneResult.insertId, shelfCode, `Kệ ${shelfCode}`, shelfNo],
+      // Zone khôi phục từ bản xóa mềm có thể còn kệ cũ cùng mã, nên phải upsert
+      // thay vì INSERT thẳng (vướng uq_shelf_code UNIQUE(zone_id, code)).
+      await connection.query(
+        `INSERT INTO warehouse_shelves (zone_id, code, name, status, sort_order)
+         VALUES (?, ?, ?, 'ACTIVE', ?)
+         ON DUPLICATE KEY UPDATE
+           name = VALUES(name),
+           status = 'ACTIVE',
+           sort_order = VALUES(sort_order),
+           deleted_at = NULL`,
+        [zoneId, shelfCode, `Kệ ${shelfCode}`, shelfNo],
       );
-
-      for (let layerNo = 1; layerNo <= layerCount; layerNo += 1) {
-        const layerCode = String(layerNo).padStart(2, '0');
-        await connection.query(
-          `INSERT INTO warehouse_locations (shelf_id, code, layer_no, name, location_type, status)
-           VALUES (?, ?, ?, ?, 'STANDARD', 'ACTIVE')`,
-          [
-            shelfResult.insertId,
-            `${input.code}-${shelfCode}-${layerCode}`,
-            layerNo,
-            `Kệ ${shelfCode} tầng ${layerCode}`,
-          ],
-        );
-        createdLocationCount += 1;
-      }
     }
+
+    const createdLocationCount = await ensureZoneLocationMatrix(connection, {
+      zoneId,
+      zoneCode: input.code,
+      layerCount,
+    });
 
     await connection.commit();
     return {
-      id: zoneResult.insertId,
+      id: zoneId,
       code: input.code,
       createdShelfCount: shelfCount,
       createdLocationCount,

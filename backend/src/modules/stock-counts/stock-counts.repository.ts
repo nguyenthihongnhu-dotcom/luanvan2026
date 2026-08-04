@@ -195,7 +195,32 @@ async function getSnapshotRows(
     scope.params,
   );
 
-  return rows;
+  if (rows.length > 0) return rows;
+
+  // Fallback: If no stock_locations with quantity > 0 exist in this scope,
+  // query available locations and active product variants so users can count empty/new locations.
+  const [fallbackRows] = await connection.query<SnapshotStockRow[]>(
+    `
+      SELECT
+        pv.id AS product_variant_id,
+        NULL AS batch_id,
+        wl.id AS location_id,
+        0 AS quantity
+      FROM warehouse_locations wl
+      JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+      JOIN warehouse_zones wz ON wz.id = ws.zone_id
+      JOIN warehouses w ON w.id = wz.warehouse_id
+      CROSS JOIN (
+        SELECT id FROM product_variants WHERE status = 'ACTIVE' LIMIT 1
+      ) pv
+      WHERE ${scope.sql}
+      ORDER BY wl.id
+      LIMIT 50
+    `,
+    scope.params,
+  );
+
+  return fallbackRows;
 }
 
 async function getCountSummary(

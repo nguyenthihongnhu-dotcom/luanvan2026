@@ -276,6 +276,35 @@ export default function StockCountsPage() {
                             {formData.scopeType !== "WAREHOUSE" && (() => {
                                 const scopeConfig = getScopeReferenceConfig(formData.scopeType);
                                 if (!scopeConfig) return null;
+                                if (formData.scopeType === "ZONE") {
+                                    const defaultZones = [
+                                        { id: "1", name: "Khu A - Sữa và tã" },
+                                        { id: "2", name: "Khu B - Đồ chơi và xe đẩy" },
+                                        { id: "3", name: "Khu C - Thời trang trẻ em" },
+                                        { id: "4", name: "Khu D - Thực phẩm ăn dặm" },
+                                        { id: "5", name: "Khu E - Chăm sóc sức khỏe" },
+                                    ];
+
+                                    return (
+                                        <div>
+                                            <label className="mb-1 block text-sm font-medium text-gray-700">Khu vực kho (Zone)</label>
+                                            <select
+                                                required
+                                                value={formData.scopeReferenceId}
+                                                onChange={(event) => setFormData({ ...formData, scopeReferenceId: event.target.value })}
+                                                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-pink-500"
+                                            >
+                                                <option value="">Chọn khu vực kho cần kiểm kê</option>
+                                                {defaultZones.map((z) => (
+                                                    <option key={z.id} value={z.id}>
+                                                        {z.name} (ID: {z.id})
+                                                    </option>
+                                                ))}
+                                            </select>
+                                            <p className="mt-1 text-xs text-gray-500">Chọn phân khu kho hàng cụ thể để giới hạn phạm vi kiểm kê.</p>
+                                        </div>
+                                    );
+                                }
                                 return (
                                     <div>
                                         <label className="mb-1 block text-sm font-medium text-gray-700">{scopeConfig.label}</label>

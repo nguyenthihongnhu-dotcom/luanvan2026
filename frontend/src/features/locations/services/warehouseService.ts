@@ -85,15 +85,15 @@ export async function deleteLayer(shelfId: number, layerNo: number): Promise<voi
     await httpClient.delete(`/locations/layer?shelfId=${shelfId}&layerNo=${layerNo}`);
 }
 
-export async function createShelf(input: { zoneCode: string; code?: string; name?: string; layerCount?: number }): Promise<void> {
+export async function createShelf(input: { zoneCode: string; warehouseId?: number; code?: string; name?: string; layerCount?: number }): Promise<void> {
     await httpClient.post('/locations/shelves', input);
 }
 
-export async function createLayer(input: { zoneCode: string; layerNo?: number }): Promise<void> {
+export async function createLayer(input: { zoneCode: string; warehouseId?: number; layerNo?: number }): Promise<void> {
     await httpClient.post('/locations/layers', input);
 }
 
-export async function syncLocationMatrix(input: { zoneCode: string }): Promise<{ createdLocationCount: number }> {
+export async function syncLocationMatrix(input: { zoneCode: string; warehouseId?: number }): Promise<{ createdLocationCount: number }> {
     const response = await httpClient.post<{ data: { createdLocationCount: number } }>('/locations/sync-matrix', input);
     return unwrapData(response);
 }

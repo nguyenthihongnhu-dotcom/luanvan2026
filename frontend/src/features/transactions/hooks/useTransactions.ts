@@ -255,21 +255,21 @@ export function useTransactions() {
                 setSelectedWarehouseId(String(detail.header.warehouse_id));
             }
 
-            const mappedItems: TransactionItem[] = detail.items.map((line) => ({
-                productVariantId: String(line.product_variant_id ?? ''),
-                batchId: line.batch_id ? String(line.batch_id) : '',
-                locationId: line.location_id ? String(line.location_id) : '',
-                quantity: String(line.quantity ?? ''),
-                adjustmentDirection: (line.adjustment_direction as 'IN' | 'OUT') || 'IN',
-                note: line.note || '',
-            }));
+            if (detail.items && detail.items.length > 0) {
+                setItems(detail.items.map((item) => ({
+                    productVariantId: item.product_variant_id ? String(item.product_variant_id) : '',
+                    batchId: item.batch_id ? String(item.batch_id) : '',
+                    locationId: item.location_id ? String(item.location_id) : '',
+                    quantity: item.quantity ? String(item.quantity) : '1',
+                    adjustmentDirection: (item.adjustment_direction as 'IN' | 'OUT') || 'IN',
+                    note: item.note ?? '',
+                })));
+            }
 
-            setItems(mappedItems.length > 0 ? mappedItems : [makeEmptyItem()]);
-            setEditingTransaction(null);
             setShowModal(true);
         } catch (err) {
-            console.error('Không nạp được thông tin phiếu để tạo lại:', err);
-            setError(getHttpErrorMessage(err, 'Không tải được chi tiết chứng từ để tạo lại phiếu mới.'));
+            console.error('Lỗi khi nạp thông tin phiếu cũ:', err);
+            setError(getHttpErrorMessage(err, 'Không tải được chi tiết phiếu cũ để thêm lại.'));
         } finally {
             setIsLoading(false);
         }
