@@ -10,6 +10,52 @@ function formatDateTime(value: string): string {
     return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
 }
 
+function formatActionLabel(action: string): string {
+    const map: Record<string, string> = {
+        CONFIRM: 'Xác nhận',
+        APPROVE: 'Duyệt',
+        CREATE: 'Tạo mới',
+        REVERSE: 'Đảo phiếu',
+        REJECT: 'Từ chối',
+        CANCEL: 'Hủy phiếu',
+        UPDATE: 'Cập nhật',
+        DELETE: 'Xóa',
+    };
+    const key = action.trim().toUpperCase();
+    return map[key] ?? action;
+}
+
+function formatModuleLabel(mod: string): string {
+    const map: Record<string, string> = {
+        goods_receipts: 'Phiếu nhập kho',
+        goods_issues: 'Phiếu xuất kho',
+        stock_transfers: 'Phiếu điều chuyển',
+        stock_adjustments: 'Phiếu điều chỉnh',
+        stock_counts: 'Phiếu kiểm kê',
+        users: 'Người dùng',
+        warehouses: 'Kho hàng',
+        locations: 'Vị trí kho',
+        products: 'Sản phẩm',
+        suppliers: 'Nhà cung cấp',
+    };
+    return map[mod] ?? mod;
+}
+
+function formatEntityLabel(record: AuditLog): string {
+    if (!record.entity_type) return '-';
+    const typeMap: Record<string, string> = {
+        GOODS_RECEIPT: 'Phiếu nhập',
+        GOODS_ISSUE: 'Phiếu xuất',
+        STOCK_TRANSFER: 'Phiếu điều chuyển',
+        STOCK_ADJUSTMENT: 'Phiếu điều chỉnh',
+        STOCK_COUNT: 'Phiếu kiểm kê',
+        USER: 'Người dùng',
+        WAREHOUSE: 'Kho hàng',
+    };
+    const label = typeMap[record.entity_type] ?? record.entity_type;
+    return record.entity_id ? `${label} #${record.entity_id}` : label;
+}
+
 export default function AuditLogsPage() {
     const [rows, setRows] = useState<AuditLog[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
@@ -34,11 +80,11 @@ export default function AuditLogsPage() {
 
     const columns: ColumnProps<AuditLog>[] = [
         { key: 'id', title: 'ID', className: 'font-semibold text-gray-900' },
-        { key: 'action', title: 'Hành động' },
-        { key: 'module', title: 'Module' },
-        { key: 'entity_type', title: 'Entity', render: (_, record) => record.entity_type ? `${record.entity_type} #${record.entity_id ?? '-'}` : '-' },
-        { key: 'user_id', title: 'Người dùng', render: (value) => value ? `#${String(value)}` : 'Hệ thống' },
-        { key: 'ip_address', title: 'IP', render: (value) => String(value || '-') },
+        { key: 'action', title: 'Hành động', render: (value) => formatActionLabel(String(value || '')) },
+        { key: 'module', title: 'Phân hệ (Module)', render: (value) => formatModuleLabel(String(value || '')) },
+        { key: 'entity_type', title: 'Đối tượng (Entity)', render: (_, record) => formatEntityLabel(record) },
+        { key: 'user_id', title: 'Người dùng', render: (_, record) => record.user_full_name ? record.user_full_name : (record.user_id ? `#${record.user_id}` : 'Hệ thống') },
+        { key: 'ip_address', title: 'Địa chỉ IP', render: (value) => String(value || '-') },
         { key: 'created_at', title: 'Thời gian', render: (value) => formatDateTime(String(value)) },
     ];
 

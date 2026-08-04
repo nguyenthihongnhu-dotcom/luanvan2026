@@ -34,14 +34,7 @@ function getTransactionTypeLabel(type: string): string {
     return labels[type] ?? type;
 }
 
-function escapeHtml(value: string): string {
-    return value.replace(/[&<>"]/g, (char) => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "\"": "&quot;",
-    })[char] ?? char);
-}
+
 
 function formatDateTime(value: string): string {
     if (!value) return "";

@@ -49,25 +49,34 @@ function warehouseLabel(warehouse: WarehouseOption): string {
     return `${warehouse.code} - ${warehouse.name ?? "Không tên"}`;
 }
 
+/**
+ * Giản đồ Phạm vi Kiểm kê (Stock Count Scope):
+ * - WAREHOUSE: Kiểm kê toàn bộ kho đã chọn.
+ * - ZONE: Kiểm kê giới hạn trong một Khu kho (Zone ID - wz.id).
+ * - SHELF: Kiểm kê giới hạn trên một Kệ kho (Shelf ID - ws.id).
+ * - LOCATION: Kiểm kê đúng 1 Ô vị trí lưu trữ (Location ID - wl.id).
+ * - SKU: Kiểm kê duy nhất 1 Biến thể sản phẩm (Variant ID - pv.id).
+ * - CATEGORY: Kiểm kê tất cả sản phẩm thuộc 1 Danh mục (Category ID - p.category_id).
+ */
 function getScopeReferenceConfig(scopeType: StockCountScopeType) {
     switch (scopeType) {
         case "ZONE":
             return {
                 label: "Mã ID Khu kho (Zone ID)",
                 placeholder: "Nhập ID khu (VD: 1)",
-                helpText: "Nhập mã số ID của Khu kho cần kiểm kê trong kho đã chọn.",
+                helpText: "Nhập mã số ID của Khu kho cần kiểm kê trong kho đã chọn (wz.id).",
             };
         case "SHELF":
             return {
                 label: "Mã ID Kệ kho (Shelf ID)",
                 placeholder: "Nhập ID kệ (VD: 5)",
-                helpText: "Nhập mã số ID của Kệ kho cần kiểm kê.",
+                helpText: "Nhập mã số ID của Kệ kho cần kiểm kê (ws.id).",
             };
         case "LOCATION":
             return {
                 label: "Mã ID Vị trí (Location ID)",
                 placeholder: "Nhập ID vị trí (VD: 12)",
-                helpText: "Nhập mã số ID của Vị trí lưu trữ chính xác cần kiểm kê.",
+                helpText: "Nhập mã số ID của Vị trí lưu trữ chính xác cần kiểm kê (wl.id).",
             };
         case "SKU":
             return {

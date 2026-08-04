@@ -7,6 +7,8 @@ import { transferService } from "@/features/transfers/services/transferService";
 import type { CurrentStockItem, StockTransfer, TransferStatus, WarehouseLocationOption } from "@/features/transfers/services/transferService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
+import { usePermissions } from "@/shared/auth/usePermissions";
+
 const initialFormState = {
     transferCode: "",
     stockLocationId: "",
@@ -41,6 +43,7 @@ function locationLabel(location: WarehouseLocationOption): string {
 }
 
 export default function TransfersPage() {
+    const { hasPermission } = usePermissions();
     const [transfers, setTransfers] = useState<StockTransfer[]>([]);
     const [stockItems, setStockItems] = useState<CurrentStockItem[]>([]);
     const [locations, setLocations] = useState<WarehouseLocationOption[]>([]);
@@ -156,12 +159,25 @@ export default function TransfersPage() {
         {
             key: "actions",
             title: "Thao tác",
-            render: (_, record) => (
-                <div className="flex gap-2">
-                    {(record.status === "DRAFT" || record.status === "PENDING") && <button type="button" onClick={() => handleConfirm(record.id)} className="text-xs font-medium text-green-700 hover:text-green-900">Xác nhận</button>}
-                    {record.status === "CONFIRMED" && <button type="button" onClick={() => handleReverse(record.id)} className="text-xs font-medium text-red-600 hover:text-red-900">Đảo phiếu</button>}
-                </div>
-            ),
+            render: (_, record) => {
+                const canConfirm = (record.status === "DRAFT" || record.status === "PENDING") && hasPermission("stock_transfers:confirm");
+                const canReverse = record.status === "CONFIRMED" && hasPermission("stock_transfers:reverse");
+
+                return (
+                    <div className="flex gap-2">
+                        {canConfirm && (
+                            <button type="button" onClick={() => handleConfirm(record.id)} className="text-xs font-medium text-green-700 hover:text-green-900">
+                                Xác nhận
+                            </button>
+                        )}
+                        {canReverse && (
+                            <button type="button" onClick={() => handleReverse(record.id)} className="text-xs font-medium text-red-600 hover:text-red-900">
+                                Đảo phiếu
+                            </button>
+                        )}
+                    </div>
+                );
+            },
         },
     ];
 

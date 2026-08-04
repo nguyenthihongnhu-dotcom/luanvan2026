@@ -58,6 +58,17 @@ function dateOnly(value: unknown): string {
     return typeof value === 'string' ? value.slice(0, 10) : '';
 }
 
+function getUserDisplayName(nameVal: unknown, idVal: unknown): string {
+    if (typeof nameVal === 'string' && nameVal.trim()) {
+        return nameVal.trim();
+    }
+    const id = Number(idVal);
+    if (id === 1) return 'Quản trị hệ thống';
+    if (id === 2) return 'Quản lý kho Bambi';
+    if (id === 3) return 'Nhân viên PHS';
+    return id > 0 ? `Người dùng #${id}` : 'Hệ thống';
+}
+
 function toTransaction(row: BackendReceipt, type: 'NHAP'): Transaction;
 function toTransaction(row: BackendIssue, type: 'XUAT'): Transaction;
 function toTransaction(row: BackendAdjustment, type: 'DIEU_CHINH'): Transaction;
@@ -68,14 +79,8 @@ function toTransaction(row: BackendReceipt | BackendIssue | BackendAdjustment, t
             ? (row as BackendIssue).issue_code
             : (row as BackendAdjustment).adjustment_code;
 
-    const createdByName = typeof row.created_by_name === 'string' && row.created_by_name.trim()
-        ? row.created_by_name
-        : (row.created_by ? `#${row.created_by}` : '');
-    const approvedByName = typeof row.approved_by_name === 'string' && row.approved_by_name.trim()
-        ? row.approved_by_name
-        : typeof row.confirmed_by_name === 'string' && row.confirmed_by_name.trim()
-            ? row.confirmed_by_name
-            : (row.approved_by ? `#${row.approved_by}` : '');
+    const createdByName = getUserDisplayName(row.created_by_name, row.created_by);
+    const approvedByName = getUserDisplayName(row.approved_by_name || row.confirmed_by_name, row.approved_by || row.confirmed_by);
 
     return {
         id: Number(row.id ?? 0),

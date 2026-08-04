@@ -8,11 +8,15 @@ export function requirePermission(permission: string) {
       return;
     }
 
-    if (!req.user.permissions.includes(permission)) {
-      next(new HttpError(403, 'Permission denied', 'PERMISSION_DENIED'));
+    if (
+      req.user.role === 'ADMIN' ||
+      req.user.permissions.includes('*') ||
+      req.user.permissions.includes(permission)
+    ) {
+      next();
       return;
     }
 
-    next();
+    next(new HttpError(403, 'Permission denied', 'PERMISSION_DENIED'));
   };
 }

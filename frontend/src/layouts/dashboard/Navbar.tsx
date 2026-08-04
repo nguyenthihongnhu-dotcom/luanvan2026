@@ -17,7 +17,6 @@ import {
     PartitionOutlined,
     RetweetOutlined,
     SafetyOutlined,
-    ScanOutlined,
     SettingOutlined,
     ShoppingOutlined,
     SwapOutlined,

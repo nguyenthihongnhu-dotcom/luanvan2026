@@ -1,5 +1,4 @@
-// import { CameraOutlined, CloseOutlined } from '@ant-design/icons';
-import { CloseOutlined } from '@ant-design/icons';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import { getHttpErrorMessage, HttpError, httpClient } from '@/shared/services/httpClient';
 import { quickReceiveService } from '@/features/quick-receive/services/quickReceiveService';
@@ -101,9 +100,9 @@ export default function QuickReceivePage() {
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [isCreatingProduct, setIsCreatingProduct] = useState(false);
-    const [scanTarget, setScanTarget] = useState<ScanTarget | null>(null);
-    const [cameraMessage, setCameraMessage] = useState<string | null>(null);
-    const [isCameraStarting, setCameraStarting] = useState(false);
+    const [, setScanTarget] = useState<ScanTarget | null>(null);
+    const [cameraMessage] = useState<string | null>(null);
+    const [, setCameraStarting] = useState(false);
     const videoRef = useRef<HTMLVideoElement>(null);
     const streamRef = useRef<MediaStream | null>(null);
     const frameRef = useRef<number | null>(null);
@@ -118,20 +117,6 @@ export default function QuickReceivePage() {
         setResult(null);
         setError(null);
         setMissingSku(null);
-    }
-
-    function stopCameraScan() {
-        if (frameRef.current !== null) {
-            cancelAnimationFrame(frameRef.current);
-            frameRef.current = null;
-        }
-        streamRef.current?.getTracks().forEach((track) => track.stop());
-        streamRef.current = null;
-        if (videoRef.current) {
-            videoRef.current.srcObject = null;
-        }
-        setScanTarget(null);
-        setCameraStarting(false);
     }
 
     function stopCameraScan() {

@@ -1,3 +1,7 @@
+import React from "react";
+import type { Transaction, TransactionItem } from "@/features/transactions/hooks/useTransactions";
+import type { AllocationPreviewItem, AllocationPreviewResult, AllocationStrategy } from "@/features/transactions/services/transactionService";
+import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import type { Partner } from "@/features/partners/services/partnerService";
 import type { ProductItem } from "@/features/products/hooks/useProducts";
 import type { LocationOption } from "@/features/products/services/productService";
@@ -168,8 +172,13 @@ export default function TransactionModal({
                         <div className="space-y-3">
                             {items.map((item, index) => (
                                 <div key={index} className="grid grid-cols-12 items-end gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
+                                    {/* 
+                                        Variant ID (Mã biến thể sản phẩm):
+                                        - Đại diện cho 1 chủng loại/quy cách cụ thể của sản phẩm (ví dụ: SKU 'SUA-FRISO-3' - Sữa Friso số 3 850g).
+                                        - Quản lý mã SKU, tên biến thể, đơn vị tính, tồn kho tối thiểu/tối đa và quy tắc theo dõi lô/hạn sử dụng.
+                                    */}
                                     <div className="col-span-12 md:col-span-4">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Sản phẩm / Biến thể</label>
+                                        <label className="mb-1 block text-xs font-medium text-gray-600">Sản phẩm / Biến thể (Variant ID)</label>
                                         <select required value={item.productVariantId} onChange={(e) => handleItemChange(index, "productVariantId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500">
                                             <option value="">-- Chọn sản phẩm --</option>
                                             {formData.maNCC && supplierMatchedVariants.length > 0 ? (
@@ -200,12 +209,22 @@ export default function TransactionModal({
                                             )}
                                         </select>
                                     </div>
+                                    {/* 
+                                        Batch ID (ID Lô hàng):
+                                        - Quản lý theo số lô nhà sản xuất (lot_number), ngày sản xuất (manufactured_date) và hạn sử dụng (expiry_date).
+                                        - Bắt buộc với các sản phẩm có tính chất date/hạn dùng (sữa, dược phẩm, thực phẩm ăn dặm) để chạy xuất kho FEFO/FIFO.
+                                    */}
                                     <div className="col-span-6 md:col-span-2">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Batch ID</label>
-                                        <input type="number" min="1" value={item.batchId} onChange={(e) => handleItemChange(index, "batchId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" placeholder="Nếu có" />
+                                        <label className="mb-1 block text-xs font-medium text-gray-600">Lô hàng (Batch ID)</label>
+                                        <input type="number" min="1" value={item.batchId} onChange={(e) => handleItemChange(index, "batchId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" placeholder="ID Lô (nếu có)" />
                                     </div>
+                                    {/* 
+                                        Location ID (Vị trí ô kho ID):
+                                        - Địa chỉ ô lưu trữ vật lý duy nhất trong kho (cấu trúc: MãKho-Khu-Kệ-Tầng, ví dụ HCM01-A-A01-01).
+                                        - Giúp thủ kho tìm đúng vị trí khi lấy hàng xuất kho hoặc cất hàng khi nhập kho.
+                                    */}
                                     <div className="col-span-6 md:col-span-2">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Vị trí kho</label>
+                                        <label className="mb-1 block text-xs font-medium text-gray-600">Vị trí kho (Location ID)</label>
                                         <select required value={item.locationId} onChange={(e) => handleItemChange(index, "locationId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500">
                                             <option value="">-- Chọn vị trí --</option>
                                             {filteredLocations.map((loc) => (
@@ -271,7 +290,7 @@ export default function TransactionModal({
                                             <tr>
                                                 <td colSpan={6} className="px-3 py-4 text-center text-gray-500">Backend không tìm thấy tồn khả dụng cho dòng hàng này.</td>
                                             </tr>
-                                        ) : allocationPreview.items.map((allocation) => (
+                                        ) : allocationPreview.items.map((allocation: AllocationPreviewItem) => (
                                             <tr key={allocation.stockLocationId}>
                                                 <td className="px-3 py-2 font-semibold text-gray-900">{allocation.locationCode}</td>
                                                 <td className="px-3 py-2">{allocation.batchId ?? "Không có"}</td>

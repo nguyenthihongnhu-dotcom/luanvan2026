@@ -1,9 +1,11 @@
-﻿import { httpClient, unwrapData } from '@/shared/services/httpClient';
+import { httpClient, unwrapData } from '@/shared/services/httpClient';
 
 export interface AuditLog {
     id: number;
     request_id: string | null;
     user_id: number | null;
+    user_full_name?: string | null;
+    user_email?: string | null;
     action: string;
     module: string;
     entity_type: string | null;

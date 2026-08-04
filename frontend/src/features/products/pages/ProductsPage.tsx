@@ -9,17 +9,9 @@ import { useSidebar } from "@/app/providers/useSidebar";
 import { useProducts } from "@/features/products/hooks/useProducts";
 import type { ProductItem } from "@/features/products/hooks/useProducts";
 import ProductModal from "@/features/products/components/ProductModal";
-import { getProductCategoryLabel, getProductNameLabel, getStockStatusLabel, productCategoryOptions } from "@/features/products/utils/productDisplay";
+import { getProductCategoryLabel, getProductNameLabel, getStockStatusLabel } from "@/features/products/utils/productDisplay";
 
 const statusOptions: Array<ProductItem["status"]> = ["IN_STOCK", "LOW_STOCK", "OUT_OF_STOCK"];
-function escapeHtml(value: string): string {
-    return value.replace(/[&<>"]/g, (char) => ({
-        "&": "&amp;",
-        "<": "&lt;",
-        ">": "&gt;",
-        "\"": "&quot;",
-    })[char] ?? char);
-}
 
 export default function ProductsPage() {
     const { setExtraContent } = useSidebar();
