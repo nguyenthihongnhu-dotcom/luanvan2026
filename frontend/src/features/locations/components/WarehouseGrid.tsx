@@ -43,18 +43,20 @@ export default function WarehouseGrid({
     onReorderShelves,
 }: WarehouseGridProps) {
     const [draggedShelfId, setDraggedShelfId] = useState<string | null>(null);
+    const [dragOverShelfId, setDragOverShelfId] = useState<string | null>(null);
 
     const handleShelfDrop = (targetShelfId: string) => {
         if (!draggedShelfId || draggedShelfId === targetShelfId) return;
         onReorderShelves?.(draggedShelfId, targetShelfId);
         setDraggedShelfId(null);
+        setDragOverShelfId(null);
     };
 
     return (
         <main className="flex flex-1 flex-col items-center justify-start overflow-auto p-8">
             <div className="rounded-xl border border-gray-200 bg-white p-8 shadow-sm">
                 <h3 className="mb-2 text-center text-base font-bold uppercase text-gray-600">Sơ đồ kệ/tầng trong khu</h3>
-                <p className="mb-6 text-center text-xs text-gray-400">Mỗi cột là một kệ, mỗi hàng là một tầng. Kéo kệ để đổi thứ tự hiển thị.</p>
+                <p className="mb-6 text-center text-xs text-gray-400">Mỗi cột là một kệ, mỗi hàng là một tầng. Bạn có thể kéo thả bất kỳ vị trí/kệ nào để đổi vị trí cột.</p>
 
                 <div className="space-y-4">
                     {layers.map((layer) => (
@@ -77,14 +79,32 @@ export default function WarehouseGrid({
                                     };
                                     const storedProducts = parseStoredProducts(location.SanPhamLuuTru);
                                     const productSummary = getLocationSummary(storedProducts);
+                                    const isDragged = draggedShelfId === shelf.id;
+                                    const isDragOver = dragOverShelfId === shelf.id && !isDragged;
 
                                     return (
                                         <button
                                             key={`${shelf.code}-${layer.code}`}
                                             type="button"
+                                            draggable
+                                            onDragStart={(event) => {
+                                                setDraggedShelfId(shelf.id);
+                                                event.dataTransfer.effectAllowed = "move";
+                                                event.dataTransfer.setData("text/plain", shelf.id);
+                                            }}
+                                            onDragOver={(event) => {
+                                                event.preventDefault();
+                                                setDragOverShelfId(shelf.id);
+                                            }}
+                                            onDragLeave={() => setDragOverShelfId(null)}
+                                            onDrop={() => handleShelfDrop(shelf.id)}
+                                            onDragEnd={() => {
+                                                setDraggedShelfId(null);
+                                                setDragOverShelfId(null);
+                                            }}
                                             onClick={() => location.MaViTri > 0 && setActiveLocation(location)}
-                                            className={`flex h-24 w-32 cursor-pointer flex-col items-center justify-center rounded-xl border-2 p-2 shadow-sm transition-all ${getLocationStyle(location.TrangThai)} ${activeLocation?.MaViTri === location.MaViTri && location.MaViTri > 0 ? "scale-105 ring-4 ring-pink-500" : ""} ${draggedShelfId === shelf.id ? "opacity-50" : ""}`}
-                                            title={storedProducts.join("\n") || "Trống"}>
+                                            className={`flex h-24 w-32 cursor-grab active:cursor-grabbing flex-col items-center justify-center rounded-xl border-2 p-2 shadow-sm transition-all ${getLocationStyle(location.TrangThai)} ${activeLocation?.MaViTri === location.MaViTri && location.MaViTri > 0 ? "scale-105 ring-4 ring-pink-500" : ""} ${isDragged ? "opacity-40 scale-95 border-dashed border-pink-400" : ""} ${isDragOver ? "scale-105 ring-4 ring-pink-400 border-pink-500 bg-pink-100/70" : ""}`}
+                                            title={`Kéo thả vị trí này để đổi thứ tự cột kệ (${selectedZone}-${location.Ke}-${location.Tang})\n` + (storedProducts.join("\n") || "Trống")}>
                                             <span className="text-xs font-bold tracking-wider">{selectedZone}-{location.Ke}-{location.Tang}</span>
                                             <span className="mt-1 max-w-full truncate text-[10px] font-semibold leading-tight">
                                                 {productSummary.primary}
