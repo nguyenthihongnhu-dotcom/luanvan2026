@@ -143,6 +143,10 @@ CREATE TABLE warehouse_zones (
     description VARCHAR(255) NULL,
     status ENUM('ACTIVE','INACTIVE','MAINTENANCE') NOT NULL DEFAULT 'ACTIVE',
     sort_order INT UNSIGNED NOT NULL DEFAULT 0,
+    -- Vị trí khu trên mặt bằng tổng thể của kho. NULL = chưa đặt lên mặt bằng.
+    grid_row INT NULL,
+    grid_col INT NULL,
+    grid_size INT UNSIGNED NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
         ON UPDATE CURRENT_TIMESTAMP(3),

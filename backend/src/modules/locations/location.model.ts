@@ -101,6 +101,9 @@ export type CreateZoneInput = {
   name?: string;
   shelfCount?: number;
   layerCount?: number;
+  gridRow?: number | null;
+  gridCol?: number | null;
+  gridSize?: number | null;
 };
 
 export type CreateZoneResult = {
@@ -108,6 +111,31 @@ export type CreateZoneResult = {
   code: string;
   createdShelfCount: number;
   createdLocationCount: number;
+};
+
+export type ZoneRow = RowDataPacket & {
+  id: number;
+  warehouse_id: number;
+  code: string;
+  name: string;
+  status: 'ACTIVE' | 'INACTIVE' | 'MAINTENANCE';
+  sort_order: number;
+  grid_row: number | null;
+  grid_col: number | null;
+  grid_size: number | null;
+  shelf_count: number;
+  location_count: number;
+};
+
+export type ZoneFilters = {
+  warehouseId: number;
+};
+
+export type UpdateZoneLayoutInput = {
+  zoneId: number;
+  gridRow: number | null;
+  gridCol: number | null;
+  gridSize: number | null;
 };
 
 export type ReorderShelvesInput = {

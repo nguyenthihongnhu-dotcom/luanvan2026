@@ -24,12 +24,12 @@
   'state': { 'padding': 12, 'useMaxWidth': false }
 }}%%
 stateDiagram-v2
-    [*] --> DRAFT: tạo phiếu điều chỉnh
-    DRAFT --> PENDING: gửi duyệt
-    DRAFT --> CANCELLED: hủy phiếu
-    PENDING --> APPROVED: duyệt bởi người khác người tạo
-    PENDING --> REJECTED: từ chối
-    PENDING --> CANCELLED: hủy phiếu
+    [*] --> DRAFT: POST /stock-adjustments, điều chỉnh thủ công
+    [*] --> PENDING: sinh tự động khi duyệt phiếu kiểm kê
+    DRAFT --> CANCELLED: POST /:id/cancel
+    PENDING --> APPROVED: POST /:id/approve, người duyệt khác người tạo
+    PENDING --> REJECTED: POST /:id/reject
+    PENDING --> CANCELLED: POST /:id/cancel
     APPROVED --> [*]
     REJECTED --> [*]
     CANCELLED --> [*]

@@ -7,15 +7,19 @@ import {
   addZoneController,
   listLocationsController,
   listLocationHistoryController,
+  listZonesController,
   removeLocationLayerController,
   removeShelfLocationsController,
   reorderShelvesController,
   syncLocationMatrixController,
+  updateZoneLayoutController,
 } from './locations.controller';
 
 export const locationsRouter = Router();
 
 locationsRouter.get('/', asyncHandler(listLocationsController));
+// Phải khai báo trước '/:id/history' để 'zones' không bị bắt nhầm thành :id
+locationsRouter.get('/zones', asyncHandler(listZonesController));
 locationsRouter.get(
   '/:id/history',
   asyncHandler(listLocationHistoryController),
@@ -29,6 +33,10 @@ locationsRouter.post(
 );
 locationsRouter.put('/shelves/reorder', asyncHandler(reorderShelvesController));
 locationsRouter.post('/zones', asyncHandler(addZoneController));
+locationsRouter.put(
+  '/zones/:id/layout',
+  asyncHandler(updateZoneLayoutController),
+);
 locationsRouter.delete(
   '/shelf/:shelfId',
   asyncHandler(removeShelfLocationsController),

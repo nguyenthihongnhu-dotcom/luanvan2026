@@ -6,10 +6,12 @@ import {
   createZone,
   listLocations,
   listLocationHistory,
+  listZones,
   removeLocationLayer,
   removeShelfLocations,
   reorderShelves,
   syncLocationMatrix,
+  updateZoneLayout,
 } from './locations.service';
 import {
   parseCreateLocation,
@@ -21,6 +23,8 @@ import {
   parseShelfId,
   parseReorderShelves,
   parseSyncLocationMatrix,
+  parseUpdateZoneLayout,
+  parseZoneFilters,
 } from './locations.validation';
 
 export async function listLocationsController(
@@ -98,6 +102,27 @@ export async function addZoneController(
   const result = await createZone(input);
 
   res.status(201).json({ data: result });
+}
+
+export async function listZonesController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const filters = parseZoneFilters(req.query);
+
+  res.json({ data: await listZones(filters) });
+}
+
+export async function updateZoneLayoutController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const input = parseUpdateZoneLayout({
+    ...(req.body as Record<string, unknown>),
+    zoneId: req.params.id,
+  });
+
+  res.json({ data: await updateZoneLayout(input) });
 }
 
 export async function reorderShelvesController(

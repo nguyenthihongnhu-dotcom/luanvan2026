@@ -15,12 +15,16 @@ import type {
   ReorderShelvesInput,
   SyncLocationMatrixInput,
   SyncLocationMatrixResult,
+  UpdateZoneLayoutInput,
+  ZoneFilters,
+  ZoneRow,
 } from './location.model';
 import {
   countLayerLocationsWithStock,
   countShelfLocationsWithStock,
   findLocations as findLocationsRepository,
   findLocationHistory,
+  findZonesByWarehouse,
   insertLocation,
   insertLayer,
   insertShelf,
@@ -29,7 +33,39 @@ import {
   softDeleteLocationsByShelfId,
   reorderShelvesRepository,
   syncLocationMatrixRepository,
+  updateZoneLayoutRepository,
 } from './locations.repository';
+
+const ZONE_ERRORS: Record<string, HttpError> = {
+  ZONE_NOT_FOUND: new HttpError(
+    404,
+    'Không tìm thấy khu vực trong kho đang chọn',
+    'ZONE_NOT_FOUND',
+  ),
+  ZONE_AMBIGUOUS: new HttpError(
+    400,
+    'Mã khu vực tồn tại ở nhiều kho, cần gửi kèm warehouseId',
+    'ZONE_AMBIGUOUS',
+  ),
+  ZONE_CODE_EXISTS: new HttpError(
+    409,
+    'Mã khu vực đã tồn tại trong kho này',
+    'ZONE_CODE_EXISTS',
+  ),
+  WAREHOUSE_NOT_FOUND: new HttpError(
+    404,
+    'Không tìm thấy kho',
+    'WAREHOUSE_NOT_FOUND',
+  ),
+};
+
+function toZoneHttpError(error: unknown): unknown {
+  if (error instanceof Error && ZONE_ERRORS[error.message]) {
+    return ZONE_ERRORS[error.message];
+  }
+
+  return error;
+}
 
 function throwLocationHasStock(scope: 'shelf' | 'layer', total: number): never {
   throw new HttpError(
@@ -82,25 +118,55 @@ export async function removeLocationLayer(
 export async function createShelf(
   input: CreateShelfInput,
 ): Promise<CreateShelfResult> {
-  return insertShelf(input);
+  try {
+    return await insertShelf(input);
+  } catch (error) {
+    throw toZoneHttpError(error);
+  }
 }
 
 export async function createLayer(
   input: CreateLayerInput,
 ): Promise<CreateLayerResult> {
-  return insertLayer(input);
+  try {
+    return await insertLayer(input);
+  } catch (error) {
+    throw toZoneHttpError(error);
+  }
 }
 
 export async function syncLocationMatrix(
   input: SyncLocationMatrixInput,
 ): Promise<SyncLocationMatrixResult> {
-  return syncLocationMatrixRepository(input);
+  try {
+    return await syncLocationMatrixRepository(input);
+  } catch (error) {
+    throw toZoneHttpError(error);
+  }
 }
 
 export async function createZone(
   input: CreateZoneInput,
 ): Promise<CreateZoneResult> {
-  return insertZone(input);
+  try {
+    return await insertZone(input);
+  } catch (error) {
+    throw toZoneHttpError(error);
+  }
+}
+
+export async function listZones(filters: ZoneFilters): Promise<ZoneRow[]> {
+  return findZonesByWarehouse(filters.warehouseId);
+}
+
+export async function updateZoneLayout(
+  input: UpdateZoneLayoutInput,
+): Promise<MutationResult> {
+  try {
+    return await updateZoneLayoutRepository(input);
+  } catch (error) {
+    throw toZoneHttpError(error);
+  }
 }
 
 export async function reorderShelves(

@@ -23,17 +23,25 @@
 }}%%
 flowchart TD
     Start(["Bắt đầu: Người dùng mở trang đăng nhập"]) --> A["Nhập email và mật khẩu"]
-    A --> B["Gửi POST /auth/login"]
-    B --> C{"bcrypt.compare mật khẩu khớp?"}
-    C -->|Không khớp| C1["Trả 401 INVALID_CREDENTIALS"]
+    A --> B["POST /auth/login, qua bộ chặn tần suất loginRateLimit"]
+    B --> C{"Tìm thấy tài khoản theo email?"}
+    C -->|Không| C1["Trả 401 INVALID_CREDENTIALS"]
     C1 --> A
-    C -->|Khớp| Dn["Sinh access token JWT và refresh token"]
-    Dn --> E["Lưu phiên vào bảng user_sessions"]
-    E --> F["Trả cặp token về client"]
-    F --> G["Client gắn Bearer token vào mỗi request"]
-    G --> H["Middleware verifyToken và requirePermission"]
-    H --> I{"Vai trò có đủ quyền cho route?"}
-    I -->|Không đủ| I1["Trả 403 FORBIDDEN"]
-    I1 --> End1(["Kết thúc: Từ chối truy cập"])
-    I -->|Đủ| J["Chuyển vào controller nghiệp vụ"]
-    J --> End2(["Kết thúc: Trả dữ liệu cho client"])
+    C -->|Có| Dq{"Trạng thái tài khoản là ACTIVE?"}
+    Dq -->|Không| D1["Trả 403 USER_NOT_ACTIVE"]
+    D1 --> End1(["Kết thúc: Từ chối đăng nhập"])
+    Dq -->|Có| E{"Tài khoản còn trong thời gian khóa locked_until?"}
+    E -->|Còn khóa| E1["Trả 423 USER_LOCKED"]
+    E1 --> End1
+    E -->|Không khóa| F{"bcrypt.compare mật khẩu khớp?"}
+    F -->|Không khớp| F1["Tăng failed_login_attempts, trả 401 INVALID_CREDENTIALS"]
+    F1 --> A
+    F -->|Khớp| G["Sinh access token JWT và refresh token"]
+    G --> H["Lưu phiên vào user_sessions, ghi nhận last_login_at"]
+    H --> I["Client gắn Bearer token vào mỗi request"]
+    I --> J["Middleware verifyToken và requirePermission"]
+    J --> K{"Vai trò có đủ quyền cho route?"}
+    K -->|Không đủ| K1["Trả 403 FORBIDDEN"]
+    K1 --> End2(["Kết thúc: Từ chối truy cập"])
+    K -->|Đủ| L["Chuyển vào controller nghiệp vụ"]
+    L --> End3(["Kết thúc: Trả dữ liệu cho client"])

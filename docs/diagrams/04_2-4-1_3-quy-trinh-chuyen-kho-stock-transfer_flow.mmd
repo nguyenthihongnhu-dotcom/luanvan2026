@@ -22,16 +22,22 @@
   'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
 }}%%
 flowchart TD
-    Start(["Bắt đầu: Có yêu cầu chuyển hàng"]) --> S1["Tạo phiếu chuyển, chọn vị trí nguồn và vị trí đích"]
+    Start(["Bắt đầu: Có yêu cầu chuyển hàng"]) --> S1["Tạo phiếu chuyển: chọn vị trí nguồn và vị trí đích"]
     S1 --> S2["Thêm dòng hàng: SKU và số lượng"]
-    S2 --> S3["Lưu phiếu, trạng thái DRAFT"]
+    S2 --> S3["POST /stock-transfers, phiếu lưu ở DRAFT"]
     S3 --> S4{"Người xác nhận có quyền stock_transfers:confirm?"}
-    S4 -->|Không| S5["Trả lỗi 403 FORBIDDEN"]
+    S4 -->|Không| S5["Trả 403 FORBIDDEN"]
     S5 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
-    S4 -->|Có| S6{"Tồn khả dụng tại vị trí nguồn đủ?"}
-    S6 -->|Không đủ| S7["ROLLBACK, trả lỗi INSUFFICIENT_STOCK"]
-    S7 --> End2(["Kết thúc: Tồn kho không đổi"])
-    S6 -->|Đủ| S8["Giảm tồn vị trí nguồn, ghi TRANSFER_OUT"]
-    S8 --> S9["Tăng tồn vị trí đích, ghi TRANSFER_IN"]
-    S9 --> S10["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
-    S10 --> End3(["Kết thúc: Hàng đã sang vị trí đích"])
+    S4 -->|Có| S6{"Vị trí nguồn khác vị trí đích?"}
+    S6 -->|Trùng nhau| S7["Trả 422 TRANSFER_SAME_LOCATION"]
+    S7 --> S1
+    S6 -->|Khác nhau| S8["BEGIN TRANSACTION, khóa tồn nguồn FOR UPDATE"]
+    S8 --> S9{"Tồn khả dụng tại nguồn đủ?"}
+    S9 -->|Không tìm thấy tồn| S10["ROLLBACK, trả SOURCE_STOCK_NOT_FOUND"]
+    S10 --> End2(["Kết thúc: Tồn kho không đổi"])
+    S9 -->|Không đủ| S11["ROLLBACK, trả 409 INSUFFICIENT_STOCK"]
+    S11 --> End2
+    S9 -->|Đủ| S12["Giảm tồn nguồn, ghi TRANSFER_OUT"]
+    S12 --> S13["Tăng tồn đích, ghi TRANSFER_IN"]
+    S13 --> S14["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
+    S14 --> End3(["Kết thúc: Hàng đã sang vị trí đích"])

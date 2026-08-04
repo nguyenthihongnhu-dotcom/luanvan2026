@@ -8,6 +8,8 @@ import type {
   ReorderShelvesInput,
   SyncLocationMatrixInput,
   LocationFilters,
+  UpdateZoneLayoutInput,
+  ZoneFilters,
 } from './location.model';
 
 const locationStatusSchema = z.enum([
@@ -47,6 +49,20 @@ const createZoneSchema = z.object({
   name: z.string().trim().max(100).optional(),
   shelfCount: z.coerce.number().int().positive().max(20).optional(),
   layerCount: z.coerce.number().int().positive().max(20).optional(),
+  gridRow: z.coerce.number().int().min(0).max(200).nullable().optional(),
+  gridCol: z.coerce.number().int().min(0).max(200).nullable().optional(),
+  gridSize: z.coerce.number().int().positive().max(50).nullable().optional(),
+});
+
+const zoneFiltersSchema = z.object({
+  warehouseId: z.coerce.number().int().positive(),
+});
+
+const updateZoneLayoutSchema = z.object({
+  zoneId: z.coerce.number().int().positive(),
+  gridRow: z.coerce.number().int().min(0).max(200).nullable(),
+  gridCol: z.coerce.number().int().min(0).max(200).nullable(),
+  gridSize: z.coerce.number().int().positive().max(50).nullable(),
 });
 
 const createShelfSchema = z.object({
@@ -108,6 +124,14 @@ export function parseSyncLocationMatrix(
 
 export function parseCreateZone(input: unknown): CreateZoneInput {
   return validateInput(createZoneSchema, input);
+}
+
+export function parseZoneFilters(input: unknown): ZoneFilters {
+  return validateInput(zoneFiltersSchema, input);
+}
+
+export function parseUpdateZoneLayout(input: unknown): UpdateZoneLayoutInput {
+  return validateInput(updateZoneLayoutSchema, input);
 }
 
 const reorderShelvesSchema = z.object({

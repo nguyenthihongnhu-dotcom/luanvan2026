@@ -22,18 +22,23 @@
   'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
 }}%%
 flowchart TD
-    Start(["Bắt đầu: Có nhu cầu xuất hàng"]) --> S1["Tạo phiếu xuất, chọn kho và lý do xuất"]
+    Start(["Bắt đầu: Có nhu cầu xuất hàng"]) --> S1["Tạo phiếu xuất: chọn kho và lý do xuất"]
     S1 --> S2["Thêm dòng hàng: SKU và số lượng cần xuất"]
-    S2 --> S3["Lưu phiếu, trạng thái DRAFT"]
+    S2 --> S3["POST /goods-issues, phiếu lưu ở DRAFT"]
     S3 --> S4{"Người xác nhận có quyền goods_issues:confirm?"}
-    S4 -->|Không| S5["Trả lỗi 403 FORBIDDEN"]
+    S4 -->|Không| S5["Trả 403 FORBIDDEN"]
     S5 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
-    S4 -->|Có| S6["BEGIN TRANSACTION, khóa bản ghi tồn FOR UPDATE"]
-    S6 --> S7{"Tồn khả dụng đủ số lượng cần xuất?"}
-    S7 -->|Không đủ| S8["ROLLBACK, trả lỗi INSUFFICIENT_STOCK"]
+    S4 -->|Có| S6["BEGIN TRANSACTION, đọc các lô khả dụng theo FEFO"]
+    S6 --> S7{"SKU cần lô hoặc cần hạn dùng nhưng thiếu dữ liệu?"}
+    S7 -->|Thiếu| S8["ROLLBACK, trả BATCH_REQUIRED hoặc EXPIRY_DATE_REQUIRED"]
     S8 --> End2(["Kết thúc: Tồn kho không đổi"])
-    S7 -->|Đủ| S9["Phân bổ theo FEFO: lô hết hạn sớm xuất trước"]
-    S9 --> S10["Giảm quantity theo từng lô và vị trí"]
-    S10 --> S11["Ghi inventory_transactions loại ISSUE"]
-    S11 --> S12["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
-    S12 --> End3(["Kết thúc: Tồn kho đã giảm"])
+    S7 -->|Đủ| S9{"Tổng tồn khả dụng đủ số cần xuất?"}
+    S9 -->|Không đủ| S10["ROLLBACK, trả 409 INSUFFICIENT_STOCK"]
+    S10 --> End2
+    S9 -->|Đủ| S11["Trừ tồn từng lô bằng UPDATE có điều kiện quantity trừ reserved"]
+    S11 --> S12{"Số dòng bị ảnh hưởng bằng 0?"}
+    S12 -->|Bằng 0| S13["ROLLBACK, trả CONCURRENT_STOCK_UPDATE"]
+    S13 --> End2
+    S12 -->|Khác 0| S14["Ghi inventory_transactions loại ISSUE cho từng lô"]
+    S14 --> S15["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
+    S15 --> End3(["Kết thúc: Tồn kho đã giảm"])

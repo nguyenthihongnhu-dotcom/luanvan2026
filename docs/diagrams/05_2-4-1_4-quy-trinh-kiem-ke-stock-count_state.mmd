@@ -24,14 +24,9 @@
   'state': { 'padding': 12, 'useMaxWidth': false }
 }}%%
 stateDiagram-v2
-    [*] --> DRAFT: tạo phiếu kiểm kê
-    DRAFT --> IN_PROGRESS: bắt đầu đếm, chốt danh sách SKU
-    DRAFT --> CANCELLED: hủy phiếu
-    IN_PROGRESS --> IN_PROGRESS: ghi số đếm từng dòng
-    IN_PROGRESS --> SUBMITTED: nộp kết quả
-    IN_PROGRESS --> CANCELLED: hủy phiếu
-    SUBMITTED --> APPROVED: duyệt, sinh điều chỉnh chênh lệch
-    SUBMITTED --> REJECTED: từ chối kết quả
+    [*] --> DRAFT: POST /stock-counts, chọn phạm vi kiểm kê
+    DRAFT --> IN_PROGRESS: POST /:id/start, chốt danh sách dòng cần đếm
+    IN_PROGRESS --> IN_PROGRESS: PATCH /:id/items/:itemId/count
+    IN_PROGRESS --> SUBMITTED: POST /:id/submit
+    SUBMITTED --> APPROVED: POST /:id/approve, sinh phiếu điều chỉnh COUNT
     APPROVED --> [*]
-    REJECTED --> [*]
-    CANCELLED --> [*]
