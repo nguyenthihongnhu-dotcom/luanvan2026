@@ -27,47 +27,47 @@ import {
 const stockCountErrorMap: Record<string, HttpError> = {
   STOCK_COUNT_NOT_FOUND: new HttpError(
     404,
-    'Stock count not found',
+    'Không tìm thấy phiếu kiểm kê',
     'STOCK_COUNT_NOT_FOUND',
   ),
   STOCK_COUNT_ITEM_NOT_FOUND: new HttpError(
     404,
-    'Stock count item not found',
+    'Không tìm thấy dòng kiểm kê',
     'STOCK_COUNT_ITEM_NOT_FOUND',
   ),
   STOCK_COUNT_SNAPSHOT_EMPTY: new HttpError(
     422,
-    'Stock count scope has no stock to snapshot',
+    'Phạm vi kiểm kê không có tồn kho để kiểm đếm',
     'STOCK_COUNT_SNAPSHOT_EMPTY',
   ),
   STOCK_COUNT_NOT_STARTABLE: new HttpError(
     409,
-    'Only DRAFT stock counts can be started',
+    'Chỉ có thể bắt đầu phiếu kiểm kê ở trạng thái Nháp',
     'STOCK_COUNT_NOT_STARTABLE',
   ),
   STOCK_COUNT_NOT_COUNTABLE: new HttpError(
     409,
-    'Only IN_PROGRESS stock counts can be counted',
+    'Chỉ có thể đếm phiếu kiểm kê ở trạng thái Đang kiểm kê',
     'STOCK_COUNT_NOT_COUNTABLE',
   ),
   STOCK_COUNT_NOT_SUBMITTABLE: new HttpError(
     409,
-    'Only IN_PROGRESS stock counts can be submitted',
+    'Chỉ có thể gửi duyệt phiếu kiểm kê ở trạng thái Đang kiểm kê',
     'STOCK_COUNT_NOT_SUBMITTABLE',
   ),
   STOCK_COUNT_NOT_APPROVABLE: new HttpError(
     409,
-    'Only SUBMITTED stock counts can be approved',
+    'Chỉ có thể duyệt phiếu kiểm kê ở trạng thái Chờ duyệt',
     'STOCK_COUNT_NOT_APPROVABLE',
   ),
   STOCK_COUNT_HAS_NO_ITEMS: new HttpError(
     422,
-    'Stock count has no items',
+    'Phiếu kiểm kê không có mặt hàng nào',
     'STOCK_COUNT_HAS_NO_ITEMS',
   ),
   STOCK_COUNT_HAS_UNCOUNTED_ITEMS: new HttpError(
     422,
-    'All stock count items must be counted first',
+    'Tất cả các dòng mặt hàng phải được kiểm đếm thực tế trước khi gửi duyệt',
     'STOCK_COUNT_HAS_UNCOUNTED_ITEMS',
   ),
 };

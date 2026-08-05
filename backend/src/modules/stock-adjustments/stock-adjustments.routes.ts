@@ -17,7 +17,11 @@ stockAdjustmentsRouter.get(
   '/:id',
   asyncHandler(getStockAdjustmentDetailController),
 );
-stockAdjustmentsRouter.post('/', asyncHandler(createStockAdjustmentController));
+stockAdjustmentsRouter.post(
+  '/',
+  asyncHandler(verifyToken),
+  asyncHandler(createStockAdjustmentController),
+);
 stockAdjustmentsRouter.post(
   '/:id/approve',
   asyncHandler(verifyToken),

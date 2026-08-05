@@ -5,6 +5,7 @@ export type AuthUser = {
   id: string;
   role: string;
   permissions: string[];
+  fullName?: string;
 };
 
 export type AccessTokenPayload = JwtPayload & {
@@ -15,6 +16,7 @@ export type AccessTokenPayload = JwtPayload & {
 
 export type AuthUserRow = RowDataPacket & {
   id: string | number;
+  full_name?: string;
   status: 'ACTIVE' | 'LOCKED' | 'INACTIVE';
   role_code: string;
   permissions: string | null;

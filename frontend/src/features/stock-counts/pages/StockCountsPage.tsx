@@ -7,6 +7,7 @@ import { stockCountService } from "@/features/stock-counts/services/stockCountSe
 import type { StockCount, StockCountItem, StockCountScopeType, StockCountStatus } from "@/features/stock-counts/services/stockCountService";
 import { warehouseService } from "@/features/warehouses/services/warehouseService";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
+import { userService, type User } from "@/features/staff/services/userService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
 const initialFormState = {
@@ -99,6 +100,7 @@ export default function StockCountsPage() {
     const [counts, setCounts] = useState<StockCount[]>([]);
     const [items, setItems] = useState<StockCountItem[]>([]);
     const [warehouses, setWarehouses] = useState<WarehouseOption[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [selectedCount, setSelectedCount] = useState<StockCount | null>(null);
     const [formData, setFormData] = useState(initialFormState);
     const [itemDrafts, setItemDrafts] = useState<Record<number, { actualQuantity: string; reasonCode: string; note: string }>>({});
@@ -109,17 +111,20 @@ export default function StockCountsPage() {
     const [error, setError] = useState<string | null>(null);
 
     const warehousesById = useMemo(() => new Map(warehouses.map((warehouse) => [warehouse.id, warehouse])), [warehouses]);
+    const userMap = useMemo(() => new Map(users.map((u) => [u.MaNguoiDung, u.HoTen])), [users]);
 
     async function loadCounts() {
         setIsLoading(true);
         setError(null);
         try {
-            const [countRows, warehouseRows] = await Promise.all([
+            const [countRows, warehouseRows, userRows] = await Promise.all([
                 stockCountService.listStockCounts(),
                 warehouseService.listWarehouses(),
+                userService.listUsers().catch(() => []),
             ]);
             setCounts(countRows);
             setWarehouses(warehouseRows);
+            setUsers(userRows);
             setFormData((current) => ({
                 ...current,
                 warehouseId: current.warehouseId || (warehouseRows[0] ? String(warehouseRows[0].id) : ""),
@@ -221,7 +226,7 @@ export default function StockCountsPage() {
             return warehouse ? warehouseLabel(warehouse) : `#${String(value)}`;
         } },
         { key: "status", title: "Trạng thái", render: (value) => statusLabel(value as StockCountStatus) },
-        { key: "assigned_to", title: "Người phụ trách", render: (value) => value ? String(value) : "-" },
+        { key: "assigned_to", title: "Người phụ trách", render: (_, record) => record.assigned_to_name || (record.assigned_to ? (userMap.get(Number(record.assigned_to)) || `Người dùng #${String(record.assigned_to)}`) : "-") },
         {
             key: "actions",
             title: "Thao tác",

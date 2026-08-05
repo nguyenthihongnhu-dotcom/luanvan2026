@@ -39,24 +39,35 @@ export async function findStockCounts(
   const params: QueryParams = {};
 
   if (filters.id) {
-    where.push('id = :id');
+    where.push('sc.id = :id');
     params.id = filters.id;
   }
 
   if (filters.search) {
-    where.push('count_code LIKE :search');
+    where.push('sc.count_code LIKE :search');
     params.search = `%${filters.search}%`;
   }
 
   if (filters.status) {
-    where.push('status = :status');
+    where.push('sc.status = :status');
     params.status = filters.status;
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
   const [rows] = await db.query<StockCountsRow[]>({
-    sql: `SELECT * FROM ${tableName} ${whereSql} LIMIT 100`,
+    sql: `
+      SELECT
+        sc.*,
+        u_assigned.full_name AS assigned_to_name,
+        u_created.full_name AS created_by_name
+      FROM ${tableName} sc
+      LEFT JOIN users u_assigned ON u_assigned.id = sc.assigned_to
+      LEFT JOIN users u_created ON u_created.id = sc.created_by
+      ${whereSql}
+      ORDER BY sc.id DESC
+      LIMIT 100
+    `,
     values: params,
   });
 

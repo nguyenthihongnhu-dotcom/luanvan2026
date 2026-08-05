@@ -61,11 +61,13 @@ function toAuthUser(input: {
   id: string | number;
   role_code: string;
   permissions: string | null;
+  full_name?: string;
 }): AuthUser {
   return {
     id: String(input.id),
     role: input.role_code,
     permissions: input.permissions ? input.permissions.split(',') : [],
+    fullName: input.full_name || undefined,
   };
 }
 

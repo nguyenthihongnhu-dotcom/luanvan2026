@@ -63,9 +63,6 @@ function getUserDisplayName(nameVal: unknown, idVal: unknown): string {
         return nameVal.trim();
     }
     const id = Number(idVal);
-    if (id === 1) return 'Quản trị hệ thống';
-    if (id === 2) return 'Quản lý kho Bambi';
-    if (id === 3) return 'Nhân viên PHS';
     return id > 0 ? `Người dùng #${id}` : 'Hệ thống';
 }
 

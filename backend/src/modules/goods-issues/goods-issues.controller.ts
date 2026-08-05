@@ -71,7 +71,13 @@ export async function createGoodsIssueController(
   req: Request,
   res: Response,
 ): Promise<void> {
-  res
-    .status(201)
-    .json({ data: await createGoodsIssue(parseCreateGoodsIssue(req.body)) });
+  const input = parseCreateGoodsIssue(req.body);
+  const createdBy =
+    input.createdBy ?? (req.user ? Number(req.user.id) : undefined);
+  res.status(201).json({
+    data: await createGoodsIssue({
+      ...input,
+      createdBy,
+    }),
+  });
 }

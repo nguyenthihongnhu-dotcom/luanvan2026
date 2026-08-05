@@ -68,7 +68,13 @@ export async function createGoodsReceiptController(
   req: Request,
   res: Response,
 ): Promise<void> {
+  const input = parseCreateGoodsReceipt(req.body);
+  const createdBy =
+    input.createdBy ?? (req.user ? Number(req.user.id) : undefined);
   res.status(201).json({
-    data: await createGoodsReceipt(parseCreateGoodsReceipt(req.body)),
+    data: await createGoodsReceipt({
+      ...input,
+      createdBy,
+    }),
   });
 }

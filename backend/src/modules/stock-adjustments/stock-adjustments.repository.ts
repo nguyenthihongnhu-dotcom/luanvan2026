@@ -79,7 +79,7 @@ export async function findStockAdjustments(
         sa.*,
         u_created.full_name AS created_by_name,
         u_approved.full_name AS approved_by_name
-      FROM stock_adjustments sa
+      FROM ${tableName} sa
       LEFT JOIN users u_created ON u_created.id = sa.created_by
       LEFT JOIN users u_approved ON u_approved.id = sa.approved_by
       ${whereSql}
@@ -586,10 +586,26 @@ export async function insertStockAdjustment(
 
   try {
     await connection.beginTransaction();
-    const [warehouseRows] = input.warehouseId
+    let targetWarehouseId = input.warehouseId;
+    if (!targetWarehouseId && input.items && input.items.length > 0) {
+      const firstLocationId = input.items[0].locationId;
+      const [inferredWarehouse] = await connection.query<Array<RowDataPacket & { warehouse_id: number }>>(
+        `SELECT wz.warehouse_id
+         FROM warehouse_locations wl
+         JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+         JOIN warehouse_zones wz ON wz.id = ws.zone_id
+         WHERE wl.id = ? LIMIT 1`,
+        [firstLocationId],
+      );
+      if (inferredWarehouse[0]?.warehouse_id) {
+        targetWarehouseId = inferredWarehouse[0].warehouse_id;
+      }
+    }
+
+    const [warehouseRows] = targetWarehouseId
       ? await connection.query<Array<RowDataPacket & { id: number }>>(
           'SELECT id FROM warehouses WHERE id = ? LIMIT 1',
-          [input.warehouseId],
+          [targetWarehouseId],
         )
       : await connection.query<Array<RowDataPacket & { id: number }>>(
           'SELECT id FROM warehouses WHERE code = ? LIMIT 1',

@@ -18,6 +18,7 @@ export async function findActiveAuthUserById(
     sql: `
       SELECT
         u.id,
+        u.full_name,
         u.status,
         r.code AS role_code,
         GROUP_CONCAT(DISTINCT p.code ORDER BY p.code) AS permissions
@@ -28,7 +29,7 @@ export async function findActiveAuthUserById(
       WHERE u.id = :userId
         AND u.deleted_at IS NULL
         AND u.status = 'ACTIVE'
-      GROUP BY u.id, u.status, r.code
+      GROUP BY u.id, u.full_name, u.status, r.code
       LIMIT 1
     `,
     values: { userId },

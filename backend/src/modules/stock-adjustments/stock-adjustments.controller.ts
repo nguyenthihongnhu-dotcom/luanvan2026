@@ -88,7 +88,12 @@ export async function createStockAdjustmentController(
   req: Request,
   res: Response,
 ): Promise<void> {
+  const input = parseCreateStockAdjustment(req.body);
+  const createdBy = input.createdBy ?? (req.user ? Number(req.user.id) : undefined);
   res.status(201).json({
-    data: await createStockAdjustment(parseCreateStockAdjustment(req.body)),
+    data: await createStockAdjustment({
+      ...input,
+      createdBy,
+    }),
   });
 }

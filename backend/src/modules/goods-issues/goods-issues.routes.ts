@@ -13,7 +13,11 @@ export const goodsIssuesRouter = Router();
 
 goodsIssuesRouter.get('/', asyncHandler(listGoodsIssuesController));
 goodsIssuesRouter.get('/:id', asyncHandler(getGoodsIssueDetailController));
-goodsIssuesRouter.post('/', asyncHandler(createGoodsIssueController));
+goodsIssuesRouter.post(
+  '/',
+  asyncHandler(verifyToken),
+  asyncHandler(createGoodsIssueController),
+);
 goodsIssuesRouter.post(
   '/:id/confirm',
   asyncHandler(verifyToken),

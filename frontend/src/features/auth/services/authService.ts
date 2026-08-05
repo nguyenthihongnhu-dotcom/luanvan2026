@@ -13,6 +13,7 @@ type BackendAuthUser = {
     id: number | string;
     role: string;
     permissions: string[];
+    fullName?: string;
 };
 
 type BackendLoginResult = {
@@ -29,7 +30,7 @@ function mapBackendAuth(result: BackendLoginResult): AuthResponse {
         result: {
             maTK: String(result.user.id),
             role: result.user.role,
-            ten: result.user.role,
+            ten: result.user.fullName || result.user.role,
             permissions: result.user.permissions,
             accessToken: result.accessToken,
             refreshToken: result.refreshToken,

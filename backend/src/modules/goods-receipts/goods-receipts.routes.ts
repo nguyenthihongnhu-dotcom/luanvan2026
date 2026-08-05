@@ -13,7 +13,11 @@ export const goodsReceiptsRouter = Router();
 
 goodsReceiptsRouter.get('/', asyncHandler(listGoodsReceiptsController));
 goodsReceiptsRouter.get('/:id', asyncHandler(getGoodsReceiptDetailController));
-goodsReceiptsRouter.post('/', asyncHandler(createGoodsReceiptController));
+goodsReceiptsRouter.post(
+  '/',
+  asyncHandler(verifyToken),
+  asyncHandler(createGoodsReceiptController),
+);
 goodsReceiptsRouter.post(
   '/:id/confirm',
   asyncHandler(verifyToken),

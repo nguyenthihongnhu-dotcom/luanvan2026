@@ -98,7 +98,7 @@ export async function findGoodsIssues(
         gi.*,
         u_created.full_name AS created_by_name,
         u_confirmed.full_name AS confirmed_by_name
-      FROM goods_issues gi
+      FROM ${tableName} gi
       LEFT JOIN users u_created ON u_created.id = gi.created_by
       LEFT JOIN users u_confirmed ON u_confirmed.id = gi.confirmed_by
       ${whereSql}
@@ -582,10 +582,28 @@ export async function insertGoodsIssue(
 
   try {
     await connection.beginTransaction();
-    const [warehouseRows] = input.warehouseId
+    let targetWarehouseId = input.warehouseId;
+    if (!targetWarehouseId && input.items && input.items.length > 0) {
+      const firstLocationId = input.items[0].locationId;
+      const [inferredWarehouse] = await connection.query<
+        Array<RowDataPacket & { warehouse_id: number }>
+      >(
+        `SELECT wz.warehouse_id
+         FROM warehouse_locations wl
+         JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+         JOIN warehouse_zones wz ON wz.id = ws.zone_id
+         WHERE wl.id = ? LIMIT 1`,
+        [firstLocationId],
+      );
+      if (inferredWarehouse[0]?.warehouse_id) {
+        targetWarehouseId = inferredWarehouse[0].warehouse_id;
+      }
+    }
+
+    const [warehouseRows] = targetWarehouseId
       ? await connection.query<Array<RowDataPacket & { id: number }>>(
           'SELECT id FROM warehouses WHERE id = ? LIMIT 1',
-          [input.warehouseId],
+          [targetWarehouseId],
         )
       : await connection.query<Array<RowDataPacket & { id: number }>>(
           'SELECT id FROM warehouses WHERE code = ? LIMIT 1',
