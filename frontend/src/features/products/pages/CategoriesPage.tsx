@@ -19,6 +19,10 @@ export default function Categories() {
     const [error, setError] = useState<string | null>(null);
     const { formData, setFormData, handleInputChange, resetForm } = useForm(initialFormState);
 
+    /**
+     * Tải danh sách danh mục sản phẩm từ backend.
+     * Cập nhật state `categories`, `isLoading`, `error`.
+     */
     async function loadCategories() {
         setIsLoading(true);
         try {
@@ -34,6 +38,12 @@ export default function Categories() {
 
     useEffect(() => { void loadCategories(); }, []);
 
+    /**
+     * Xử lý submit form tạo mới / cập nhật danh mục.
+     * - Nếu `editingCategory` tồn tại → gọi updateCategory.
+     * - Nếu không → gọi createCategory.
+     * Sau khi lưu: reload danh sách, đóng modal, reset form.
+     */
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSaving(true);
@@ -55,12 +65,21 @@ export default function Categories() {
         }
     };
 
+    /**
+     * Mở modal chỉnh sửa danh mục — điền sẵn tên danh mục vào form.
+     * @param category - Danh mục cần sửa.
+     */
     const handleEdit = (category: Category) => {
         setEditingCategory(category);
         setFormData({ name: category.name });
         setShowModal(true);
     };
 
+    /**
+     * Xóa danh mục sau khi người dùng xác nhận.
+     * Danh mục đã có sản phẩm sẽ bị backend từ chối xóa.
+     * @param id - ID của danh mục cần xóa.
+     */
     const handleDelete = async (id: number) => {
         if (!window.confirm("Bạn có chắc chắn muốn xóa danh mục này?")) return;
         setIsSaving(true);
@@ -81,11 +100,11 @@ export default function Categories() {
         {
             key: "actions",
             title: "Thao tác",
-            className: "text-right",
+            width: "120px",
             render: (_, record) => (
-                <div className="flex justify-end space-x-2">
-                    <button type="button" onClick={() => handleEdit(record)} disabled={isSaving} className="text-xs font-medium text-blue-600 hover:text-blue-900 disabled:opacity-50">Sửa</button>
-                    <button type="button" onClick={() => void handleDelete(record.id)} disabled={isSaving} className="text-xs font-medium text-red-600 hover:text-red-900 disabled:opacity-50">Xóa</button>
+                <div className="flex gap-1">
+                    <button type="button" onClick={() => handleEdit(record)} disabled={isSaving} className="btn-action btn-blue">Sửa</button>
+                    <button type="button" onClick={() => void handleDelete(record.id)} disabled={isSaving} className="btn-action btn-red">Xóa</button>
                 </div>
             ),
         },

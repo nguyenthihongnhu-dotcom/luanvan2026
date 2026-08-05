@@ -1,29 +1,22 @@
-# Settings Feature
+﻿# Settings Feature
 
-## Route
+## Muc tieu nghiep vu
 
-`/settings`
+Module `settings` quan ly cac thong so cau hinh he thong (VD: nguong ton thap, so ngay canh bao het han, bat/tat FEFO).
 
-## Mục đích
+## Doc code theo thu tu
 
-Xem, lọc, tạo cấu hình mặc định và chỉnh cấu hình hệ thống lưu trong `app_settings`.
+1. `services/settingService.ts`: goi GET /settings, PUT /settings/:id, POST /settings/seed.
+2. `pages/SettingsPage.tsx`: quan ly va cap nhat gia tri cau hinh duoi dang JSON.
 
-## Luồng code
+## API su dung
 
-- `pages/SettingsPage.tsx`: list/filter setting key, render JSON value, mở modal sửa và hiển thị trạng thái rỗng.
-- `services/settingService.ts`: gọi `GET /settings`, `POST /settings/seed-defaults`, `PUT /settings/:id`.
+| Method | Path | Mo ta | Permission |
+|---|---|---|---|
+| GET | `/settings` | Lay danh sach cau hinh | - |
+| PUT | `/settings/:id` | Cap nhat cau hinh | `settings:update` |
+| POST | `/settings/seed` | Khoi tao cau hinh mac dinh | `settings:update` |
 
-## Quyền
+## Luu y
 
-- Xem danh sách: không yêu cầu permission riêng ở route backend hiện tại.
-- Tạo cấu hình mặc định: cần `settings:update`.
-- Sửa cấu hình: cần `settings:update`.
-
-## Empty State
-
-Nếu bảng `app_settings` rỗng, UI hiển thị thông báo nghiệp vụ và nút `Tạo cấu hình mặc định` cho tài khoản có quyền. Backend dùng `INSERT IGNORE`, nên bấm lại không tạo trùng key.
-
-## Lưu ý
-
-- Giá trị cấu hình được nhập dưới dạng JSON hợp lệ.
-- Không đưa secret như JWT secret, database password, API key hoặc private key vào `app_settings`.
+- Gia tri cau hinh (`setting_value`) duoc luu duoi dang JSON/string va phai dung format JSON khi edit.

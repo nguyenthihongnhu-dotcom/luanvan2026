@@ -1,7 +1,7 @@
-// Chạy một file .sql migration bằng driver mysql2 sẵn có, dùng DATABASE_URL trong .env.
+// Chạy một file .sql bằng driver mysql2 sẵn có, dùng DATABASE_URL trong .env.
 // Dùng script này thay cho lệnh `mysql` khi máy không cài MySQL client vào PATH.
 //
-//   node scripts/run-migration.mjs migrations/2026-08-05_zone_grid_layout.sql
+//   node scripts/run-sql.mjs warehouse_management_mysql.sql
 //
 // Chạy lại nhiều lần vẫn an toàn: các lỗi kiểu "cột đã tồn tại" được bỏ qua
 // và báo là đã áp dụng từ trước.
@@ -21,7 +21,7 @@ const file = process.argv[2];
 
 if (!file) {
   console.error('Thiếu đường dẫn file .sql.');
-  console.error('Ví dụ: node scripts/run-migration.mjs migrations/2026-08-05_zone_grid_layout.sql');
+  console.error('Ví dụ: node scripts/run-sql.mjs warehouse_management_mysql.sql');
   process.exit(1);
 }
 

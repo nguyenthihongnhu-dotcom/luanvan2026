@@ -524,18 +524,28 @@ export async function findZonesByWarehouse(
         wz.grid_row,
         wz.grid_col,
         wz.grid_size,
+        wz.grid_orientation,
         COUNT(DISTINCT ws.id) AS shelf_count,
-        COUNT(DISTINCT wl.id) AS location_count
+        COUNT(DISTINCT loc.id) AS location_count,
+        COUNT(DISTINCT CASE WHEN loc.qty > 0 THEN loc.id END) AS occupied_count,
+        COUNT(DISTINCT CASE WHEN loc.status = 'FULL' THEN loc.id END) AS full_count
       FROM warehouse_zones wz
       LEFT JOIN warehouse_shelves ws
         ON ws.zone_id = wz.id AND ws.deleted_at IS NULL
-      LEFT JOIN warehouse_locations wl
-        ON wl.shelf_id = ws.id AND wl.deleted_at IS NULL
+      LEFT JOIN (
+        -- Gom tồn về từng vị trí trước rồi mới join, nếu join thẳng stock_locations
+        -- thì một vị trí chứa nhiều SKU sẽ bị đếm lặp.
+        SELECT wl.id, wl.shelf_id, wl.status, COALESCE(SUM(sl.quantity), 0) AS qty
+        FROM warehouse_locations wl
+        LEFT JOIN stock_locations sl ON sl.location_id = wl.id
+        WHERE wl.deleted_at IS NULL
+        GROUP BY wl.id, wl.shelf_id, wl.status
+      ) loc ON loc.shelf_id = ws.id
       WHERE wz.warehouse_id = :warehouseId
         AND wz.deleted_at IS NULL
       GROUP BY
         wz.id, wz.warehouse_id, wz.code, wz.name, wz.status,
-        wz.sort_order, wz.grid_row, wz.grid_col, wz.grid_size
+        wz.sort_order, wz.grid_row, wz.grid_col, wz.grid_size, wz.grid_orientation
       ORDER BY wz.sort_order, wz.code
     `,
     values: { warehouseId } satisfies QueryParams,
@@ -552,7 +562,10 @@ export async function updateZoneLayoutRepository(
       UPDATE warehouse_zones
       SET grid_row = :gridRow,
           grid_col = :gridCol,
-          grid_size = :gridSize
+          grid_size = :gridSize,
+          -- Không gửi hướng thì giữ nguyên hướng đang có, tránh việc kéo thả
+          -- vô tình đặt lại hướng xếp kệ của khu về mặc định.
+          grid_orientation = COALESCE(:gridOrientation, grid_orientation)
       WHERE id = :zoneId
         AND deleted_at IS NULL
     `,
@@ -561,6 +574,7 @@ export async function updateZoneLayoutRepository(
       gridRow: input.gridRow ?? null,
       gridCol: input.gridCol ?? null,
       gridSize: input.gridSize ?? null,
+      gridOrientation: input.gridOrientation ?? null,
     } satisfies QueryParams,
   });
 

@@ -1,51 +1,34 @@
-# Products Feature
+﻿# Products & Categories Feature
 
-## Mục tiêu
+## Muc tieu nghiep vu
 
-Feature `products` quản lý màn Hàng hóa và Danh mục sản phẩm.
+Module `products` quan ly danh muc (Categories) va danh sach hang hoa/san pham (Products/SKUs). Duy tri master data cho hang hoa truoc khi thuc hien nhap/xuat/ton kho.
 
-## Đọc code theo thứ tự
+## Doc code theo thu tu
 
-1. `pages/ProductsPage.tsx`: bảng hàng hóa, filter, mở modal.
-2. `hooks/useProducts.ts`: state list/form/modal và action create/update/delete.
-3. `services/productService.ts`: gọi report/catalog API và map sang `ProductItem`.
-4. `components/ProductModal.tsx`: form thêm/sửa sản phẩm.
-5. `utils/productDisplay.ts`: map tên/danh mục/trạng thái sang tiếng Việt.
-6. `pages/CategoriesPage.tsx`: màn danh mục.
-7. `services/categoryService.ts`: CRUD `/catalog/categories`.
+1. `services/categoryService.ts`: CRUD danh muc (`/catalog/categories`).
+2. `services/productService.ts`: CRUD san pham (`/catalog/products`) & xem ton kho/sap het han tu bao cao (`/reports/*`).
+3. `services/productDisplay.ts`: cac ham helper map label/category cho UI.
+4. `hooks/useProducts.ts`: custom hook quan ly state danh sach san pham, loading, error va refresh logic.
+5. `pages/CategoriesPage.tsx`: quan ly danh muc san pham (bang danh sach + modal tao/sua).
+6. `pages/ProductsPage.tsx`: quan ly danh sach san pham, tim kiem, loc, va phan trang.
+7. `components/ProductModal.tsx`: modal form tao/cap nhat san pham.
 
-## Backend API
+## API su dung
 
-| UI | API |
-| --- | --- |
-| Danh sách hàng hóa | `GET /reports/product-stock`, `GET /reports/near-expiry` |
-| Thêm sản phẩm | `POST /catalog/products` |
-| Sửa sản phẩm | `PUT /catalog/products/:id` |
-| Xóa sản phẩm | `DELETE /catalog/products/:id` |
-| Danh mục | `GET/POST/PUT/DELETE /catalog/categories` |
+| Method | Path | Mo ta |
+|---|---|---|
+| GET | `/catalog/categories` | Lay danh sach danh muc |
+| POST | `/catalog/categories` | Tao danh muc moi |
+| PUT | `/catalog/categories/:id` | Cap nhat danh muc |
+| DELETE | `/catalog/categories/:id` | Xoa danh muc |
+| GET | `/catalog/products` | Lay danh sach san pham |
+| POST | `/catalog/products` | Tao san pham moi |
+| PUT | `/catalog/products/:id` | Cap nhat san pham |
+| DELETE | `/catalog/products/:id` | Xoa san pham |
+| GET | `/reports/product-stock` | Lay thong tin ton kho tong hop cua san pham |
 
-## Luồng list sản phẩm
+## Luu y
 
-```text
-ProductsPage
-  -> useProducts
-  -> productService.listProducts
-      -> GET /reports/product-stock
-      -> GET /reports/near-expiry
-      -> merge expiry theo product_variant_id
-      -> calculate status: In Stock / Low Stock / Out of Stock
-  -> productDisplay map label tiếng Việt
-```
-
-## Lưu ý quan trọng
-
-- Backend report trả dữ liệu gần DB, service map sang `ProductItem` cho UI.
-- Trạng thái có thể là tiếng Anh/raw enum, UI phải map sang tiếng Việt.
-- Không thêm mock fallback ở hook; backend lỗi thì hiện error.
-- Tồn kho không update trực tiếp trong UI; service gửi request cho backend.
-
-## Khi sửa feature này
-
-- Thêm field sản phẩm: cập nhật `ProductItem`, modal, `productService`, backend catalog validation.
-- Thêm filter: ưu tiên filter backend nếu dữ liệu lớn; local filter chỉ dùng cho UI nhỏ.
-- Nếu text bị mojibake, sửa source UTF-8 và kiểm tra bằng scan `rg "Ã|áº|á»" frontend/src`.
+- Danh muc chua san pham se khong the xoa (backend tra 409/Error).
+- San pham bat buoc phai co SKU va phai thuoc mot danh muc hop le.

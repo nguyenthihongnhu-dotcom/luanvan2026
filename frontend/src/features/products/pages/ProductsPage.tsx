@@ -175,12 +175,12 @@ export default function ProductsPage() {
         {
             key: "actions",
             title: "Thao tác",
-            className: "text-right",
+            width: "120px",
             render: (_, record: ProductItem) => (
-                <div className="flex justify-end space-x-2">
-                    {/* <button onClick={() => void handlePrintProductQr(record)} className="text-xs font-medium text-pink-600 hover:text-pink-900">In QR</button> */}
-                    <button onClick={() => handleEdit(record)} className="text-xs font-medium text-blue-600 hover:text-blue-900">Sửa</button>
-                    <button onClick={() => handleDelete(record.id)} className="text-xs font-medium text-red-600 hover:text-red-900">Xóa</button>
+                <div className="flex gap-1">
+                    {/* <button onClick={() => void handlePrintProductQr(record)} className="btn-action btn-pink">In QR</button> */}
+                    <button onClick={() => handleEdit(record)} className="btn-action btn-blue">Sửa</button>
+                    <button onClick={() => handleDelete(record.id)} className="btn-action btn-red">Xóa</button>
                 </div>
             ),
         },

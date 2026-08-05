@@ -36,6 +36,10 @@ export default function EmployeesPage() {
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [formData, setFormData] = useState(initialFormState);
 
+    /**
+     * Tải danh sách nhân viên từ backend.
+     * Cập nhật state `data`, `isLoading`, `error`.
+     */
     async function loadUsers() {
         try {
             setIsLoading(true);
@@ -66,12 +70,19 @@ export default function EmployeesPage() {
         return () => setExtraContent(null);
     }, [setExtraContent, roleFilter]);
 
+    /** Mở modal tạo mới nhân viên — reset form về trạng thái rỗng, mặc định vai trò STAFF. */
     const openCreateModal = () => {
         setEditingUser(null);
         setFormData(initialFormState);
         setShowModal(true);
     };
 
+    /**
+     * Mở modal chỉnh sửa nhân viên.
+     * Map dữ liệu `User` sang cấu trúc form (bao gồm roleCode và status).
+     * Trường `password` được reset về rỗng — chỉ submit nếu muốn thay mật khẩu.
+     * @param user - Bản ghi nhân viên cần sửa.
+     */
     const openEditModal = (user: User) => {
         setEditingUser(user);
         setFormData({
@@ -86,6 +97,12 @@ export default function EmployeesPage() {
         setShowModal(true);
     };
 
+    /**
+     * Xử lý submit form tạo mới / cập nhật nhân viên.
+     * - Nếu `editingUser` tồn tại → gọi updateUser.
+     * - Nếu không → gọi createUser (yêu cầu quyền `users:create`).
+     * Sau khi lưu: đóng modal, reset form, reload danh sách.
+     */
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
         if (editingUser) {
@@ -99,6 +116,11 @@ export default function EmployeesPage() {
         await loadUsers();
     };
 
+    /**
+     * Xóa tài khoản nhân viên sau khi xác nhận.
+     * Yêu cầu quyền `users:delete`.
+     * @param user - Bản ghi nhân viên cần xóa.
+     */
     const handleDelete = async (user: User) => {
         if (!window.confirm(`Bạn có chắc muốn xóa nhân viên ${user.HoTen}?`)) return;
         await userService.deleteUser(user.MaNguoiDung);
@@ -119,10 +141,11 @@ export default function EmployeesPage() {
         {
             key: "actions",
             title: "Thao tác",
+            width: "120px",
             render: (_, record) => (
-                <div className="flex gap-2">
-                    <button type="button" onClick={() => openEditModal(record)} className="text-xs font-medium text-blue-600 hover:text-blue-900">Sửa</button>
-                    <button type="button" onClick={() => handleDelete(record)} className="text-xs font-medium text-red-600 hover:text-red-900">Xóa</button>
+                <div className="flex gap-1">
+                    <button type="button" onClick={() => openEditModal(record)} className="btn-action btn-blue">Sửa</button>
+                    <button type="button" onClick={() => handleDelete(record)} className="btn-action btn-red">Xóa</button>
                 </div>
             ),
         },

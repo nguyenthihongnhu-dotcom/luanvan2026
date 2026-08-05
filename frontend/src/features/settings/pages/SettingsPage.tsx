@@ -9,10 +9,19 @@ import { usePermissions } from '@/shared/auth/usePermissions';
 import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import { userService, type User } from '@/features/staff/services/userService';
 
+/**
+ * Format ISO date string sang dạng ngày giờ tiếng Việt (vi-VN).
+ * @param value - Chuỗi ISO datetime.
+ */
 function formatDateTime(value: string): string {
     return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
 }
 
+/**
+ * Định dạng giá trị cấu hình thành chuỗi hiển thị.
+ * Nếu là chuỗi → giữ nguyên; nếu là object/array → pretty-print JSON 2 space.
+ * @param value - Giá trị tùy ý cần format.
+ */
 function formatJson(value: unknown): string {
     if (typeof value === 'string') return value;
     return JSON.stringify(value, null, 2);
@@ -33,6 +42,11 @@ export default function SettingsPage() {
     const [settingValueText, setSettingValueText] = useState('');
     const [description, setDescription] = useState('');
 
+    /**
+     * Tải danh sách cấu hình và danh sách user song song.
+     * `users` dùng xây `userMap` để hiển thị tên người cập nhật thay vì ID.
+     * @param search - Từ khóa lọc cấu hình (mặc định lấy từ searchTerm hiện tại).
+     */
     async function loadRows(search = searchTerm) {
         setIsLoading(true);
         setError(null);
@@ -56,6 +70,10 @@ export default function SettingsPage() {
         // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     }, []);
 
+    /**
+     * Map userId → “Họ Tên (MãNV)” để hiển thị cột “Cập nhật bởi”.
+     * Được memo hóa theo `users` — rebuild khi danh sách user thay đổi.
+     */
     const userMap = useMemo(() => {
         const map = new Map<number, string>();
         for (const u of users) {
@@ -66,6 +84,11 @@ export default function SettingsPage() {
         return map;
     }, [users]);
 
+    /**
+     * Mở form chỉnh sửa cấu hình.
+     * Điền sẵn `settingValueText` và `description` từ bản ghi được chọn.
+     * @param setting - Cấu hình cần chỉnh sửa.
+     */
     function openEdit(setting: AppSetting) {
         setEditingSetting(setting);
         setSettingValueText(formatJson(setting.setting_value));
@@ -74,6 +97,11 @@ export default function SettingsPage() {
         setMessage(null);
     }
 
+    /**
+     * Seed các cấu hình mặc định vào DB nếu chưa tồn tại.
+     * Yêu cầu quyền `settings:update`.
+     * Sau khi seed: reload danh sách, hiển thị thông báo số bản ghi được tạo.
+     */
     async function handleSeedDefaults() {
         setIsSeeding(true);
         setError(null);
@@ -91,6 +119,11 @@ export default function SettingsPage() {
         }
     }
 
+    /**
+     * Xử lý submit form cập nhật cấu hình.
+     * Parse `settingValueText` thành JSON trước khi gửi — hiển thị lỗi nếu JSON không hợp lệ.
+     * Yêu cầu quyền `settings:update`.
+     */
     async function handleSubmit(event: FormEvent) {
         event.preventDefault();
         if (!editingSetting) return;

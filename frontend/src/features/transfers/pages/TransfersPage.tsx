@@ -7,8 +7,6 @@ import { transferService } from "@/features/transfers/services/transferService";
 import type { CurrentStockItem, StockTransfer, TransferStatus, WarehouseLocationOption } from "@/features/transfers/services/transferService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
-import { usePermissions } from "@/shared/auth/usePermissions";
-
 const initialFormState = {
     transferCode: "",
     stockLocationId: "",
@@ -43,12 +41,12 @@ function locationLabel(location: WarehouseLocationOption): string {
 }
 
 export default function TransfersPage() {
-    const { hasPermission } = usePermissions();
     const [transfers, setTransfers] = useState<StockTransfer[]>([]);
     const [stockItems, setStockItems] = useState<CurrentStockItem[]>([]);
     const [locations, setLocations] = useState<WarehouseLocationOption[]>([]);
     const [formData, setFormData] = useState(initialFormState);
     const [showModal, setShowModal] = useState(false);
+    const [detailTransfer, setDetailTransfer] = useState<StockTransfer | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -174,19 +172,38 @@ export default function TransfersPage() {
         {
             key: "actions",
             title: "Thao tác",
+            width: "160px",
             render: (_, record) => {
-                const canConfirm = (record.status === "DRAFT" || record.status === "PENDING") && hasPermission("stock_transfers:confirm");
-                const canReverse = record.status === "CONFIRMED" && hasPermission("stock_transfers:reverse");
+                const canConfirm = record.status === "DRAFT" || record.status === "PENDING";
+                const canReverse = record.status === "CONFIRMED";
 
                 return (
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-1">
+                        <button
+                            type="button"
+                            onClick={() => setDetailTransfer(record)}
+                            style={{ borderRadius: '2px' }}
+                            className="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-pink-50 text-pink-700 border border-pink-300 hover:bg-pink-100 hover:border-pink-500 transition-colors"
+                        >
+                            Chi tiết
+                        </button>
                         {canConfirm && (
-                            <button type="button" onClick={() => handleConfirm(record.id)} className="text-xs font-medium text-green-700 hover:text-green-900">
+                            <button
+                                type="button"
+                                onClick={() => handleConfirm(record.id)}
+                                style={{ borderRadius: '2px' }}
+                                className="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-green-50 text-green-700 border border-green-300 hover:bg-green-100 hover:border-green-500 transition-colors"
+                            >
                                 Xác nhận
                             </button>
                         )}
                         {canReverse && (
-                            <button type="button" onClick={() => handleReverse(record.id)} className="text-xs font-medium text-red-600 hover:text-red-900">
+                            <button
+                                type="button"
+                                onClick={() => handleReverse(record.id)}
+                                style={{ borderRadius: '2px' }}
+                                className="inline-flex items-center px-2 py-0.5 text-xs font-semibold bg-red-50 text-red-600 border border-red-300 hover:bg-red-100 hover:border-red-500 transition-colors"
+                            >
                                 Đảo phiếu
                             </button>
                         )}
@@ -249,6 +266,34 @@ export default function TransfersPage() {
                                 <button type="submit" disabled={isSaving} className="flex-1 rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700 disabled:opacity-60">{isSaving ? "Đang lưu" : "Lưu phiếu"}</button>
                             </div>
                         </form>
+                    </div>
+                </div>
+            )}
+
+            {detailTransfer && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md">
+                    <div className="w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-xl">
+                        <div className="flex items-center justify-between border-b border-gray-100 bg-pink-50 px-6 py-4">
+                            <h2 className="text-lg font-bold text-pink-700">Chi tiết phiếu chuyển {detailTransfer.transfer_code}</h2>
+                            <button type="button" onClick={() => setDetailTransfer(null)} className="text-gray-400 hover:text-gray-600" aria-label="Đóng">×</button>
+                        </div>
+                        <div className="space-y-3 p-6 text-sm text-gray-700">
+                            <div className="flex justify-between border-b pb-2"><span className="font-semibold text-gray-500">Mã phiếu:</span><span className="font-mono font-bold text-gray-900">{detailTransfer.transfer_code}</span></div>
+                            <div className="flex justify-between border-b pb-2"><span className="font-semibold text-gray-500">Trạng thái:</span><span>{statusLabel(detailTransfer.status)}</span></div>
+                            <div className="flex justify-between border-b pb-2"><span className="font-semibold text-gray-500">Kho nguồn:</span><span className="font-medium text-gray-900">{warehouseMap.get(detailTransfer.source_warehouse_id) || `Kho #${detailTransfer.source_warehouse_id}`}</span></div>
+                            <div className="flex justify-between border-b pb-2"><span className="font-semibold text-gray-500">Kho đích:</span><span className="font-medium text-gray-900">{warehouseMap.get(detailTransfer.destination_warehouse_id) || `Kho #${detailTransfer.destination_warehouse_id}`}</span></div>
+                            <div className="flex justify-between border-b pb-2"><span className="font-semibold text-gray-500">Ghi chú:</span><span>{detailTransfer.note || '-'}</span></div>
+                            <div className="flex justify-between border-b pb-2"><span className="font-semibold text-gray-500">Ngày tạo:</span><span>{formatDate(detailTransfer.created_at)}</span></div>
+                        </div>
+                        <div className="flex justify-end gap-2 bg-gray-50 px-6 py-3">
+                            {(detailTransfer.status === "DRAFT" || detailTransfer.status === "PENDING") && (
+                                <button type="button" onClick={() => { const id = detailTransfer.id; setDetailTransfer(null); void handleConfirm(id); }} className="rounded-md bg-green-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-green-700">Xác nhận chuyển kho</button>
+                            )}
+                            {detailTransfer.status === "CONFIRMED" && (
+                                <button type="button" onClick={() => { const id = detailTransfer.id; setDetailTransfer(null); void handleReverse(id); }} className="rounded-md bg-red-600 px-4 py-1.5 text-xs font-medium text-white hover:bg-red-700">Đảo phiếu này</button>
+                            )}
+                            <button type="button" onClick={() => setDetailTransfer(null)} className="rounded-md border border-gray-300 px-4 py-1.5 text-xs font-medium text-gray-700 hover:bg-gray-100">Đóng</button>
+                        </div>
                     </div>
                 </div>
             )}

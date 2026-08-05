@@ -1,18 +1,26 @@
 ﻿# Attachments Feature
 
-## Route
+## Muc tieu nghiep vu
 
-`/attachments`
+Module `attachments` hien thi metadata cua file dinh kem duoc luu trong he thong (hoa don, chung tu scan, hinh anh). Day la man xem read-only, chuc nang upload/download thuc te phu thuoc vao storage strategy.
 
-## Mục đích
+## Doc code theo thu tu
 
-Xem metadata file đính kèm của chứng từ hoặc entity nghiệp vụ.
+1. `services/attachmentService.ts`: goi GET /attachments, map response sang AttachmentItem.
+2. `pages/AttachmentsPage.tsx`: hien thi bang danh sach, loc theo tu khoa, format kich thuoc file.
 
-## Luồng code
+## API su dung
 
-- `pages/AttachmentsPage.tsx`: bảng metadata file, link mở `file_url`.
-- `services/attachmentService.ts`: gọi `GET /attachments`.
+| Method | Path | Mo ta |
+|---|---|---|
+| GET | `/attachments` | Danh sach metadata file dinh kem |
 
-## Lưu ý
+## Thong tin hien thi
 
-- Backend chưa có upload/download storage thật, nên frontend không dựng nút upload giả.
+- Ten file goc, MIME type, kich thuoc (format bytes/KB/MB), nguoi tai len, ngay tai.
+- Lien ket tham chieu den entity: `reference_type` + `reference_id`.
+
+## Luu y
+
+- Attachments la read-only tren frontend, khong co nut upload.
+- reference_type co the la: `goods_receipt`, `goods_issue`, `stock_adjustment`, ...

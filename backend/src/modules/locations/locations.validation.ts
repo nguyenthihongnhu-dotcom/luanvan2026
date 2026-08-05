@@ -63,6 +63,7 @@ const updateZoneLayoutSchema = z.object({
   gridRow: z.coerce.number().int().min(0).max(200).nullable(),
   gridCol: z.coerce.number().int().min(0).max(200).nullable(),
   gridSize: z.coerce.number().int().positive().max(50).nullable(),
+  gridOrientation: z.enum(['HORIZONTAL', 'VERTICAL']).optional(),
 });
 
 const createShelfSchema = z.object({

@@ -225,12 +225,13 @@ export default function StockCountsPage() {
         {
             key: "actions",
             title: "Thao tác",
+            width: "200px",
             render: (_, record) => (
-                <div className="flex flex-wrap gap-2">
-                    <button type="button" onClick={() => void openItems(record)} className="text-xs font-medium text-blue-600 hover:text-blue-900">Chi tiết</button>
-                    {record.status === "DRAFT" && <button type="button" onClick={() => runCountAction(() => stockCountService.startStockCount(record.id))} className="text-xs font-medium text-green-700 hover:text-green-900">Bắt đầu</button>}
-                    {record.status === "IN_PROGRESS" && <button type="button" onClick={() => runCountAction(() => stockCountService.submitStockCount(record.id))} className="text-xs font-medium text-pink-600 hover:text-pink-900">Gửi duyệt</button>}
-                    {record.status === "SUBMITTED" && <button type="button" onClick={() => runCountAction(() => stockCountService.approveStockCount(record.id))} className="text-xs font-medium text-green-700 hover:text-green-900">Duyệt</button>}
+                <div className="flex flex-wrap gap-1">
+                    <button type="button" onClick={() => void openItems(record)} className="btn-action btn-blue">Chi tiết</button>
+                    {record.status === "DRAFT" && <button type="button" onClick={() => runCountAction(() => stockCountService.startStockCount(record.id))} className="btn-action btn-green">Bắt đầu</button>}
+                    {record.status === "IN_PROGRESS" && <button type="button" onClick={() => runCountAction(() => stockCountService.submitStockCount(record.id))} className="btn-action btn-pink">Gửi duyệt</button>}
+                    {record.status === "SUBMITTED" && <button type="button" onClick={() => runCountAction(() => stockCountService.approveStockCount(record.id))} className="btn-action btn-green">Duyệt</button>}
                 </div>
             ),
         },

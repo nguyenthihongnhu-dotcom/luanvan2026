@@ -27,6 +27,10 @@ export default function Partners() {
     const [editingPartner, setEditingPartner] = useState<Partner | null>(null);
     const [formData, setFormData] = useState(initialFormState);
 
+    /**
+     * Tải danh sách đối tác / nhà cung cấp từ backend.
+     * Cập nhật state `data`, `isLoading`, `error`.
+     */
     async function loadPartners() {
         try {
             setIsLoading(true);
@@ -56,12 +60,17 @@ export default function Partners() {
         return () => setExtraContent(null);
     }, [setExtraContent, type]);
 
+    /** Mở modal tạo mới đối tác — reset form về trạng thái rỗng. */
     const openCreateModal = () => {
         setEditingPartner(null);
         setFormData(initialFormState);
         setShowModal(true);
     };
 
+    /**
+     * Mở modal chỉnh sửa đối tác — điền sẵn thông tin của `partner` vào form.
+     * @param partner - Bản ghi đối tác cần sửa.
+     */
     const openEditModal = (partner: Partner) => {
         setEditingPartner(partner);
         setFormData({
@@ -73,6 +82,12 @@ export default function Partners() {
         setShowModal(true);
     };
 
+    /**
+     * Xử lý submit form tạo mới / cập nhật đối tác.
+     * - Nếu `editingPartner` tồn tại → gọi updatePartner.
+     * - Nếu không → gọi createPartner.
+     * Sau khi lưu xong: đóng modal, reset form, reload danh sách.
+     */
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
         if (editingPartner) {
@@ -86,6 +101,10 @@ export default function Partners() {
         await loadPartners();
     };
 
+    /**
+     * Xóa đối tác sau khi người dùng xác nhận qua dialog.
+     * @param id - Mã NCC (MaNCC) của đối tác cần xóa.
+     */
     const handleDelete = async (id: number) => {
         if (!window.confirm("Bạn có chắc muốn xóa đối tác này?")) return;
         await partnerService.deletePartner(id);
@@ -101,10 +120,11 @@ export default function Partners() {
         {
             key: "actions",
             title: "Thao tác",
+            width: "120px",
             render: (_, record) => (
-                <div className="flex gap-2">
-                    <button type="button" onClick={() => openEditModal(record)} className="font-medium text-blue-600 hover:text-blue-800">Sửa</button>
-                    <button type="button" onClick={() => handleDelete(record.MaNCC)} className="font-medium text-red-600 hover:text-red-800">Xóa</button>
+                <div className="flex gap-1">
+                    <button type="button" onClick={() => openEditModal(record)} className="btn-action btn-blue">Sửa</button>
+                    <button type="button" onClick={() => handleDelete(record.MaNCC)} className="btn-action btn-red">Xóa</button>
                 </div>
             )
         }

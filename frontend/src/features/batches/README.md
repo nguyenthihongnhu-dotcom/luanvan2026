@@ -1,26 +1,31 @@
-# Batches Feature
+﻿# Batches Feature
 
-## Mục đích
+## Muc tieu nghiep vu
 
-Feature `batches` hiển thị và lọc danh sách lô hàng từ backend. Đây là màn hỗ trợ vận hành quan trọng cho WMS mẹ & bé vì nhiều mặt hàng cần theo dõi hạn sử dụng.
+Module `batches` hien thi danh sach lo hang (product batch) duoc tao tu dong khi xac nhan phieu nhap. Moi lo gan voi 1 san pham, 1 nha cung cap va co han su dung (neu co). Day la man read-only.
 
-## Route
+## Doc code theo thu tu
 
-```http
-/batches
-```
+1. `services/batchService.ts`: goi GET /batches, map sang BatchItem.
+2. `pages/BatchesPage.tsx`: hien thi bang, filter theo tu khoa va han su dung.
 
-## API sử dụng
+## API su dung
 
-- `GET /batches`
-- `GET /batches?search=<lot_number>`
-- `GET /batches?status=ACTIVE|NEAR_EXPIRY|EXPIRED|BLOCKED|DEPLETED`
+| Method | Path | Mo ta |
+|---|---|---|
+| GET | `/batches` | Danh sach lo hang (filter: search, near_expiry) |
 
-## File quan trọng
+## Nguon goc lo hang
 
-- `services/batchService.ts`: type response và hàm gọi API `/batches`.
-- `pages/BatchesPage.tsx`: filter theo số lô/trạng thái, render badge trạng thái và số ngày còn hạn.
+- Lo hang duoc tao tu dong khi `POST /goods-receipts/:id/confirm`.
+- Moi lan confirm phieu nhap tao 1 lo rieng biet.
+- Khong the tao lo thu cong tu frontend.
 
-## Lưu ý
+## Nguyen tac FEFO
 
-Backend hiện chỉ có API list/filter cho lô hàng. UI này không tạo/sửa/xóa lô vì backend chưa có endpoint mutation tương ứng. Lô mới hiện được sinh qua nhập hàng hoặc seed database.
+Khi xuat hang, he thong uu tien lo nao gan het han nhat truoc (First Expired First Out). Lo hang la co so de FEFO hoat dong chinh xac.
+
+## Luu y
+
+- Han su dung co the null neu san pham khong co expiry.
+- Lo co so luong 0 van con trong DB de truy vet lich su.

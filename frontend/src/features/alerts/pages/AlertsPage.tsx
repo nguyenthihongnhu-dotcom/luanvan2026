@@ -17,11 +17,13 @@ const statusOptions: Array<{ value: AlertStatus | ""; label: string }> = [
     { value: "RESOLVED", label: "Đã xử lý" },
 ];
 
+/** Format ISO datetime hoặc null thành chuỗi ngày giờ vi-VN. Trả về "-" nếu value là null. */
 function formatDateTime(value: string | null): string {
     if (!value) return "-";
     return new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
+/** Chuyển mã loại cảnh báo (LOW_STOCK, NEAR_EXPIRY...) thành nhãn tiếng Việt hiển thị. */
 function alertTypeLabel(type: AlertType | string): string {
     const labels: Record<string, string> = {
         LOW_STOCK: "Tồn thấp",
@@ -37,6 +39,7 @@ function alertTypeLabel(type: AlertType | string): string {
     return labels[type] ?? type;
 }
 
+/** Chuyển mức độ (INFO / WARNING / CRITICAL) thành nhãn tiếng Việt. */
 function severityLabel(severity: AlertSeverity): string {
     const labels: Record<AlertSeverity, string> = {
         INFO: "Thông tin",
@@ -46,6 +49,7 @@ function severityLabel(severity: AlertSeverity): string {
     return labels[severity] ?? severity;
 }
 
+/** Trả về Tailwind CSS classes phù hợp với mức độ cảnh báo (để render badge màu). */
 function severityClass(severity: AlertSeverity): string {
     const classes: Record<AlertSeverity, string> = {
         INFO: "border-blue-200 bg-blue-50 text-blue-700",
@@ -55,6 +59,7 @@ function severityClass(severity: AlertSeverity): string {
     return classes[severity] ?? "border-gray-200 bg-gray-50 text-gray-700";
 }
 
+/** Chuyển mã trạng thái (OPEN / READ / RESOLVED) thành nhãn tiếng Việt. */
 function statusLabel(status: AlertStatus): string {
     const labels: Record<AlertStatus, string> = {
         OPEN: "Đang mở",
@@ -64,6 +69,7 @@ function statusLabel(status: AlertStatus): string {
     return labels[status] ?? status;
 }
 
+/** Trả về CSS classes phù hợp với trạng thái cảnh báo (để render badge màu). */
 function statusClass(status: AlertStatus): string {
     const classes: Record<AlertStatus, string> = {
         OPEN: "border-pink-200 bg-pink-50 text-pink-700",
@@ -87,6 +93,12 @@ export default function AlertsPage() {
     const [message, setMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
+    /**
+     * Tải dữ liệu cảnh báo, thông báo, vị trí kho, tồn kho và user song song.
+     * - `warehouseMap`, `variantMap`, `userMap` phụ thuộc vào dữ liệu này để render tên thay cho ID.
+     * @param nextSearch - Từ khóa tìm kiếm (mặc định lấy từ searchTerm hiện tại).
+     * @param nextStatus - Lọc theo trạng thái cảnh báo (mặc định lấy từ statusFilter hiện tại).
+     */
     async function loadData(nextSearch = searchTerm, nextStatus = statusFilter) {
         setIsLoading(true);
         setError(null);
@@ -114,6 +126,11 @@ export default function AlertsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     useEffect(() => { void loadData("", "OPEN"); }, []);
 
+    /**
+     * Map warehouseId → “Code - Tên kho”.
+     * Nguồn dữ liệu: `locations` và `stockItems` để bảo đảm cover cả kho chưa có tồn.
+     * Memo hóa theo `locations` và `stockItems`.
+     */
     const warehouseMap = useMemo(() => {
         const map = new Map<number, string>();
         for (const loc of locations) {
@@ -129,6 +146,10 @@ export default function AlertsPage() {
         return map;
     }, [locations, stockItems]);
 
+    /**
+     * Map productVariantId → “SKU - Tên sản phẩm (variant)”.
+     * Memo hóa theo `stockItems`.
+     */
     const variantMap = useMemo(() => {
         const map = new Map<number, string>();
         for (const stock of stockItems) {
@@ -140,6 +161,10 @@ export default function AlertsPage() {
         return map;
     }, [stockItems]);
 
+    /**
+     * Map userId → “Họ Tên (MãNV)” để hiển thị người nhận thông báo.
+     * Memo hóa theo `users`.
+     */
     const userMap = useMemo(() => {
         const map = new Map<number, string>();
         for (const u of users) {
@@ -150,6 +175,12 @@ export default function AlertsPage() {
         return map;
     }, [users]);
 
+    /**
+     * Wrapper thực thi một async action với trạng thái loading/error/message.
+     * Reload lại dữ liệu sau khi thành công.
+     * @param action - Hàm async cần chạy.
+     * @param successMessage - Thông báo hiển thị khi thành công.
+     */
     async function runAction(action: () => Promise<void>, successMessage: string) {
         setIsGenerating(true);
         setError(null);
@@ -166,6 +197,10 @@ export default function AlertsPage() {
         }
     }
 
+    /**
+     * Kích hoạt thủ công việc quét và sinh cảnh báo tồn kho (LOW_STOCK, NEAR_EXPIRY, ...).
+     * Yêu cầu quyền `alerts:generate`.
+     */
     async function handleGenerateAlerts() {
         await runAction(async () => {
             const result = await alertService.generateAlerts();
@@ -173,6 +208,10 @@ export default function AlertsPage() {
         }, "Đã sinh cảnh báo.");
     }
 
+    /**
+     * Kích hoạt thủ công việc sinh thông báo gửi đến người dùng.
+     * Yêu cầu quyền `notifications:generate`.
+     */
     async function handleGenerateNotifications() {
         await runAction(async () => {
             const result = await alertService.generateNotifications();
@@ -205,10 +244,10 @@ export default function AlertsPage() {
         { key: "warehouse_id", title: "Kho", render: (value) => value ? (warehouseMap.get(Number(value)) || `Kho #${String(value)}`) : "-" },
         { key: "product_variant_id", title: "Sản phẩm / Variant", render: (value) => value ? (variantMap.get(Number(value)) || `SKU #${String(value)}`) : "-" },
         { key: "created_at", title: "Thời gian", render: (value) => formatDateTime(value as string) },
-        { key: "actions", title: "Thao tác", render: (_, record) => (
-            <div className="flex flex-wrap gap-2">
-                {record.status === "OPEN" && <button type="button" onClick={() => void runAction(() => alertService.markAlertRead(record.id), "Đã đánh dấu cảnh báo là đã đọc.")} className="text-xs font-medium text-blue-600 hover:text-blue-900">Đã đọc</button>}
-                {record.status !== "RESOLVED" && <button type="button" onClick={() => void runAction(() => alertService.resolveAlert(record.id), "Đã xử lý cảnh báo.")} className="text-xs font-medium text-green-700 hover:text-green-900">Xử lý</button>}
+        { key: "actions", title: "Thao tác", width: "140px", render: (_, record) => (
+            <div className="flex flex-wrap gap-1">
+                {record.status === "OPEN" && <button type="button" onClick={() => void runAction(() => alertService.markAlertRead(record.id), "Đã đánh dấu cảnh báo là đã đọc.")} className="btn-action btn-blue">Đã đọc</button>}
+                {record.status !== "RESOLVED" && <button type="button" onClick={() => void runAction(() => alertService.resolveAlert(record.id), "Đã xử lý cảnh báo.")} className="btn-action btn-green">Xử lý</button>}
             </div>
         ) },
     ];
@@ -225,9 +264,9 @@ export default function AlertsPage() {
         { key: "is_read", title: "Trạng thái", render: (value) => value ? "Đã đọc" : "Chưa đọc" },
         { key: "reference_id", title: "Tham chiếu", render: (_, record) => record.reference_type ? `${record.reference_type} #${record.reference_id ?? ""}` : "-" },
         { key: "created_at", title: "Thời gian", render: (value) => formatDateTime(value as string) },
-        { key: "actions", title: "Thao tác", render: (_, record) => (
-            <div className="flex flex-wrap gap-2">
-                {!record.is_read && <button type="button" onClick={() => void runAction(() => alertService.markNotificationRead(record.id), "Đã đánh dấu thông báo là đã đọc.")} className="text-xs font-medium text-blue-600 hover:text-blue-900">Đã đọc</button>}
+        { key: "actions", title: "Thao tác", width: "120px", render: (_, record) => (
+            <div className="flex flex-wrap gap-1">
+                {!record.is_read && <button type="button" onClick={() => void runAction(() => alertService.markNotificationRead(record.id), "Đã đánh dấu thông báo là đã đọc.")} className="btn-action btn-blue">Đã đọc</button>}
             </div>
         ) },
     ];

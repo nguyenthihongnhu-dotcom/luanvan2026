@@ -162,7 +162,12 @@ export function useWarehouse() {
 
     const handleSaveZoneLayout = async (
         zoneId: number,
-        layout: { gridRow: number | null; gridCol: number | null; gridSize: number | null },
+        layout: {
+            gridRow: number | null;
+            gridCol: number | null;
+            gridSize: number | null;
+            gridOrientation?: 'HORIZONTAL' | 'VERTICAL';
+        },
     ) => {
         await runMutation(
             () => warehouseService.updateZoneLayout(zoneId, layout),

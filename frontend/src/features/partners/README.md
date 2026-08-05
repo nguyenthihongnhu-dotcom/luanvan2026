@@ -1,44 +1,31 @@
-# Partners Feature
+﻿# Partners Feature
 
-## Mục tiêu
+## Muc tieu nghiep vu
 
-Feature `partners` quản lý Đối tác/Nhà cung cấp. Hiện frontend map đối tác sang supplier backend.
+Module `partners` quan ly danh sach nha cung cap (NCC) / doi tac. NCC duoc tham chieu khi tao phieu nhap hang. Day la master data quan trong de tao chung tu.
 
-## Đọc code theo thứ tự
+## Doc code theo thu tu
 
-1. `pages/PartnersPage.tsx`: page list, filter, modal thêm, xóa.
-2. `services/partnerService.ts`: map supplier backend sang Partner UI model.
+1. `services/partnerService.ts`: goi CRUD /suppliers; map SupplierRow sang Partner UI model.
+2. `pages/PartnersPage.tsx`: trang chinh voi bang + modal them/sua.
+   - `loadPartners()`: tai danh sach doi tac.
+   - `openCreateModal()`: reset form, mo modal tao moi.
+   - `openEditModal(partner)`: dien san form, mo modal sua.
+   - `handleSubmit()`: tao moi hoac cap nhat doi tac.
+   - `handleDelete(id)`: xoa doi tac sau xac nhan.
+   - Sidebar: chon loc NCC / KH.
 
-## Backend API
+## API su dung
 
-| Action | API |
-| --- | --- |
-| List | `GET /suppliers` |
-| Create | `POST /suppliers` |
-| Update | `PUT /suppliers/:id` |
-| Delete | `DELETE /suppliers/:id` |
+| Method | Path | Mo ta |
+|---|---|---|
+| GET | `/suppliers` | Danh sach nha cung cap |
+| POST | `/suppliers` | Tao nha cung cap moi |
+| PUT | `/suppliers/:id` | Cap nhat thong tin |
+| DELETE | `/suppliers/:id` | Xoa nha cung cap |
 
-## Luồng list
+## Luu y
 
-```text
-PartnersPage
-  -> partnerService.listPartners
-  -> GET /suppliers
-  -> map SupplierRow
-      id -> MaNCC
-      name -> TenNCC
-      contact_name -> NguoiLienHe
-      phone/email -> SoDienThoai/Email
-      type -> NCC
-```
-
-## Lưu ý hiện tại
-
-- UI có filter `NCC/KH`, nhưng backend hiện là suppliers nên data trả về đang là `NCC`.
-- Nếu muốn khách hàng thật, nên thêm backend module/API riêng thay vì nhét vào suppliers.
-
-## Khi sửa feature này
-
-- Không dùng `window.prompt`; dùng form/modal có validation.
-- Sau create/delete/update phải reload list từ backend.
-- Nếu thêm sửa partner, dùng sẵn `partnerService.updatePartner`.
+- Khong the xoa NCC dang duoc tham chieu boi phieu nhap hang (backend tra loi 409).
+- Ma NCC (MaNCC) dung tra cuu nhanh khi tao phieu nhap.
+- Type filter (NCC / KH) loc o frontend, khong gui len backend.

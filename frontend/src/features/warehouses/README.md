@@ -1,19 +1,20 @@
 ﻿# Warehouses Feature
 
-## Route
+## Muc tieu nghiep vu
 
-`/warehouses`
+Module `warehouses` quan ly danh sach kho (Warehouse Master Data). La cap cao nhat trong phan cap vi tri kho.
 
-## Mục đích
+## Doc code theo thu tu
 
-Quản lý kho master dùng bởi sơ đồ kho, tồn kho, chứng từ nhập/xuất/chuyển và kiểm kê.
+1. `services/warehouseService.ts`: CRUD danh sach kho (`/warehouses`).
+2. `pages/WarehousesPage.tsx`: hien thi danh sach kho va modal tao/sua kho.
 
-## Luồng code
+## API su dung
 
-- `pages/WarehousesPage.tsx`: list/filter, modal thêm/sửa, xoá mềm.
-- `services/warehouseService.ts`: gọi `/warehouses`, `POST /warehouses`, `PUT /warehouses/:id`, `DELETE /warehouses/:id`.
+| Method | Path | Mo ta | Permission |
+|---|---|---|---|
+| GET | `/warehouses` | Lay danh sach kho | - |
+| POST | `/warehouses` | Tao kho moi | `warehouses:create` |
+| PUT | `/warehouses/:id` | Cap nhat thong tin kho | `warehouses:update` |
+| DELETE | `/warehouses/:id` | Xoa kho | `warehouses:delete` |
 
-## Lưu ý
-
-- Delete là xoá mềm ở backend để không phá dữ liệu vị trí/tồn đang tham chiếu warehouse.
-- Các dropdown kho trong feature khác dùng chung `warehouseService.listWarehouses()`.

@@ -1,52 +1,41 @@
-# Auth Feature
+﻿# Auth Feature
 
-## Mục tiêu
+## Muc tieu nghiep vu
 
-Feature `auth` xử lý đăng nhập, auth state trong React và modal đăng ký.
+Module `auth` quan ly xac thuc nguoi dung: dang nhap, dang ky, luu token, cap quyen truy cap component theo role. Day la foundation ma tat ca cac man hinh khac phu thuoc.
 
-## Đọc code theo thứ tự
+## Doc code theo thu tu
 
-1. `pages/LoginPage.tsx`: UI đăng nhập và mở register modal.
-2. `services/authService.ts`: gọi backend `/auth/login`, lưu access token.
-3. `context/AuthProvider.tsx`: giữ user/auth state.
-4. `context/useAuth.ts`: hook dùng auth context.
-5. `components/RegisterModal.tsx`: UI đăng ký.
-6. `types.ts`: type `AuthResponse`, `LoginCredentials`, `RegisterPayload`.
+1. `types.ts`: dinh nghia `AuthUser`, `AuthState`, `AuthContextType`.
+2. `services/authService.ts`: goi POST /auth/login, POST /auth/register; luu/xoa token sessionStorage.
+3. `AuthContext.ts`: React Context khai bao AuthContextType.
+4. `AuthProvider.tsx`: cung cap auth state, hydrate tu sessionStorage khi mount.
+   - `login()`: goi authService.login, set user vao state.
+   - `logout()`: xoa token khoi sessionStorage, reset state.
+5. `hooks/useAuth.ts`: consume AuthContext.
+6. `pages/LoginPage.tsx`: form dang nhap, goi useAuth().login.
+7. `components/RegisterModal.tsx`: modal dang ky, goi authService.register.
 
-## Luồng login
+## Luu y quan trong
 
-```text
-LoginPage submit
-  -> authService.login({ username, password })
-  -> POST /auth/login với email/password
-  -> mapBackendAuth
-      -> setAccessToken(accessToken) vào sessionStorage
-      -> map user backend sang shape frontend
-  -> AuthProvider.login(result)
-  -> redirect/dashboard UI dùng user
+- Token luu trong `sessionStorage` (khong phai localStorage) -- dong tab la het phien.
+- `/auth/register` luon tao role STAFF; admin dung `/auth/users` de tao role khac.
+- Sau khi duoc cap them quyen, user phai dang xuat va dang nhap lai de token cap nhat.
+- Rate limit: 10 lan sai/15 phut theo IP + email.
+
+## Luong dang nhap
+
+```
+LoginPage.handleSubmit
+  -> useAuth().login(email, password)
+  -> authService.login()
+  -> POST /auth/login
+  -> luu token vao sessionStorage
+  -> set AuthContext.user
+  -> redirect sang /products
 ```
 
-## Backend API
+## Du lieu phu thuoc
 
-| Action | API | Ghi chú |
-| --- | --- | --- |
-| Login | `POST /auth/login` | Đã nối backend |
-| Register | `POST /auth/register` | Backend có endpoint, nhưng `authService.register` hiện chưa gọi API thật trong code hiện tại |
-| Users | `GET /auth/users` | Dùng ở feature staff |
-
-## Token storage
-
-Access token được lưu bằng `sessionStorage` trong `shared/services/httpClient.ts`:
-
-```text
-bambi_wms_access_token
-```
-
-`httpClient` tự gắn header `Authorization: Bearer <token>` nếu token tồn tại.
-
-## Khi sửa feature này
-
-- Không lưu password/token vào log.
-- Nếu nối register thật, sửa `authService.register`, không sửa trực tiếp `RegisterModal` để gọi `fetch`.
-- Nếu đổi shape user backend, cập nhật mapper `mapBackendAuth` và type trong `types.ts`.
-- Nếu thêm refresh token tự động, làm ở `httpClient` hoặc auth service, không rải trong từng feature.
+- `sessionStorage["auth_token"]`: JWT access token.
+- `sessionStorage["auth_user"]`: JSON serialized user object.

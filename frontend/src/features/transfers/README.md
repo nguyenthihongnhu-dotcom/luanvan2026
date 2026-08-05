@@ -1,35 +1,20 @@
-# Transfers Feature
+﻿# Stock Transfers Feature
 
-## Mục tiêu
+## Muc tieu nghiep vu
 
-Feature `transfers` là màn chuyển kho thật, nối với backend `stock-transfers`, `stock/current` và `locations`.
+Module `transfers` quan ly phieu chuyen kho/chuyen vi tri noi bo giua cac vi tri hoac giua cac kho.
 
-## Route
+## Doc code theo thu tu
 
-```text
-/transfers
-```
+1. `services/transferService.ts`: quan ly API chuyen kho (`/stock-transfers`).
+2. `pages/TransfersPage.tsx`: danh sach phieu chuyen kho, modal tao phieu, chi tiet va cac thao tac Xac nhan / Dao phieu.
 
-## Luồng chính
+## API su dung
 
-```text
-TransfersPage
-  -> transferService.listTransfers()
-  -> transferService.listCurrentStock()
-  -> transferService.listLocationOptions()
-  -> tạo phiếu bằng POST /stock-transfers
-  -> xác nhận bằng POST /stock-transfers/:id/confirm
-  -> đảo phiếu bằng POST /stock-transfers/:id/reverse
-```
+| Method | Path | Mo ta | Permission |
+|---|---|---|---|
+| GET | `/stock-transfers` | Danh sach phieu chuyen kho | - |
+| POST | `/stock-transfers` | Tao phieu chuyen kho (DRAFT) | - |
+| POST | `/stock-transfers/:id/confirm` | Xac nhan chuyen kho (Tru kho nguon, tang kho dich) | `stock_transfers:confirm` |
+| POST | `/stock-transfers/:id/reverse` | Dao phieu chuyen kho (Hoan lai ton kho) | `stock_transfers:reverse` |
 
-## Nguyên tắc dữ liệu
-
-- Không dùng mock/local fallback.
-- Nguồn chuyển lấy từ tồn khả dụng `GET /stock/current`.
-- Vị trí đích lấy từ `GET /locations` và không cho chọn trùng vị trí nguồn.
-- Sau create/confirm/reverse phải reload từ backend để tránh lệch tồn kho.
-
-## Giới hạn hiện tại
-
-- Form tạo một dòng hàng mỗi phiếu để giữ flow rõ và ổn định.
-- Backend đã có confirm/reverse; create được bổ sung để frontend tạo phiếu thật.

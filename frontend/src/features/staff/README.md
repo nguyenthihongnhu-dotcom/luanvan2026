@@ -1,35 +1,23 @@
-# Staff Feature
+﻿# Staff & User Management Feature
 
-## Mục tiêu
+## Muc tieu nghiep vu
 
-Feature `staff` hiển thị danh sách nhân viên/user từ backend auth module.
+Module `staff` quan ly danh sach tai khoan nhan vien trong he thong, phan vai tro (ADMIN, WAREHOUSE_MANAGER, STAFF, AUDITOR) va trang thai hoat dong.
 
-## Đọc code theo thứ tự
+## Doc code theo thu tu
 
-1. `pages/EmployeesPage.tsx`: table nhân viên.
-2. `services/userService.ts`: gọi `/auth/users` và map role/status sang UI model.
+1. `services/userService.ts`: quan ly CRUD nguoi dung qua API `/auth/users`.
+2. `pages/EmployeesPage.tsx`: bang danh sach nhan vien, filter vai tro, modal tao/sua/xoa nhan vien.
 
-## Backend API
+## API su dung
 
-| Action | API |
-| --- | --- |
-| List users | `GET /auth/users` |
-| Register user | Backend có `POST /auth/register`, nhưng feature staff hiện chưa có UI tạo user riêng |
+| Method | Path | Mo ta | Permission |
+|---|---|---|---|
+| GET | `/auth/users` | Danh sach nhan vien | `users:read` |
+| POST | `/auth/users` | Tao nhan vien moi | `users:create` |
+| PUT | `/auth/users/:id` | Cap nhat thong tin & vai tro | `users:update` |
+| DELETE | `/auth/users/:id` | Xoa/Khoa tai khoan | `users:delete` |
 
-## Luồng list
+## Luu y
 
-```text
-EmployeesPage
-  -> userService.listUsers
-  -> GET /auth/users
-  -> map UserRow sang User
-      role_code -> VaiTro tiếng Việt
-      status ACTIVE -> HoatDong
-      status khác -> TamKhoa
-```
-
-## Khi sửa feature này
-
-- Nếu thêm tạo nhân viên, cân nhắc dùng `/auth/register` hoặc endpoint staff riêng tùy nghiệp vụ.
-- Role/status backend là enum tiếng Anh, UI phải map sang tiếng Việt.
-- Nếu thêm filter/search, ưu tiên backend query khi data lớn.
+- Tai khoan duoc tao tu day co the chi dinh vai tro (ADMIN, MANAGER...), khac voi dang ky cong khai o man Login luon mac dinh la STAFF.

@@ -90,7 +90,7 @@ File trên đã gồm đủ lược đồ, dữ liệu khởi tạo (vai trò, q
 
 ```bash
 cd backend
-node scripts/run-migration.mjs warehouse_management_mysql.sql
+node scripts/run-sql.mjs warehouse_management_mysql.sql
 ```
 
 ## Chạy bằng Docker Compose

@@ -45,3 +45,85 @@ body {
 .table-row-hover:hover {
   background-color: #f8fafc;
 }
+
+/* ===== Action Button Utilities ===== */
+.btn-action {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  border-radius: 2px;
+  border-width: 1px;
+  border-style: solid;
+  transition: background-color 0.15s, border-color 0.15s;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.btn-action:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn-pink {
+  background-color: #fdf2f8;
+  color: #be185d;
+  border-color: #fbcfe8;
+}
+.btn-pink:hover:not(:disabled) {
+  background-color: #fce7f3;
+  border-color: #f9a8d4;
+}
+.btn-green {
+  background-color: #f0fdf4;
+  color: #15803d;
+  border-color: #bbf7d0;
+}
+.btn-green:hover:not(:disabled) {
+  background-color: #dcfce7;
+  border-color: #86efac;
+}
+.btn-red {
+  background-color: #fff1f2;
+  color: #b91c1c;
+  border-color: #fecaca;
+}
+.btn-red:hover:not(:disabled) {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+}
+.btn-blue {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border-color: #bfdbfe;
+}
+.btn-blue:hover:not(:disabled) {
+  background-color: #dbeafe;
+  border-color: #93c5fd;
+}
+.btn-gray {
+  background-color: #f8fafc;
+  color: #374151;
+  border-color: #e2e8f0;
+}
+.btn-gray:hover:not(:disabled) {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+}
+.btn-indigo {
+  background-color: #eef2ff;
+  color: #4338ca;
+  border-color: #c7d2fe;
+}
+.btn-indigo:hover:not(:disabled) {
+  background-color: #e0e7ff;
+  border-color: #a5b4fc;
+}
+.btn-yellow {
+  background-color: #fefce8;
+  color: #a16207;
+  border-color: #fde68a;
+}
+.btn-yellow:hover:not(:disabled) {
+  background-color: #fef9c3;
+  border-color: #fcd34d;
+}

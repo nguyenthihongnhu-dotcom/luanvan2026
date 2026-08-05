@@ -48,7 +48,7 @@ mysql -u root -p warehouse_management < warehouse_management_mysql.sql
 Nếu máy không có `mysql` trong PATH, chạy bằng driver `mysql2` của backend:
 
 ```bash
-node scripts/run-migration.mjs warehouse_management_mysql.sql
+node scripts/run-sql.mjs warehouse_management_mysql.sql
 ```
 
 Kiểm tra tính toàn vẹn của dữ liệu mẫu (nạp vào một CSDL nháp riêng, không đụng CSDL đang dùng):

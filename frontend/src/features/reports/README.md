@@ -1,18 +1,23 @@
 ﻿# Reports Feature
 
-## Route
+## Muc tieu nghiep vu
 
-`/reports`
+Module `reports` cung cap cac bao cao tong hop: Ton kho theo vi tri, hang sap het han (near-expiry), va lich su xuat nhap ton theo thoi gian.
 
-## Mục đích
+## Doc code theo thu tu
 
-Dashboard báo cáo riêng cho tồn kho, lô gần hết hạn, biến động tồn và transaction report.
+1. `services/reportService.ts`: goi cac endpoint bao cao tu backend.
+2. `pages/ReportsPage.tsx`: hien thi dashboard bao cao voi bieu do va bang du lieu.
 
-## Luồng code
+## API su dung
 
-- `pages/ReportsPage.tsx`: tab report, filter chung, bảng động theo key backend trả về.
-- `services/reportService.ts`: gọi `/reports/product-stock`, `/reports/near-expiry`, `/reports/inventory-movements`, `/reports/inventory-transactions`.
+| Method | Path | Mo ta |
+|---|---|---|
+| GET | `/reports/product-stock` | Báo cáo tồn kho tổng hợp |
+| GET | `/reports/near-expiry` | Báo cáo sản phẩm cận hạn sử dụng |
+| GET | `/reports/stock-movement` | Báo cáo biến động nhập xuất tồn |
 
-## Lưu ý
+## Luu y
 
-- Không hardcode mock dữ liệu. Nếu report trống thì hiển thị empty state của table.
+- Du lieu bao cao la Read-only.
+- Du lieu phan tich dua tren `inventory_transactions` va views ton kho hien tai.

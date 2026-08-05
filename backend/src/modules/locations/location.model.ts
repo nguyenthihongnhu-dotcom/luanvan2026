@@ -113,6 +113,8 @@ export type CreateZoneResult = {
   createdLocationCount: number;
 };
 
+export type ZoneGridOrientation = 'HORIZONTAL' | 'VERTICAL';
+
 export type ZoneRow = RowDataPacket & {
   id: number;
   warehouse_id: number;
@@ -123,6 +125,7 @@ export type ZoneRow = RowDataPacket & {
   grid_row: number | null;
   grid_col: number | null;
   grid_size: number | null;
+  grid_orientation: ZoneGridOrientation;
   shelf_count: number;
   location_count: number;
 };
@@ -136,6 +139,7 @@ export type UpdateZoneLayoutInput = {
   gridRow: number | null;
   gridCol: number | null;
   gridSize: number | null;
+  gridOrientation?: ZoneGridOrientation;
 };
 
 export type ReorderShelvesInput = {

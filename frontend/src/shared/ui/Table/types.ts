@@ -4,6 +4,8 @@ export interface ColumnProps<T = unknown> {
     key: keyof T | string;
     title: string;
     className?: string;
+    /** Fixed column width, e.g. '140px'. Prevents layout shift for action columns. */
+    width?: string;
     render?: (value: unknown, record: T, index: number) => ReactNode;
 }
 

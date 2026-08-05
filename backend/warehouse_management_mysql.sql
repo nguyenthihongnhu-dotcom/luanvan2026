@@ -147,6 +147,8 @@ CREATE TABLE warehouse_zones (
     grid_row INT NULL,
     grid_col INT NULL,
     grid_size INT UNSIGNED NULL,
+    -- Hướng xếp kệ của riêng khu này trên mặt bằng.
+    grid_orientation ENUM('HORIZONTAL','VERTICAL') NOT NULL DEFAULT 'HORIZONTAL',
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
         ON UPDATE CURRENT_TIMESTAMP(3),

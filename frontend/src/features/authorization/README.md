@@ -1,18 +1,26 @@
 ﻿# Authorization Feature
 
-## Route
+## Muc tieu nghiep vu
 
-`/authorization`
+Module `authorization` cho phep ADMIN xem va cau hinh quyen (permission) cho tung vai tro (role). Thay doi quyen co hieu luc ngay o lan dang nhap tiep theo cua nhan vien.
 
-## Mục đích
+## Doc code theo thu tu
 
-Xem role và danh sách permission backend đang gán cho từng role.
+1. `services/authorizationService.ts`: goi GET /authorization, GET /authorization/permissions, PUT /authorization/roles/:id/permissions.
+2. `pages/AuthorizationPage.tsx`: hien thi danh sach role, danh sach permission, tick/untick permission cho tung role.
+   - `loadData()`: tai song song roles va permissions.
+   - `handleSave()`: PUT /authorization/roles/:id/permissions voi danh sach permission ID moi.
 
-## Luồng code
+## API su dung
 
-- `pages/AuthorizationPage.tsx`: bảng role/permission, filter search.
-- `services/authorizationService.ts`: gọi `GET /authorization`.
+| Method | Path | Mo ta | Permission |
+|---|---|---|---|
+| GET | `/authorization` | Danh sach role va permission hien tai | `authorization:read` |
+| GET | `/authorization/permissions` | Tat ca permission trong he thong | `authorization:read` |
+| PUT | `/authorization/roles/:id/permissions` | Cap nhat permission cho role | `authorization:update` |
 
-## Lưu ý
+## Luu y
 
-- Hiện là màn đọc. Backend chưa có endpoint gán/bỏ permission qua UI.
+- Thay doi quyen khong co hieu luc ngay cho token hien tai -- user can dang xuat/dang nhap lai.
+- Chi ADMIN moi nen co quyen `authorization:update`.
+- Khong nen xoa quyen cua ADMIN khoi role ADMIN.

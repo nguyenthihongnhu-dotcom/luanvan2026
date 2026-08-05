@@ -101,6 +101,8 @@ export async function syncLocationMatrix(input: { zoneCode: string; warehouseId:
     return unwrapData(response);
 }
 
+export type ZoneOrientation = 'HORIZONTAL' | 'VERTICAL';
+
 export interface WarehouseZone {
     id: number;
     warehouseId: number;
@@ -111,8 +113,14 @@ export interface WarehouseZone {
     gridRow: number | null;
     gridCol: number | null;
     gridSize: number | null;
+    /** Hướng xếp kệ riêng của khu này, không phải chế độ xem chung của mặt bằng. */
+    gridOrientation: ZoneOrientation;
     shelfCount: number;
     locationCount: number;
+    /** Số vị trí đang có hàng (quantity > 0). */
+    occupiedCount: number;
+    /** Số vị trí đã đánh dấu trạng thái FULL. */
+    fullCount: number;
 }
 
 type BackendZone = {
@@ -125,8 +133,11 @@ type BackendZone = {
     grid_row: number | null;
     grid_col: number | null;
     grid_size: number | null;
+    grid_orientation: ZoneOrientation | null;
     shelf_count: number | string;
     location_count: number | string;
+    occupied_count?: number | string;
+    full_count?: number | string;
 };
 
 /** Đọc khu trực tiếp từ bảng warehouse_zones nên khu chưa có kệ nào vẫn hiện ra. */
@@ -142,8 +153,11 @@ export async function listZones(warehouseId: number): Promise<WarehouseZone[]> {
         gridRow: row.grid_row,
         gridCol: row.grid_col,
         gridSize: row.grid_size,
+        gridOrientation: row.grid_orientation ?? 'HORIZONTAL',
         shelfCount: Number(row.shelf_count ?? 0),
         locationCount: Number(row.location_count ?? 0),
+        occupiedCount: Number(row.occupied_count ?? 0),
+        fullCount: Number(row.full_count ?? 0),
     }));
 }
 
@@ -162,7 +176,13 @@ export async function createZone(input: {
 
 export async function updateZoneLayout(
     zoneId: number,
-    layout: { gridRow: number | null; gridCol: number | null; gridSize: number | null },
+    layout: {
+        gridRow: number | null;
+        gridCol: number | null;
+        gridSize: number | null;
+        /** Bỏ trống thì backend giữ nguyên hướng đang lưu. */
+        gridOrientation?: ZoneOrientation;
+    },
 ): Promise<void> {
     await httpClient.put(`/locations/zones/${zoneId}/layout`, layout);
 }

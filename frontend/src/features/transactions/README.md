@@ -1,46 +1,26 @@
-# Transactions Feature
+﻿# Transactions Feature
 
-## Mục tiêu
+## Muc tieu nghiep vu
 
-Feature `transactions` hiển thị lịch sử giao dịch kho và tạo header giao dịch nhập/xuất/điều chỉnh.
+Module `transactions` la trung tam quan ly cac chung tu kho bao gom: Phieu nhap (Goods Receipts), Phieu xuat (Goods Issues), va Phieu dieu chinh (Stock Adjustments).
 
-## Đọc code theo thứ tự
+## Doc code theo thu tu
 
-1. `pages/TransactionsPage.tsx`: table, filter loại giao dịch, labels tiếng Việt.
-2. `hooks/useTransactions.ts`: state list/modal/detail/form, load/create transaction.
-3. `services/transactionService.ts`: gọi nhiều endpoint backend và merge thành một list.
-4. `components/TransactionModal.tsx`: form tạo giao dịch.
-5. `components/TransactionDetailModal.tsx`: modal chi tiết.
+1. `services/transactionService.ts`: goi API CRUD va confirm/reverse/approve cho 3 loai phieu.
+2. `hooks/useTransactions.ts`: hook tong hop danh sach giao dich tu nhap/xuat/dieu chinh.
+3. `pages/TransactionsPage.tsx`: bang tong hop tat ca phieu kho, bo loc theo loai/trang thai/ngay, va xuat CSV.
+4. `pages/TransactionDetailPage.tsx`: xem chi tiet va thao tac tren 1 phieu kho.
+5. `components/TransactionModal.tsx`: modal tao phieu nhap/xuat/dieu chinh moi.
+6. `components/TransactionDetailModal.tsx`: modal xem nhanh chi tiet va xac nhan/dao phieu.
 
-## Backend API
+## API su dung
 
-| Loại | List API | Create API |
-| --- | --- | --- |
-| Nhập kho | `GET /goods-receipts` | `POST /goods-receipts` |
-| Xuất kho | `GET /goods-issues` | `POST /goods-issues` |
-| Điều chỉnh | `GET /stock-adjustments` | `POST /stock-adjustments` |
+| Method | Path | Mo ta | Permission |
+|---|---|---|---|
+| GET/POST | `/goods-receipts` | Quan ly phieu nhap | `goods_receipts:confirm` |
+| POST | `/goods-receipts/:id/confirm` | Xac nhan nhap kho | `goods_receipts:confirm` |
+| POST | `/goods-receipts/:id/reverse` | Dao phieu nhap | `goods_receipts:reverse` |
+| GET/POST | `/goods-issues` | Quan ly phieu xuat | `goods_issues:confirm` |
+| POST | `/goods-issues/:id/confirm` | Xac nhan xuat kho | `goods_issues:confirm` |
+| GET/POST | `/stock-adjustments` | Quan ly phieu dieu chinh | `stock_adjustments:approve` |
 
-## Luồng list giao dịch
-
-```text
-TransactionsPage
-  -> useTransactions
-  -> transactionService.listTransactions
-      -> Promise.all GET receipts/issues/adjustments
-      -> map mỗi row sang Transaction
-      -> loai = NHAP/XUAT/DIEU_CHINH
-      -> sort theo ngày giảm dần
-  -> page map loai/status sang tiếng Việt
-```
-
-## Lưu ý hiện tại
-
-- Create hiện mới tạo header phiếu, chưa tạo item chi tiết đầy đủ cho confirm.
-- Confirm/reverse/approve là nghiệp vụ backend protected, frontend chưa có button flow đầy đủ.
-- Không còn fallback mock; backend lỗi thì hook set error.
-
-## Khi sửa feature này
-
-- Nếu thêm confirm/approve UI, phải login user có permission và gọi endpoint protected.
-- Nếu thêm item chi tiết, cần backend item API hoặc mở rộng create payload.
-- Không hiển thị `NHAP`, `XUAT`, `DIEU_CHINH` raw; luôn map sang `Nhập kho`, `Xuất kho`, `Điều chỉnh`.

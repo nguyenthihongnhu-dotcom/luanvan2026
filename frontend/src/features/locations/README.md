@@ -1,51 +1,43 @@
-# Locations Feature
+﻿# Locations Feature
 
-## Mục tiêu
+## Muc tieu nghiep vu
 
-Feature `locations` hiển thị và chỉnh sơ đồ kho: khu, kệ, tầng/vị trí và trạng thái chứa hàng.
+Module `locations` quan ly so do vat ly cua kho: Kho -> Khu -> Ke -> Tang ke -> Vi tri. La nen tang cho tat ca hoat dong nhap/xuat/chuyen/kiem ke.
 
-## Đọc code theo thứ tự
+## Doc code theo thu tu
 
-1. `pages/LocationsPage.tsx`: compose layout kho.
-2. `hooks/useWarehouse.ts`: state locations, selected zone, add/delete handlers.
-3. `services/warehouseService.ts`: gọi `/locations` và map backend location sang UI model.
-4. `components/ZoneSelector.tsx`: chọn/tạo khu.
-5. `components/WarehouseGrid*.tsx`: render sơ đồ kho.
-6. `components/StructureSidebar.tsx`, `LocationDetailSidebar.tsx`: sidebar chi tiết/cấu trúc.
+1. `services/warehouseService.ts`: goi API quan ly khu, ke, vi tri, lich su vi tri.
+2. `hooks/useWarehouse.ts`: custom hook tai du lieu kho, zone, shelf, location; xu ly loading/error.
+3. `pages/LocationsPage.tsx`: trang chinh, render so do + sidebar.
+4. `components/WarehouseGrid.tsx`: hien thi grid 2D dang ban do.
+5. `components/WarehouseGridMap.tsx`: render cell khu/ke tren grid.
+6. `components/WarehouseGridEditor.tsx`: che do chinh sua so do.
+7. `components/StructureSidebar.tsx`: sidebar cay cau truc Kho > Khu > Ke.
+8. `components/LocationDetailSidebar.tsx`: sidebar chi tiet vi tri + lich su ton.
+9. `components/ZoneSelector.tsx`: chon khu de hien thi tren grid.
 
-## Backend API
+## API su dung
 
-| UI action | API |
-| --- | --- |
-| Load sơ đồ kho | `GET /locations` |
-| Tạo vị trí đơn | `POST /locations` |
-| Tạo khu mới | `POST /locations/zones` |
-| Tạo kệ mới | `POST /locations/shelves` |
-| Xóa kệ | `DELETE /locations/shelf/:shelfId` |
-| Xóa tầng | `DELETE /locations/layer?shelfId=&layerNo=` |
+| Method | Path | Mo ta |
+|---|---|---|
+| GET | `/locations` | Danh sach vi tri co ton va lich su |
+| POST | `/locations/zones` | Tao khu moi |
+| POST | `/locations/shelves` | Tao ke moi trong khu |
+| DELETE | `/locations/shelf/:id` | Xoa ke (neu khong co ton) |
+| DELETE | `/locations/layer` | Xoa tang ke |
 
-## Luồng load kho
+## Phan cap
 
-```text
-LocationsPage
-  -> useWarehouse.loadLocations
-  -> warehouseService.listWarehouseLocations
-      -> GET /locations
-      -> map BackendLocation sang ViTriKho
-      -> quantity <= 0 => Trong
-      -> status FULL => Day
-      -> còn lại => DangChua
-  -> deriveShelves / deriveLayers
-  -> render grid
+```
+Warehouse
+ -> Zone (Khu)
+    -> Shelf (Ke)
+       -> Layer (Tang ke)
+          -> Location (Vi tri)
 ```
 
-## Lưu ý tiếng Việt/UI
+## Luu y
 
-UI model vẫn dùng vài key Việt không dấu/có dấu kiểu cũ như `ViTriKho`, `TrangThai`, `KhuVuc`. Khi render ra màn hình, label phải là tiếng Việt sạch.
-
-## Khi sửa feature này
-
-- Không tự thêm zone/kệ chỉ bằng local state nếu backend đã có API.
-- Sau mutation phải reload từ backend để đồng bộ id thật.
-- Nếu thêm status location mới, cập nhật `toLocationStatus` và UI legend.
-- Nếu layout sai, kiểm tra data `GET /locations` trước khi sửa CSS.
+- Phai tao Kho truoc (qua /warehouses), sau do moi tao Khu/Ke o day.
+- Xoa ke chi duoc neu khong co ton kho tai ke do.
+- WarehouseGrid dung gridOrientation (HORIZONTAL/VERTICAL) de xac dinh huong grid.

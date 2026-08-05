@@ -62,6 +62,7 @@ export default function Tablelayout<T>({
                                 <th
                                     key={String(col.key) + index}
                                     scope="col"
+                                    style={col.width ? { width: col.width, minWidth: col.width } : undefined}
                                     className={`px-5 py-3.5 ${col.className || ""}`}
                                 >
                                     {col.title}
@@ -88,6 +89,7 @@ export default function Tablelayout<T>({
                                     {columns.map((col, colIndex) => (
                                         <td
                                             key={String(col.key) + colIndex}
+                                            style={col.width ? { width: col.width, minWidth: col.width } : undefined}
                                             className={`px-5 py-3.5 whitespace-nowrap text-slate-700 ${col.className || ""}`}
                                         >
                                             {renderCell(record, col, rowIndex)}
