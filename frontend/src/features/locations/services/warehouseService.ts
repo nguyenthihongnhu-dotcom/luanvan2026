@@ -85,21 +85,86 @@ export async function deleteLayer(shelfId: number, layerNo: number): Promise<voi
     await httpClient.delete(`/locations/layer?shelfId=${shelfId}&layerNo=${layerNo}`);
 }
 
-export async function createShelf(input: { zoneCode: string; warehouseId?: number; code?: string; name?: string; layerCount?: number }): Promise<void> {
+// warehouseId là bắt buộc với mọi thao tác ghi: mã khu chỉ duy nhất trong phạm vi một kho
+// (uq_zone_code UNIQUE(warehouse_id, code)), thiếu nó thì backend không biết đang thao tác
+// trên kho nào và thao tác sẽ rơi nhầm sang kho khác.
+export async function createShelf(input: { zoneCode: string; warehouseId: number; code?: string; name?: string; layerCount?: number }): Promise<void> {
     await httpClient.post('/locations/shelves', input);
 }
 
-export async function createLayer(input: { zoneCode: string; warehouseId?: number; layerNo?: number }): Promise<void> {
+export async function createLayer(input: { zoneCode: string; warehouseId: number; layerNo?: number }): Promise<void> {
     await httpClient.post('/locations/layers', input);
 }
 
-export async function syncLocationMatrix(input: { zoneCode: string; warehouseId?: number }): Promise<{ createdLocationCount: number }> {
+export async function syncLocationMatrix(input: { zoneCode: string; warehouseId: number }): Promise<{ createdLocationCount: number }> {
     const response = await httpClient.post<{ data: { createdLocationCount: number } }>('/locations/sync-matrix', input);
     return unwrapData(response);
 }
 
-export async function createZone(input: { warehouseId?: number; code: string; name?: string; shelfCount?: number; layerCount?: number }): Promise<void> {
+export interface WarehouseZone {
+    id: number;
+    warehouseId: number;
+    code: string;
+    name: string;
+    status: string;
+    sortOrder: number;
+    gridRow: number | null;
+    gridCol: number | null;
+    gridSize: number | null;
+    shelfCount: number;
+    locationCount: number;
+}
+
+type BackendZone = {
+    id: number;
+    warehouse_id: number;
+    code: string;
+    name: string;
+    status: string;
+    sort_order: number;
+    grid_row: number | null;
+    grid_col: number | null;
+    grid_size: number | null;
+    shelf_count: number | string;
+    location_count: number | string;
+};
+
+/** Đọc khu trực tiếp từ bảng warehouse_zones nên khu chưa có kệ nào vẫn hiện ra. */
+export async function listZones(warehouseId: number): Promise<WarehouseZone[]> {
+    const response = await httpClient.get<{ data: BackendZone[] }>(`/locations/zones?warehouseId=${warehouseId}`);
+    return unwrapData(response).map((row) => ({
+        id: row.id,
+        warehouseId: row.warehouse_id,
+        code: row.code,
+        name: row.name,
+        status: row.status,
+        sortOrder: row.sort_order,
+        gridRow: row.grid_row,
+        gridCol: row.grid_col,
+        gridSize: row.grid_size,
+        shelfCount: Number(row.shelf_count ?? 0),
+        locationCount: Number(row.location_count ?? 0),
+    }));
+}
+
+export async function createZone(input: {
+    warehouseId: number;
+    code: string;
+    name?: string;
+    shelfCount?: number;
+    layerCount?: number;
+    gridRow?: number | null;
+    gridCol?: number | null;
+    gridSize?: number | null;
+}): Promise<void> {
     await httpClient.post('/locations/zones', input);
+}
+
+export async function updateZoneLayout(
+    zoneId: number,
+    layout: { gridRow: number | null; gridCol: number | null; gridSize: number | null },
+): Promise<void> {
+    await httpClient.put(`/locations/zones/${zoneId}/layout`, layout);
 }
 
 export async function listLocationHistory(locationId: number): Promise<LocationHistoryItem[]> {
@@ -122,6 +187,7 @@ export async function reorderShelves(shelfIds: number[]): Promise<void> {
 
 export const warehouseService = {
     listWarehouseLocations,
+    listZones,
     deriveShelves,
     deriveLayers,
     createLocation,
@@ -129,6 +195,7 @@ export const warehouseService = {
     createLayer,
     syncLocationMatrix,
     createZone,
+    updateZoneLayout,
     deleteShelf,
     deleteLayer,
     listLocationHistory,

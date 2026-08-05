@@ -44,7 +44,11 @@ const createGoodsIssueSchema = z.object({
   referenceNo: z.string().trim().max(100).optional(),
   note: z.string().trim().max(500).optional(),
   createdBy: z.coerce.number().int().positive().optional(),
-  items: z.array(createGoodsIssueItemSchema).min(1).optional(),
+  // Bắt buộc có ít nhất một dòng hàng: không có endpoint thêm dòng vào phiếu đã tạo,
+  // nên phiếu rỗng sẽ không bao giờ xác nhận được (GOODS_ISSUE_HAS_NO_ITEMS).
+  items: z
+    .array(createGoodsIssueItemSchema)
+    .min(1, 'Phiếu xuất kho phải có ít nhất một dòng hàng'),
 });
 
 export function parseCreateGoodsIssue(input: unknown): CreateGoodsIssueInput {

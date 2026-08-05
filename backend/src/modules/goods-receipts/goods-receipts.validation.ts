@@ -37,7 +37,11 @@ const createGoodsReceiptSchema = z.object({
   referenceNo: z.string().trim().max(100).optional(),
   note: z.string().trim().max(500).optional(),
   createdBy: z.coerce.number().int().positive().optional(),
-  items: z.array(createGoodsReceiptItemSchema).min(1).optional(),
+  // Bắt buộc có ít nhất một dòng hàng. Không có endpoint nào thêm dòng hàng vào phiếu
+  // đã tạo, nên phiếu rỗng sẽ mắc kẹt vĩnh viễn: xác nhận luôn trả GOODS_RECEIPT_HAS_NO_ITEMS.
+  items: z
+    .array(createGoodsReceiptItemSchema)
+    .min(1, 'Phiếu nhập kho phải có ít nhất một dòng hàng'),
 });
 
 export function parseCreateGoodsReceipt(

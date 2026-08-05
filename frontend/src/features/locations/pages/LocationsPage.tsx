@@ -18,7 +18,7 @@ export default function WarehouseMapping() {
         setSelectedZone,
         layers,
         shelves,
-        locations,
+        zones,
         isLoading,
         isSaving,
         error,
@@ -26,6 +26,7 @@ export default function WarehouseMapping() {
         setActiveLocation,
         getLocationInfo,
         handleAddZone,
+        handleSaveZoneLayout,
         handleAddShelf,
         handleAddLayer,
         handleSyncMatrix,
@@ -48,13 +49,17 @@ export default function WarehouseMapping() {
                     selectedZone={selectedZone}
                     setSelectedZone={setSelectedZone}
                     onAddZone={handleAddZone}
-                    locations={locations}
+                    zones={zones}
                 />
 
                 {!selectedZone ? (
                     <WarehouseGridEditor
+                        zones={zones}
+                        warehouseName={warehouses.find((wh) => wh.id === selectedWarehouseId)?.name ?? undefined}
+                        isSaving={isSaving}
                         onSelectZone={setSelectedZone}
-                        locations={locations}
+                        onCreateZone={handleAddZone}
+                        onSaveZoneLayout={handleSaveZoneLayout}
                     />
                 ) : (
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

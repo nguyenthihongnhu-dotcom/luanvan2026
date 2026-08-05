@@ -354,7 +354,7 @@ npm run build
 Nếu sửa DB:
 
 - Cập nhật `warehouse_management_mysql.sql`.
-- Cập nhật `warehouse_sample_data.sql` nếu demo/test cần data.
+- Cập nhật phần dữ liệu mẫu trong `warehouse_management_mysql.sql` nếu demo/test cần data.
 - Cập nhật `warehouse_database_design.md`.
 - Chạy integration test với MySQL thật.
 

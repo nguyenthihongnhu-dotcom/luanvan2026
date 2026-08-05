@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
-import type { ViTriKho } from "@/features/locations/hooks/useWarehouse";
+import type { WarehouseZone } from "@/features/locations/services/warehouseService";
 
 interface ZoneSelectorProps {
     warehouses?: WarehouseOption[];
@@ -9,7 +9,7 @@ interface ZoneSelectorProps {
     selectedZone: string | null;
     setSelectedZone: (zone: string | null) => void;
     onAddZone: (code: string, name?: string, shelfCount?: number, layerCount?: number) => Promise<void>;
-    locations?: ViTriKho[];
+    zones?: WarehouseZone[];
 }
 
 export default function ZoneSelector({
@@ -19,7 +19,7 @@ export default function ZoneSelector({
     selectedZone,
     setSelectedZone,
     onAddZone,
-    locations = [],
+    zones = [],
 }: ZoneSelectorProps) {
     const [isAdding, setIsAdding] = useState(false);
     const [newZoneCode, setNewZoneCode] = useState("");
@@ -28,14 +28,13 @@ export default function ZoneSelector({
     const [layerCount, setLayerCount] = useState(4);
     const [isSaving, setIsSaving] = useState(false);
 
+    // Chỉ liệt kê khu có thật trong kho đang chọn. Trước đây khi kho chưa có khu nào,
+    // hàm này trả về danh sách ảo A-E khiến người dùng chọn phải khu không tồn tại.
     const zoneOptions = useMemo(() => {
-        const dbZones = Array.from(new Set(locations.map((loc) => loc.KhuVuc).filter(Boolean)));
-        const combined = new Set([...dbZones, ...(selectedZone ? [selectedZone] : [])]);
-        if (combined.size === 0) {
-            return ["A", "B", "C", "D", "E"];
-        }
-        return Array.from(combined).sort();
-    }, [locations, selectedZone]);
+        const codes = new Set(zones.map((zone) => zone.code));
+        if (selectedZone) codes.add(selectedZone);
+        return Array.from(codes).sort();
+    }, [zones, selectedZone]);
 
     const submitZone = async () => {
         const code = newZoneCode.trim().toUpperCase();

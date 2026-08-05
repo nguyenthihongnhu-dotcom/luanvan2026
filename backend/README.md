@@ -39,11 +39,22 @@ http://localhost:3000/openapi.json
 
 ## Database
 
-Import schema và data mẫu theo thứ tự:
+Import lược đồ và dữ liệu mẫu (một file duy nhất):
 
 ```bash
 mysql -u root -p warehouse_management < warehouse_management_mysql.sql
-mysql -u root -p warehouse_management < warehouse_sample_data.sql
+```
+
+Nếu máy không có `mysql` trong PATH, chạy bằng driver `mysql2` của backend:
+
+```bash
+node scripts/run-migration.mjs warehouse_management_mysql.sql
+```
+
+Kiểm tra tính toàn vẹn của dữ liệu mẫu (nạp vào một CSDL nháp riêng, không đụng CSDL đang dùng):
+
+```bash
+node scripts/verify-sample-data.mjs
 ```
 
 ## Biến môi trường

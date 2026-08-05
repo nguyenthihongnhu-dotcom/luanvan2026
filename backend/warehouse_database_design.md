@@ -163,10 +163,9 @@ Import theo thứ tự:
 
 ```bash
 mysql -u root -p warehouse_management < backend/warehouse_management_mysql.sql
-mysql -u root -p warehouse_management < backend/warehouse_sample_data.sql
 ```
 
-`warehouse_management_mysql.sql` là schema chính. `warehouse_sample_data.sql` là seed demo cho frontend và integration test.
+`warehouse_management_mysql.sql` là file duy nhất: schema, dữ liệu khởi tạo và seed demo cho frontend lẫn integration test.
 
 ## 7. Phần backend kiểm soát
 

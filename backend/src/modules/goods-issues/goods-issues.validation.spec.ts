@@ -46,10 +46,8 @@ describe('goods-issues.validation parseCreateGoodsIssue', () => {
     });
   });
 
-  it('allows omitting items entirely (header-only draft), matching CreateGoodsIssueInput.items being optional', () => {
-    const result = parseCreateGoodsIssue(validHeader);
-
-    expect(result.items).toBeUndefined();
+  it('rejects a header-only draft: there is no endpoint to add items later, so an item-less issue could never be confirmed', () => {
+    expect(() => parseCreateGoodsIssue(validHeader)).toThrow(HttpError);
   });
 
   it('rejects an explicit empty items array', () => {

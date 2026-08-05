@@ -53,7 +53,11 @@ const createStockAdjustmentSchema = z.object({
   reasonCode: z.string().trim().min(1).max(100).optional(),
   note: z.string().trim().max(500).optional(),
   createdBy: z.coerce.number().int().positive().optional(),
-  items: z.array(createStockAdjustmentItemSchema).min(1).optional(),
+  // Bắt buộc có ít nhất một dòng: không có endpoint thêm dòng vào phiếu đã tạo,
+  // nên phiếu rỗng sẽ không bao giờ duyệt được (STOCK_ADJUSTMENT_HAS_NO_ITEMS).
+  items: z
+    .array(createStockAdjustmentItemSchema)
+    .min(1, 'Phiếu điều chỉnh phải có ít nhất một dòng hàng'),
 });
 
 export function parseCreateStockAdjustment(

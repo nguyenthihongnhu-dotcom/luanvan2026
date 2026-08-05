@@ -49,10 +49,8 @@ describe('goods-receipts.validation parseCreateGoodsReceipt', () => {
     });
   });
 
-  it('allows omitting items entirely (header-only draft), matching CreateGoodsReceiptInput.items being optional', () => {
-    const result = parseCreateGoodsReceipt(validHeader);
-
-    expect(result.items).toBeUndefined();
+  it('rejects a header-only draft: there is no endpoint to add items later, so an item-less receipt could never be confirmed', () => {
+    expect(() => parseCreateGoodsReceipt(validHeader)).toThrow(HttpError);
   });
 
   it('rejects an explicit empty items array', () => {

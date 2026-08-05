@@ -1082,6 +1082,20 @@ JOIN permissions p ON p.code IN (
 )
 WHERE r.code = 'STAFF'
 ON DUPLICATE KEY UPDATE permission_id = VALUES(permission_id);
+
+-- Vai trò AUDITOR trước đây được khai báo nhưng không được gán quyền nào,
+-- nên tài khoản kiểm toán đăng nhập vào là không dùng được gì. Cấp bộ quyền chỉ đọc.
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id
+FROM roles r
+JOIN permissions p ON p.code IN (
+    'users:read',
+    'authorization:read',
+    'alerts:read',
+    'notifications:read'
+)
+WHERE r.code = 'AUDITOR'
+ON DUPLICATE KEY UPDATE permission_id = VALUES(permission_id);
 INSERT INTO units (code, name, precision_scale)
 VALUES
     ('PCS', 'Cái', 0),
@@ -1128,7 +1142,8 @@ VALUES
 ((SELECT id FROM warehouses WHERE code='KHO-HCM-01'), 'A', 'Khu A - Sữa và bột ăn dặm', 'Hàng khô, ưu tiên hạn sử dụng gần', 'ACTIVE', 1),
 ((SELECT id FROM warehouses WHERE code='KHO-HCM-01'), 'B', 'Khu B - Tã và vệ sinh', 'Hàng cồng kềnh, xuất nhanh', 'ACTIVE', 2),
 ((SELECT id FROM warehouses WHERE code='KHO-HCM-01'), 'C', 'Khu C - Đồ sơ sinh', 'Đồ dùng trẻ em và phụ kiện', 'ACTIVE', 3),
-((SELECT id FROM warehouses WHERE code='KHO-HCM-02'), 'A', 'Khu A - Hàng bán chạy', 'Khu picking chi nhánh', 'ACTIVE', 1)
+((SELECT id FROM warehouses WHERE code='KHO-HCM-02'), 'A', 'Khu A - Hàng bán chạy', 'Khu picking chi nhánh', 'ACTIVE', 1),
+((SELECT id FROM warehouses WHERE code='KHO-HCM-02'), 'B', 'Khu B - Dự trữ chi nhánh', 'Khu lưu trữ bổ sung chi nhánh Q.7', 'ACTIVE', 2)
 ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status), sort_order = VALUES(sort_order);
 
 INSERT INTO warehouse_shelves (zone_id, code, name, status, sort_order)
@@ -1137,7 +1152,9 @@ VALUES
 ((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='A'), 'A02', 'Kệ A02', 'ACTIVE', 2),
 ((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='B'), 'B01', 'Kệ B01', 'ACTIVE', 1),
 ((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='C'), 'C01', 'Kệ C01', 'ACTIVE', 1),
-((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A'), 'A01', 'Kệ A01 chi nhánh', 'ACTIVE', 1)
+((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A'), 'A01', 'Kệ A01 chi nhánh', 'ACTIVE', 1),
+((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A'), 'A02', 'Kệ A02 chi nhánh', 'ACTIVE', 2),
+((SELECT z.id FROM warehouse_zones z JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='B'), 'B01', 'Kệ B01 chi nhánh', 'ACTIVE', 1)
 ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status), sort_order = VALUES(sort_order);
 
 INSERT INTO warehouse_locations (shelf_id, code, layer_no, name, location_type, capacity_control_enabled, max_capacity, current_capacity, status, qr_code_value, notes)
@@ -1147,7 +1164,9 @@ VALUES
 ((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='A' AND s.code='A02'), 'HCM01-A-A02-01', 1, 'A02 tầng 1', 'STANDARD', TRUE, 450, 210, 'ACTIVE', 'QR-HCM01-A-A02-01', 'Sữa bột'),
 ((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='B' AND s.code='B01'), 'HCM01-B-B01-01', 1, 'B01 tầng 1', 'BULKY', TRUE, 800, 620, 'ACTIVE', 'QR-HCM01-B-B01-01', 'Tã bỉm'),
 ((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-01' AND z.code='C' AND s.code='C01'), 'HCM01-C-C01-01', 1, 'C01 tầng 1', 'STANDARD', TRUE, 300, 95, 'ACTIVE', 'QR-HCM01-C-C01-01', 'Đồ sơ sinh'),
-((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A' AND s.code='A01'), 'HCM02-A-A01-01', 1, 'A01 tầng 1 chi nhánh', 'STANDARD', TRUE, 350, 140, 'ACTIVE', 'QR-HCM02-A-A01-01', 'Hàng bán chạy')
+((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A' AND s.code='A01'), 'HCM02-A-A01-01', 1, 'A01 tầng 1 chi nhánh', 'STANDARD', TRUE, 350, 140, 'ACTIVE', 'QR-HCM02-A-A01-01', 'Hàng bán chạy'),
+((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='A' AND s.code='A02'), 'HCM02-A-A02-01', 1, 'A02 tầng 1 chi nhánh', 'STANDARD', TRUE, 350, 0, 'ACTIVE', 'QR-HCM02-A-A02-01', 'Ô trống chi nhánh'),
+((SELECT s.id FROM warehouse_shelves s JOIN warehouse_zones z ON z.id=s.zone_id JOIN warehouses w ON w.id=z.warehouse_id WHERE w.code='KHO-HCM-02' AND z.code='B' AND s.code='B01'), 'HCM02-B-B01-01', 1, 'B01 tầng 1 chi nhánh', 'BULKY', TRUE, 500, 0, 'ACTIVE', 'QR-HCM02-B-B01-01', 'Khu hàng cồng kềnh')
 ON DUPLICATE KEY UPDATE name = VALUES(name), status = VALUES(status), current_capacity = VALUES(current_capacity), notes = VALUES(notes);
 
 -- 3) Danh muc, thuong hieu, nha cung cap
@@ -1255,6 +1274,9 @@ FROM (
     UNION ALL SELECT 'PN-202607-001', 'SUA-FRISO-4', 'LOT-FRISO4-202605', 'HCM01-A-A02-01', 64.000, 510000.00, 'Nhập mới'
     UNION ALL SELECT 'PN-202607-002', 'BIM-HUG-M', 'LOT-HUG-M-202607', 'HCM01-B-B01-01', 150.000, 205000.00, 'Nhập mới'
     UNION ALL SELECT 'PN-202607-002', 'BIM-HUG-L', 'LOT-HUG-L-202607', 'HCM01-B-B01-01', 95.000, 219000.00, 'Nhập mới'
+    -- Phiếu nháp PN-202607-003 phải có dòng hàng, nếu không thì bấm "Xác nhận" luôn báo
+    -- GOODS_RECEIPT_HAS_NO_ITEMS và không có API nào thêm dòng vào phiếu đã tạo.
+    UNION ALL SELECT 'PN-202607-003', 'BIM-MOONY-M', 'LOT-MOONY-M-202607', 'HCM02-A-A01-01', 42.000, 350000.00, 'Nhập bổ sung chi nhánh'
 ) x
 JOIN goods_receipts gr ON gr.receipt_code=x.receipt_code
 JOIN product_variants v ON v.sku=x.sku
@@ -1297,6 +1319,8 @@ INSERT INTO stock_transfer_items (stock_transfer_id, product_variant_id, batch_i
 SELECT st.id, v.id, b.id, src.id, dst.id, x.quantity, x.note
 FROM (
     SELECT 'CK-202607-001' transfer_code, 'BIM-HUG-M' sku, 'LOT-HUG-M-202607' lot_number, 'HCM01-B-B01-01' source_code, 'HCM02-A-A01-01' destination_code, 30.000 quantity, 'Chuyển về chi nhánh' note
+    -- Phiếu nháp CK-202607-002 cũng phải có dòng hàng, cùng lý do với PN-202607-003.
+    UNION ALL SELECT 'CK-202607-002', 'SUA-FRISO-4', 'LOT-FRISO4-202605', 'HCM01-A-A02-01', 'HCM02-A-A01-01', 20.000, 'Dự kiến bổ sung sữa Friso'
 ) x
 JOIN stock_transfers st ON st.transfer_code=x.transfer_code
 JOIN product_variants v ON v.sku=x.sku
@@ -1308,17 +1332,6 @@ WHERE NOT EXISTS (
     WHERE ti.stock_transfer_id=st.id AND ti.product_variant_id=v.id AND ti.batch_id=b.id
 );
 
--- 6.1) Nhat ky giao dich ton kho
-INSERT INTO inventory_transactions (transaction_code, transaction_type, warehouse_id, product_variant_id, batch_id, source_location_id, destination_location_id, quantity, quantity_before, quantity_after, reference_type, reference_id, reason_code, note, performed_by, approved_by, created_at)
-VALUES
-('GD-202607-001', 'RECEIPT', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='SUA-FRISO-3'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='SUA-FRISO-3' AND b.lot_number='LOT-FRISO3-202605'), NULL, (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A01-01'), 80.000, 0.000, 80.000, 'GOODS_RECEIPT', (SELECT id FROM goods_receipts WHERE receipt_code='PN-202607-001'), 'NHAP_HANG', 'Nhập sữa Friso số 3', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-02 10:00:00.000'),
-('GD-202607-002', 'RECEIPT', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='BIM-HUG-M'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-M' AND b.lot_number='LOT-HUG-M-202607'), NULL, (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), 150.000, 0.000, 150.000, 'GOODS_RECEIPT', (SELECT id FROM goods_receipts WHERE receipt_code='PN-202607-002'), 'NHAP_HANG', 'Nhập tã Huggies size M', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-01 14:30:00.000'),
-('GD-202607-003', 'ISSUE', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='SUA-FRISO-3'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='SUA-FRISO-3' AND b.lot_number='LOT-FRISO3-202605'), (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A01-01'), NULL, 12.000, 80.000, 68.000, 'GOODS_ISSUE', (SELECT id FROM goods_issues WHERE issue_code='PX-202607-001'), 'XUAT_BAN', 'Xuất bán sữa Friso số 3', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-06 15:20:00.000'),
-('GD-202607-004', 'ISSUE', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='BIM-HUG-M'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-M' AND b.lot_number='LOT-HUG-M-202607'), (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), NULL, 20.000, 150.000, 130.000, 'GOODS_ISSUE', (SELECT id FROM goods_issues WHERE issue_code='PX-202607-001'), 'XUAT_BAN', 'Xuất bán tã Huggies size M', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-06 15:20:00.000'),
-('GD-202607-005', 'TRANSFER_OUT', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='BIM-HUG-M'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-M' AND b.lot_number='LOT-HUG-M-202607'), (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), (SELECT id FROM warehouse_locations WHERE code='HCM02-A-A01-01'), 30.000, 130.000, 100.000, 'STOCK_TRANSFER', (SELECT id FROM stock_transfers WHERE transfer_code='CK-202607-001'), 'CHUYEN_KHO', 'Chuyển tã Huggies sang chi nhánh Quận 7', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-08 11:00:00.000'),
-('GD-202607-006', 'TRANSFER_IN', (SELECT id FROM warehouses WHERE code='KHO-HCM-02'), (SELECT id FROM product_variants WHERE sku='BIM-HUG-M'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-M' AND b.lot_number='LOT-HUG-M-202607'), (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), (SELECT id FROM warehouse_locations WHERE code='HCM02-A-A01-01'), 30.000, 0.000, 30.000, 'STOCK_TRANSFER', (SELECT id FROM stock_transfers WHERE transfer_code='CK-202607-001'), 'CHUYEN_KHO', 'Nhận tã Huggies tại chi nhánh Quận 7', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-08 11:00:00.000'),
-('GD-202607-007', 'COUNT_ADJUSTMENT_OUT', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='SUA-FRISO-3'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='SUA-FRISO-3' AND b.lot_number='LOT-FRISO3-202605'), (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A01-01'), NULL, 1.000, 8.000, 7.000, 'STOCK_ADJUSTMENT', (SELECT id FROM stock_adjustments WHERE adjustment_code='DC-202607-001'), 'KIEM_KE_LECH_THIEU', 'Điều chỉnh giảm theo kiểm kê', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-12 16:05:00.000')
-ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), quantity_before = VALUES(quantity_before), quantity_after = VALUES(quantity_after), note = VALUES(note);
 
 DELETE FROM notifications WHERE title IN ('Cảnh báo tồn kho thấp', 'Có phiếu kiểm kê được giao', 'Có phiếu điều chỉnh chờ duyệt');
 DELETE FROM alerts WHERE title IN ('Sữa Friso số 3 sắp hết hàng', 'Ti giả Chicco đã hết hàng', 'Bột ăn dặm Heinz gần hạn');
@@ -1366,6 +1379,18 @@ WHERE NOT EXISTS (
     SELECT 1 FROM stock_adjustment_items ai
     WHERE ai.stock_adjustment_id=sa.id AND ai.product_variant_id=v.id AND ai.batch_id=b.id AND ai.location_id=l.id
 );
+
+-- 6.1) Nhat ky giao dich ton kho
+INSERT INTO inventory_transactions (transaction_code, transaction_type, warehouse_id, product_variant_id, batch_id, source_location_id, destination_location_id, quantity, quantity_before, quantity_after, reference_type, reference_id, reason_code, note, performed_by, approved_by, created_at)
+VALUES
+('GD-202607-001', 'RECEIPT', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='SUA-FRISO-3'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='SUA-FRISO-3' AND b.lot_number='LOT-FRISO3-202605'), NULL, (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A01-01'), 80.000, 0.000, 80.000, 'GOODS_RECEIPT', (SELECT id FROM goods_receipts WHERE receipt_code='PN-202607-001'), 'NHAP_HANG', 'Nhập sữa Friso số 3', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-02 10:00:00.000'),
+('GD-202607-002', 'RECEIPT', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='BIM-HUG-M'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-M' AND b.lot_number='LOT-HUG-M-202607'), NULL, (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), 150.000, 0.000, 150.000, 'GOODS_RECEIPT', (SELECT id FROM goods_receipts WHERE receipt_code='PN-202607-002'), 'NHAP_HANG', 'Nhập tã Huggies size M', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-01 14:30:00.000'),
+('GD-202607-003', 'ISSUE', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='SUA-FRISO-3'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='SUA-FRISO-3' AND b.lot_number='LOT-FRISO3-202605'), (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A01-01'), NULL, 12.000, 80.000, 68.000, 'GOODS_ISSUE', (SELECT id FROM goods_issues WHERE issue_code='PX-202607-001'), 'XUAT_BAN', 'Xuất bán sữa Friso số 3', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-06 15:20:00.000'),
+('GD-202607-004', 'ISSUE', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='BIM-HUG-M'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-M' AND b.lot_number='LOT-HUG-M-202607'), (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), NULL, 20.000, 150.000, 130.000, 'GOODS_ISSUE', (SELECT id FROM goods_issues WHERE issue_code='PX-202607-001'), 'XUAT_BAN', 'Xuất bán tã Huggies size M', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-06 15:20:00.000'),
+('GD-202607-005', 'TRANSFER_OUT', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='BIM-HUG-M'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-M' AND b.lot_number='LOT-HUG-M-202607'), (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), (SELECT id FROM warehouse_locations WHERE code='HCM02-A-A01-01'), 30.000, 130.000, 100.000, 'STOCK_TRANSFER', (SELECT id FROM stock_transfers WHERE transfer_code='CK-202607-001'), 'CHUYEN_KHO', 'Chuyển tã Huggies sang chi nhánh Quận 7', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-08 11:00:00.000'),
+('GD-202607-006', 'TRANSFER_IN', (SELECT id FROM warehouses WHERE code='KHO-HCM-02'), (SELECT id FROM product_variants WHERE sku='BIM-HUG-M'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-M' AND b.lot_number='LOT-HUG-M-202607'), (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), (SELECT id FROM warehouse_locations WHERE code='HCM02-A-A01-01'), 30.000, 0.000, 30.000, 'STOCK_TRANSFER', (SELECT id FROM stock_transfers WHERE transfer_code='CK-202607-001'), 'CHUYEN_KHO', 'Nhận tã Huggies tại chi nhánh Quận 7', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-08 11:00:00.000'),
+('GD-202607-007', 'COUNT_ADJUSTMENT_OUT', (SELECT id FROM warehouses WHERE code='KHO-HCM-01'), (SELECT id FROM product_variants WHERE sku='SUA-FRISO-3'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='SUA-FRISO-3' AND b.lot_number='LOT-FRISO3-202605'), (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A01-01'), NULL, 1.000, 8.000, 7.000, 'STOCK_ADJUSTMENT', (SELECT id FROM stock_adjustments WHERE adjustment_code='DC-202607-001'), 'KIEM_KE_LECH_THIEU', 'Điều chỉnh giảm theo kiểm kê', (SELECT id FROM users WHERE employee_code='NV-KHO-01'), (SELECT id FROM users WHERE employee_code='NV-QLK'), '2026-07-12 16:05:00.000')
+ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), quantity_before = VALUES(quantity_before), quantity_after = VALUES(quantity_after), note = VALUES(note);
 
 INSERT INTO alerts (alert_type, severity, warehouse_id, product_variant_id, batch_id, location_id, title, message, status, assigned_to)
 VALUES

@@ -100,7 +100,7 @@ Triệu chứng thường gặp khi thiếu tầng trước:
 - Màn hàng hóa trống: thiếu product/product_variant hoặc report query không có stock.
 - Xuất kho lỗi thiếu tồn: thiếu `stock_locations` hoặc available quantity không đủ.
 - Confirm/approve/update 403: role chưa được gán permission.
-- Integration test lỗi sample data: chưa import `warehouse_sample_data.sql`.
+- Integration test lỗi sample data: chưa import `warehouse_management_mysql.sql`.
 
 ## 4. Response Format
 
@@ -210,11 +210,10 @@ Import theo thứ tự:
 
 ```bash
 mysql -u root -p warehouse_management < backend/warehouse_management_mysql.sql
-mysql -u root -p warehouse_management < backend/warehouse_sample_data.sql
 ```
 
 - `warehouse_management_mysql.sql`: schema chính, view report, roles/permissions seed.
-- `warehouse_sample_data.sql`: dữ liệu demo cho frontend và integration test.
+- `warehouse_management_mysql.sql` đã gồm luôn dữ liệu demo cho frontend và integration test.
 - `warehouse_database_design.md`: thiết kế database và rule tồn kho.
 
 ## 9. Chạy Và Kiểm Tra

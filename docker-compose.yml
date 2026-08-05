@@ -11,8 +11,8 @@
       - "3306:3306"
     volumes:
       - mysql-data:/var/lib/mysql
+      # Một file duy nhất: lược đồ + dữ liệu khởi tạo + dữ liệu mẫu.
       - ./backend/warehouse_management_mysql.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
-      - ./backend/warehouse_sample_data.sql:/docker-entrypoint-initdb.d/02-sample-data.sql:ro
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
       interval: 10s

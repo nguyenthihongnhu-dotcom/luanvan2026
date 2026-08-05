@@ -1,363 +1,329 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSidebar } from "@/app/providers/useSidebar";
-import type { ViTriKho } from "@/features/locations/hooks/useWarehouse";
-
-interface CellPosition {
-    row: number;
-    col: number;
-}
-
-interface Zone {
-    id: string;
-    code: string;
-    name: string;
-    color: string;
-    size: number;
-    row: number;
-    col: number;
-    occupiedCells: CellPosition[];
-}
+import type { WarehouseZone } from "@/features/locations/services/warehouseService";
 
 interface WarehouseGridEditorProps {
+    /** Khu đọc từ bảng warehouse_zones của kho đang chọn. Mỗi kho một mặt bằng riêng. */
+    zones: WarehouseZone[];
+    warehouseName?: string;
+    isSaving?: boolean;
     onSelectZone?: (zoneCode: string) => void;
-    locations?: ViTriKho[];
+    onCreateZone: (
+        code: string,
+        name?: string,
+        shelfCount?: number,
+        layerCount?: number,
+        options?: { gridRow?: number | null; gridCol?: number | null; openAfterCreate?: boolean },
+    ) => Promise<void>;
+    onSaveZoneLayout: (
+        zoneId: number,
+        layout: { gridRow: number | null; gridCol: number | null; gridSize: number | null },
+    ) => Promise<void>;
 }
 
-const DEFAULT_ZONES: Zone[] = [
-    {
-        id: "zone-a",
-        code: "A",
-        name: "Khu A - Sữa và tã",
-        color: "#3b82f6",
-        size: 4,
-        row: 1,
-        col: 1,
-        occupiedCells: [
-            { row: 1, col: 1 },
-            { row: 1, col: 2 },
-            { row: 1, col: 3 },
-            { row: 1, col: 4 },
-        ],
-    },
-    {
-        id: "zone-b",
-        code: "B",
-        name: "Khu B - Đồ chơi và xe đẩy",
-        color: "#a855f7",
-        size: 4,
-        row: 3,
-        col: 1,
-        occupiedCells: [
-            { row: 3, col: 1 },
-            { row: 3, col: 2 },
-            { row: 3, col: 3 },
-            { row: 3, col: 4 },
-        ],
-    },
-    {
-        id: "zone-c",
-        code: "C",
-        name: "Khu C - Thời trang trẻ em",
-        color: "#10b981",
-        size: 3,
-        row: 5,
-        col: 1,
-        occupiedCells: [
-            { row: 5, col: 1 },
-            { row: 5, col: 2 },
-            { row: 5, col: 3 },
-        ],
-    },
-    {
-        id: "zone-d",
-        code: "D",
-        name: "Khu D - Thực phẩm ăn dặm",
-        color: "#f59e0b",
-        size: 3,
-        row: 1,
-        col: 7,
-        occupiedCells: [
-            { row: 1, col: 7 },
-            { row: 2, col: 7 },
-            { row: 3, col: 7 },
-        ],
-    },
-    {
-        id: "zone-e",
-        code: "E",
-        name: "Khu E - Chăm sóc sức khỏe",
-        color: "#ef4444",
-        size: 2,
-        row: 5,
-        col: 8,
-        occupiedCells: [
-            { row: 5, col: 8 },
-            { row: 5, col: 9 },
-        ],
-    },
-];
+const MIN_ROWS = 6;
+const MIN_COLS = 8;
+const PALETTE = ["#3b82f6", "#a855f7", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#64748b", "#db2777"];
 
-function getNextZoneCode(zones: Zone[]) {
-    const usedCodes = new Set(zones.map((zone) => zone.code));
+/** Màu gán theo thứ tự khu nên mở lại vẫn giữ nguyên màu. */
+function colorOf(index: number) {
+    return PALETTE[index % PALETTE.length];
+}
+
+function nextZoneCode(zones: WarehouseZone[]) {
+    const used = new Set(zones.map((zone) => zone.code.toUpperCase()));
     for (let charCode = 65; charCode <= 90; charCode += 1) {
         const code = String.fromCharCode(charCode);
-        if (!usedCodes.has(code)) return code;
+        if (!used.has(code)) return code;
     }
-    return `${zones.length + 1}`;
+    return `K${zones.length + 1}`;
 }
 
-function getColor(index: number) {
-    const colors = ["#3b82f6", "#a855f7", "#10b981", "#f59e0b", "#ef4444", "#06b6d4", "#64748b"];
-    return colors[index % colors.length];
+/** Số ô khu chiếm trên mặt bằng: ưu tiên grid_size đã lưu, không có thì lấy theo số kệ. */
+function sizeOf(zone: WarehouseZone) {
+    return Math.max(1, zone.gridSize ?? zone.shelfCount ?? 1);
 }
 
-export default function WarehouseGridEditor({ onSelectZone, locations = [] }: WarehouseGridEditorProps) {
+export default function WarehouseGridEditor({
+    zones,
+    warehouseName,
+    isSaving = false,
+    onSelectZone,
+    onCreateZone,
+    onSaveZoneLayout,
+}: WarehouseGridEditorProps) {
     const { setExtraContent } = useSidebar();
-    const [rows, setRows] = useState(8);
-    const [cols, setCols] = useState(12);
-    const [zones, setZones] = useState<Zone[]>(DEFAULT_ZONES);
     const [orientation, setOrientation] = useState<"horizontal" | "vertical">("horizontal");
     const [newZoneName, setNewZoneName] = useState("");
-    const [newZoneSize, setNewZoneSize] = useState(4);
+    const [newZoneShelves, setNewZoneShelves] = useState(4);
+    const [newZoneLayers, setNewZoneLayers] = useState(4);
+    const [draggingZoneId, setDraggingZoneId] = useState<number | null>(null);
 
-    const backendZoneCodes = useMemo(() => {
-        return Array.from(new Set(locations.map((location) => location.KhuVuc).filter(Boolean))).sort();
-    }, [locations]);
+    const placedZones = useMemo(
+        () => zones.filter((zone) => zone.gridRow !== null && zone.gridCol !== null),
+        [zones],
+    );
+    const unplacedZones = useMemo(
+        () => zones.filter((zone) => zone.gridRow === null || zone.gridCol === null),
+        [zones],
+    );
 
-    useEffect(() => {
-        if (backendZoneCodes.length === 0) return;
-        setZones((existingZones) => {
-            const existingCodes = new Set(existingZones.map((z) => z.code));
-            const missingCodes = backendZoneCodes.filter((code) => !existingCodes.has(code));
-            if (missingCodes.length === 0) return existingZones;
+    const colorByZoneId = useMemo(() => {
+        const map = new Map<number, string>();
+        zones.forEach((zone, index) => map.set(zone.id, colorOf(index)));
+        return map;
+    }, [zones]);
 
-            const newZones: Zone[] = missingCodes.map((code, idx) => {
-                const totalIndex = existingZones.length + idx;
-                const zoneShelvesCount = new Set(locations.filter(l => l.KhuVuc === code).map(l => l.Ke)).size || 4;
-                const row = Math.floor(totalIndex / 3) * 2 + 1;
-                const col = (totalIndex % 3) * 4 + 1;
-                const occupiedCells: CellPosition[] = [];
-                for (let i = 0; i < zoneShelvesCount; i++) {
-                    occupiedCells.push({ row, col: col + i });
-                }
+    // Lưới đủ rộng để chứa khu xa nhất, luôn chừa thêm một hàng/cột trống để còn chỗ thả.
+    const { rows, cols } = useMemo(() => {
+        let maxRow = MIN_ROWS - 1;
+        let maxCol = MIN_COLS - 1;
+        for (const zone of placedZones) {
+            const span = sizeOf(zone);
+            maxRow = Math.max(maxRow, (zone.gridRow ?? 0) + (orientation === "vertical" ? span - 1 : 0));
+            maxCol = Math.max(maxCol, (zone.gridCol ?? 0) + (orientation === "horizontal" ? span - 1 : 0));
+        }
+        return { rows: maxRow + 2, cols: maxCol + 2 };
+    }, [placedZones, orientation]);
 
-                return {
-                    id: `zone-${code.toLowerCase()}`,
-                    code,
-                    name: `Khu ${code}`,
-                    color: getColor(totalIndex),
-                    size: zoneShelvesCount,
-                    row,
-                    col,
-                    occupiedCells,
-                };
-            });
-            return [...existingZones, ...newZones];
-        });
-    }, [backendZoneCodes, locations]);
-
-    const createNewZone = useCallback(() => {
-        const code = getNextZoneCode(zones);
-        const zone: Zone = {
-            id: `zone-${code.toLowerCase()}`,
-            code,
-            name: newZoneName.trim() || `Khu ${code}`,
-            color: getColor(zones.length),
-            size: newZoneSize,
-            row: -1,
-            col: -1,
-            occupiedCells: [],
-        };
-
-        setZones((currentZones) => [...currentZones, zone]);
-        setNewZoneName("");
-    }, [newZoneName, newZoneSize, zones]);
-
-    const handleDragStart = (event: React.DragEvent, zoneId: string) => {
-        event.dataTransfer.setData("zoneId", zoneId);
-        event.dataTransfer.effectAllowed = "move";
-    };
-
-    const handleDrop = (event: React.DragEvent, targetRow: number, targetCol: number) => {
-        event.preventDefault();
-        const zoneId = event.dataTransfer.getData("zoneId");
-        if (!zoneId) return;
-
-        setZones((currentZones) => {
-            const zoneIndex = currentZones.findIndex((zone) => zone.id === zoneId);
-            if (zoneIndex < 0) return currentZones;
-
-            const zone = currentZones[zoneIndex];
-            const occupiedCells: CellPosition[] = [];
-            for (let index = 0; index < zone.size; index += 1) {
-                const nextCell = orientation === "horizontal"
-                    ? { row: targetRow, col: targetCol + index }
-                    : { row: targetRow + index, col: targetCol };
-
-                if (nextCell.row >= rows || nextCell.col >= cols) break;
-                occupiedCells.push(nextCell);
+    const cellOwner = useMemo(() => {
+        const map = new Map<string, WarehouseZone>();
+        for (const zone of placedZones) {
+            const span = sizeOf(zone);
+            for (let i = 0; i < span; i += 1) {
+                const row = (zone.gridRow ?? 0) + (orientation === "vertical" ? i : 0);
+                const col = (zone.gridCol ?? 0) + (orientation === "horizontal" ? i : 0);
+                map.set(`${row}:${col}`, zone);
             }
+        }
+        return map;
+    }, [placedZones, orientation]);
 
-            const nextZones = [...currentZones];
-            nextZones[zoneIndex] = {
-                ...zone,
-                row: targetRow,
-                col: targetCol,
-                occupiedCells,
-            };
-            return nextZones;
+    const handleDrop = async (event: React.DragEvent, row: number, col: number) => {
+        event.preventDefault();
+        const rawId = event.dataTransfer.getData("zoneId");
+        setDraggingZoneId(null);
+        const zoneId = Number(rawId);
+        if (!Number.isFinite(zoneId) || zoneId <= 0) return;
+        const zone = zones.find((item) => item.id === zoneId);
+        if (!zone) return;
+
+        await onSaveZoneLayout(zoneId, { gridRow: row, gridCol: col, gridSize: sizeOf(zone) });
+    };
+
+    const handleRemoveFromGrid = async (zone: WarehouseZone) => {
+        await onSaveZoneLayout(zone.id, { gridRow: null, gridCol: null, gridSize: sizeOf(zone) });
+    };
+
+    const submitNewZone = async () => {
+        const code = nextZoneCode(zones);
+        await onCreateZone(code, newZoneName.trim() || `Khu ${code}`, newZoneShelves, newZoneLayers, {
+            // Tạo xong khu nằm ở danh sách chưa đặt, người dùng kéo lên mặt bằng sau.
+            gridRow: null,
+            gridCol: null,
+            openAfterCreate: false,
         });
+        setNewZoneName("");
     };
 
-    const getZoneAt = (row: number, col: number) => {
-        return zones.find((zone) => zone.occupiedCells.some((cell) => cell.row === row && cell.col === col));
-    };
+    const zoneForm = (
+        <div className="space-y-2">
+            <div className="space-y-1">
+                <label htmlFor="zone-name-input" className="block text-[11px] font-semibold text-gray-600">Tên khu</label>
+                <input
+                    id="zone-name-input"
+                    type="text"
+                    value={newZoneName}
+                    onChange={(event) => setNewZoneName(event.target.value)}
+                    placeholder="VD: Sữa và tã"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs focus:border-pink-500 focus:outline-none"
+                />
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
+                <span className="text-xs font-semibold text-gray-600">Số kệ</span>
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setNewZoneShelves(Math.max(1, newZoneShelves - 1))} className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">-</button>
+                    <span className="w-8 text-center text-xs font-bold text-gray-800">{newZoneShelves}</span>
+                    <button type="button" onClick={() => setNewZoneShelves(Math.min(20, newZoneShelves + 1))} className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">+</button>
+                </div>
+            </div>
+            <div className="flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
+                <span className="text-xs font-semibold text-gray-600">Số tầng mỗi kệ</span>
+                <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => setNewZoneLayers(Math.max(1, newZoneLayers - 1))} className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">-</button>
+                    <span className="w-8 text-center text-xs font-bold text-gray-800">{newZoneLayers}</span>
+                    <button type="button" onClick={() => setNewZoneLayers(Math.min(20, newZoneLayers + 1))} className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">+</button>
+                </div>
+            </div>
+            <button
+                type="button"
+                onClick={() => void submitNewZone()}
+                disabled={isSaving}
+                className="w-full rounded-lg bg-pink-600 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-pink-700 disabled:opacity-60"
+            >
+                {isSaving ? "Đang lưu..." : "+ Thêm khu mới"}
+            </button>
+        </div>
+    );
 
-    const removeZone = useCallback((id: string) => {
-        setZones((currentZones) => currentZones.filter((zone) => zone.id !== id));
-    }, []);
-
+    // Sidebar phụ mặc định thu gọn nên mọi thao tác quan trọng đều có sẵn ngay trên
+    // khu vực chính; bản trong sidebar chỉ là tiện tay khi người dùng mở sidebar ra.
     useEffect(() => {
         setExtraContent(
             <div className="space-y-6">
                 <div className="space-y-2">
-                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Mặt bằng tổng thể</h3>
-                    <div className="flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
-                        <span className="text-xs font-semibold text-gray-600">Dòng mặt bằng:</span>
-                        <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setRows(Math.max(6, rows - 1))} className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">-</button>
-                            <span className="w-8 text-center text-xs font-bold text-gray-800">{rows}</span>
-                            <button type="button" onClick={() => setRows(rows + 1)} className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">+</button>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
-                        <span className="text-xs font-semibold text-gray-600">Cột mặt bằng:</span>
-                        <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setCols(Math.max(8, cols - 1))} className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">-</button>
-                            <span className="w-8 text-center text-xs font-bold text-gray-800">{cols}</span>
-                            <button type="button" onClick={() => setCols(cols + 1)} className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">+</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div className="space-y-2">
-                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Hướng xếp kệ trong khu</h3>
-                    <div className="flex overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
-                        <button type="button" onClick={() => setOrientation("horizontal")} className={`flex-1 cursor-pointer border-0 py-1.5 text-xs font-bold transition-colors ${orientation === "horizontal" ? "bg-pink-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>Ngang</button>
-                        <button type="button" onClick={() => setOrientation("vertical")} className={`flex-1 cursor-pointer border-0 py-1.5 text-xs font-bold transition-colors ${orientation === "vertical" ? "bg-pink-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>Dọc</button>
-                    </div>
-                </div>
-
-                <div className="space-y-2">
                     <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Thêm khu mới</h3>
-                    <div className="mb-2 space-y-1">
-                        <label htmlFor="zone-name-input" className="block text-[11px] font-semibold text-gray-600">Tên khu:</label>
-                        <input
-                            id="zone-name-input"
-                            type="text"
-                            value={newZoneName}
-                            onChange={(event) => setNewZoneName(event.target.value)}
-                            placeholder="VD: Sữa và tã, đồ chơi..."
-                            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs focus:border-pink-500 focus:outline-none"
-                        />
-                    </div>
-                    <div className="mb-2 flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
-                        <span className="text-xs font-semibold text-gray-600">Số kệ trong khu:</span>
-                        <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setNewZoneSize(Math.max(1, newZoneSize - 1))} className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">-</button>
-                            <span className="w-8 text-center text-xs font-bold text-gray-800">{newZoneSize}</span>
-                            <button type="button" onClick={() => setNewZoneSize(newZoneSize + 1)} className="flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">+</button>
-                        </div>
-                    </div>
-                    <button type="button" onClick={createNewZone} className="w-full cursor-pointer rounded-lg border-0 bg-pink-600 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-pink-700">
-                        + Thêm khu mới
-                    </button>
+                    {zoneForm}
                 </div>
-
-                <div className="space-y-2">
-                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Khu chưa đặt lên mặt bằng</h3>
-                    <div className="max-h-56 space-y-2 overflow-y-auto pr-1">
-                        {zones.length === 0 && <p className="py-4 text-center text-xs italic text-gray-400">Chưa có khu nào</p>}
-                        {zones.map((zone) => (
-                            <div key={zone.id} draggable onDragStart={(event) => handleDragStart(event, zone.id)} className="flex cursor-grab select-none items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2 transition hover:border-pink-300 hover:shadow-md active:cursor-grabbing">
-                                <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white shadow-sm" style={{ backgroundColor: zone.color }}>{zone.code}</div>
-                                <div className="min-w-0 flex-1">
-                                    <p className="truncate text-xs font-bold text-gray-800">{zone.name}</p>
-                                    <p className="text-[9px] text-gray-400">{zone.size} kệ - {zone.occupiedCells.length > 0 ? "Đã đặt" : "Chưa đặt"}</p>
-                                </div>
-                                <button type="button" onClick={(event) => { event.stopPropagation(); removeZone(zone.id); }} className="ml-1 flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded-full border-0 text-xs font-bold text-red-400 transition-colors hover:bg-red-50 hover:text-red-600" title="Xóa phân khu">x</button>
-                            </div>
-                        ))}
-                    </div>
+                <div className="rounded-lg border border-gray-100 bg-gray-50 p-2 text-xs text-gray-500">
+                    Khu trong kho: {zones.length === 0 ? "chưa có khu nào" : zones.map((zone) => zone.code).join(", ")}
                 </div>
-
-                {backendZoneCodes.length > 0 && (
-                    <div className="rounded-lg border border-gray-100 bg-gray-50 p-2 text-xs text-gray-500">
-                        Khu từ backend: {backendZoneCodes.join(", ")}
-                    </div>
-                )}
-            </div>
+            </div>,
         );
 
         return () => setExtraContent(null);
-    }, [backendZoneCodes, cols, createNewZone, newZoneName, newZoneSize, orientation, removeZone, rows, setExtraContent, zones]);
+        // zoneForm được dựng lại theo các state bên dưới nên không cần liệt kê riêng
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [setExtraContent, zones, newZoneName, newZoneShelves, newZoneLayers, isSaving]);
 
     return (
         <div className="flex h-[calc(100vh-180px)] flex-1 flex-col overflow-auto rounded-xl border border-gray-200 bg-gray-100 p-6">
-            <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <div className="mb-4 flex flex-wrap items-start justify-between gap-4">
                 <div>
-                    <h3 className="text-base font-bold uppercase tracking-wide text-gray-800">Mặt bằng kho tổng thể (Layout Grid)</h3>
+                    <h3 className="text-base font-bold uppercase tracking-wide text-gray-800">
+                        Mặt bằng kho {warehouseName ? `- ${warehouseName}` : ""}
+                    </h3>
                     <p className="text-xs text-gray-500">
-                        Bấm vào một Khu trên sơ đồ hoặc chọn nút bên dưới để vào chi tiết Kệ/Tầng của khu đó.
+                        Kéo khu từ danh sách bên phải thả vào ô để đặt lên mặt bằng, vị trí được lưu xuống cơ sở dữ liệu.
+                        Bấm vào khu đã đặt để xem sơ đồ kệ và tầng bên trong.
                     </p>
                 </div>
-
-                <div className="flex flex-wrap items-center gap-2">
-                    <span className="text-xs font-semibold text-gray-500">Truy cập nhanh Khu:</span>
-                    {zones.map((zone) => (
-                        <button
-                            key={zone.id}
-                            type="button"
-                            onClick={() => onSelectZone?.(zone.code)}
-                            className="inline-flex cursor-pointer items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs font-bold shadow-sm transition hover:border-pink-300 hover:bg-pink-50 hover:text-pink-600"
-                        >
-                            <span className="flex h-4 w-4 items-center justify-center rounded text-[10px] text-white" style={{ backgroundColor: zone.color }}>
-                                {zone.code}
-                            </span>
-                            <span>{zone.name}</span>
-                        </button>
-                    ))}
+                <div className="flex overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+                    <button type="button" onClick={() => setOrientation("horizontal")} className={`px-3 py-1.5 text-xs font-bold transition-colors ${orientation === "horizontal" ? "bg-pink-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>Kệ xếp ngang</button>
+                    <button type="button" onClick={() => setOrientation("vertical")} className={`px-3 py-1.5 text-xs font-bold transition-colors ${orientation === "vertical" ? "bg-pink-600 text-white" : "bg-white text-gray-600 hover:bg-gray-50"}`}>Kệ xếp dọc</button>
                 </div>
             </div>
 
-            <div className="flex flex-1 items-start justify-start overflow-auto">
-                <div className="inline-grid gap-1.5 rounded-3xl border border-gray-200 bg-white p-4 shadow-inner" style={{ gridTemplateColumns: `repeat(${cols}, 68px)` }}>
-                    {Array.from({ length: rows * cols }).map((_, index) => {
-                        const row = Math.floor(index / cols);
-                        const col = index % cols;
-                        const zone = getZoneAt(row, col);
-
-                        return (
-                            <div
-                                key={index}
-                                onDrop={(event) => handleDrop(event, row, col)}
-                                onDragOver={(event) => event.preventDefault()}
-                                onClick={() => zone && onSelectZone?.(zone.code)}
-                                className={`flex h-16 cursor-pointer items-center justify-center rounded-2xl border-2 text-sm font-medium transition-all hover:scale-105 ${zone ? "border-transparent shadow-sm" : "border-dashed border-gray-300 hover:border-pink-300 hover:bg-pink-50/20"}`}
-                                style={zone ? { backgroundColor: `${zone.color}25` } : undefined}
-                            >
-                                {zone ? (
-                                    <div className="text-center">
-                                        <div className="font-bold" style={{ color: zone.color }}>{zone.code}</div>
-                                        <div className="mt-0.5 text-[10px] text-gray-500">{zone.size} kệ</div>
-                                    </div>
-                                ) : (
-                                    <span className="text-[10px] text-gray-300">H{row + 1}-C{col + 1}</span>
-                                )}
+            <div className="flex min-h-0 flex-1 gap-4">
+                <div className="min-w-0 flex-1 overflow-auto">
+                    {zones.length === 0 ? (
+                        <div className="flex h-full min-h-56 items-center justify-center rounded-3xl border-2 border-dashed border-gray-300 bg-white p-8 text-center">
+                            <div>
+                                <p className="text-sm font-semibold text-gray-700">Kho này chưa có khu vực nào</p>
+                                <p className="mt-1 text-xs text-gray-500">Dùng ô "Thêm khu mới" bên phải để tạo khu đầu tiên.</p>
                             </div>
-                        );
-                    })}
+                        </div>
+                    ) : (
+                        <div className="inline-grid gap-1.5 rounded-3xl border border-gray-200 bg-white p-4 shadow-inner" style={{ gridTemplateColumns: `repeat(${cols}, 68px)` }}>
+                            {Array.from({ length: rows * cols }).map((_, index) => {
+                                const row = Math.floor(index / cols);
+                                const col = index % cols;
+                                const zone = cellOwner.get(`${row}:${col}`);
+                                const color = zone ? colorByZoneId.get(zone.id) : undefined;
+                                const isAnchor = zone && zone.gridRow === row && zone.gridCol === col;
+
+                                return (
+                                    <div
+                                        key={`${row}-${col}`}
+                                        onDrop={(event) => void handleDrop(event, row, col)}
+                                        onDragOver={(event) => event.preventDefault()}
+                                        onClick={() => zone && onSelectZone?.(zone.code)}
+                                        draggable={Boolean(zone)}
+                                        onDragStart={(event) => {
+                                            if (!zone) return;
+                                            event.dataTransfer.setData("zoneId", String(zone.id));
+                                            setDraggingZoneId(zone.id);
+                                        }}
+                                        onDragEnd={() => setDraggingZoneId(null)}
+                                        className={`flex h-16 items-center justify-center rounded-2xl border-2 text-sm transition-all ${zone ? "cursor-pointer border-transparent shadow-sm hover:scale-105" : "border-dashed border-gray-300 hover:border-pink-300 hover:bg-pink-50/20"} ${draggingZoneId === zone?.id ? "opacity-40" : ""}`}
+                                        style={zone && color ? { backgroundColor: `${color}25` } : undefined}
+                                        title={zone ? `${zone.name} - ${zone.shelfCount} kệ, ${zone.locationCount} vị trí` : `Ô trống H${row + 1}-C${col + 1}`}
+                                    >
+                                        {zone ? (
+                                            <div className="text-center">
+                                                <div className="font-bold" style={{ color }}>{zone.code}</div>
+                                                {isAnchor && <div className="mt-0.5 text-[10px] text-gray-500">{zone.shelfCount} kệ</div>}
+                                            </div>
+                                        ) : (
+                                            <span className="text-[10px] text-gray-300">H{row + 1}-C{col + 1}</span>
+                                        )}
+                                    </div>
+                                );
+                            })}
+                        </div>
+                    )}
                 </div>
+
+                <aside className="w-72 shrink-0 space-y-4 overflow-auto rounded-2xl border border-gray-200 bg-white p-4">
+                    <div>
+                        <h4 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Thêm khu mới</h4>
+                        {zoneForm}
+                    </div>
+
+                    <div>
+                        <h4 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">
+                            Khu chưa đặt lên mặt bằng ({unplacedZones.length})
+                        </h4>
+                        <div className="space-y-2">
+                            {unplacedZones.length === 0 && (
+                                <p className="py-3 text-center text-xs italic text-gray-400">Mọi khu đã có vị trí</p>
+                            )}
+                            {unplacedZones.map((zone) => (
+                                <div
+                                    key={zone.id}
+                                    draggable
+                                    onDragStart={(event) => {
+                                        event.dataTransfer.setData("zoneId", String(zone.id));
+                                        setDraggingZoneId(zone.id);
+                                    }}
+                                    onDragEnd={() => setDraggingZoneId(null)}
+                                    className="flex cursor-grab select-none items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2 transition hover:border-pink-300 hover:shadow-md active:cursor-grabbing"
+                                >
+                                    <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white shadow-sm" style={{ backgroundColor: colorByZoneId.get(zone.id) }}>{zone.code}</div>
+                                    <div className="min-w-0 flex-1">
+                                        <p className="truncate text-xs font-bold text-gray-800">{zone.name}</p>
+                                        <p className="text-[10px] text-gray-400">{zone.shelfCount} kệ - {zone.locationCount} vị trí</p>
+                                    </div>
+                                    <button
+                                        type="button"
+                                        onClick={() => onSelectZone?.(zone.code)}
+                                        className="shrink-0 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-gray-600 hover:border-pink-200 hover:text-pink-600"
+                                    >
+                                        Xem
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {placedZones.length > 0 && (
+                        <div>
+                            <h4 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">
+                                Khu đã đặt ({placedZones.length})
+                            </h4>
+                            <div className="space-y-2">
+                                {placedZones.map((zone) => (
+                                    <div key={zone.id} className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white p-2">
+                                        <div className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white shadow-sm" style={{ backgroundColor: colorByZoneId.get(zone.id) }}>{zone.code}</div>
+                                        <div className="min-w-0 flex-1">
+                                            <p className="truncate text-xs font-bold text-gray-800">{zone.name}</p>
+                                            <p className="text-[10px] text-gray-400">Ô H{(zone.gridRow ?? 0) + 1}-C{(zone.gridCol ?? 0) + 1}</p>
+                                        </div>
+                                        <button
+                                            type="button"
+                                            onClick={() => void handleRemoveFromGrid(zone)}
+                                            disabled={isSaving}
+                                            className="shrink-0 rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-gray-600 hover:border-red-200 hover:text-red-600 disabled:opacity-60"
+                                            title="Gỡ khu khỏi mặt bằng, không xóa dữ liệu khu"
+                                        >
+                                            Gỡ
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+                </aside>
             </div>
         </div>
     );

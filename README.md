@@ -84,7 +84,13 @@ Import schema và data mẫu:
 ```bash
 cd backend
 mysql -u root -p warehouse_management < warehouse_management_mysql.sql
-mysql -u root -p warehouse_management < warehouse_sample_data.sql
+```
+
+File trên đã gồm đủ lược đồ, dữ liệu khởi tạo (vai trò, quyền, đơn vị tính) và dữ liệu mẫu. Máy không có `mysql` trong PATH thì dùng script chạy bằng driver của backend:
+
+```bash
+cd backend
+node scripts/run-migration.mjs warehouse_management_mysql.sql
 ```
 
 ## Chạy bằng Docker Compose

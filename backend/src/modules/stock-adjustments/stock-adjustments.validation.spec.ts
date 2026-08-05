@@ -51,10 +51,8 @@ describe('stock-adjustments.validation parseCreateStockAdjustment', () => {
     });
   });
 
-  it('allows omitting items entirely (header-only draft), matching CreateStockAdjustmentInput.items being optional', () => {
-    const result = parseCreateStockAdjustment(validHeader);
-
-    expect(result.items).toBeUndefined();
+  it('rejects a header-only draft: there is no endpoint to add items later, so an item-less adjustment could never be approved', () => {
+    expect(() => parseCreateStockAdjustment(validHeader)).toThrow(HttpError);
   });
 
   it('rejects an explicit empty items array', () => {

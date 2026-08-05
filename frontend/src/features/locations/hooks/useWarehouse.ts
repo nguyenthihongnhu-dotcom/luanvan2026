@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { warehouseService } from "@/features/locations/services/warehouseService";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { warehouseService, type WarehouseZone } from "@/features/locations/services/warehouseService";
 import { warehouseService as masterWarehouseService, type WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
@@ -31,6 +31,7 @@ export function useWarehouse() {
     const [selectedWarehouseId, setSelectedWarehouseId] = useState<number | null>(null);
     const [selectedZone, setSelectedZone] = useState<string | null>(null);
     const [locations, setLocations] = useState<ViTriKho[]>([]);
+    const [zones, setZones] = useState<WarehouseZone[]>([]);
     const [activeLocation, setActiveLocation] = useState<ViTriKho | null>(null);
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -65,8 +66,14 @@ export function useWarehouse() {
         setError(null);
         try {
             const targetWhId = whId ?? selectedWarehouseId ?? undefined;
-            const result = await warehouseService.listWarehouseLocations(targetWhId);
-            setLocations(result);
+            const [locationResult, zoneResult] = await Promise.all([
+                warehouseService.listWarehouseLocations(targetWhId),
+                // Danh sách khu đọc riêng từ warehouse_zones, không suy ra từ vị trí,
+                // nhờ vậy khu mới tạo mà chưa có kệ nào vẫn hiện trên mặt bằng.
+                targetWhId ? warehouseService.listZones(targetWhId) : Promise.resolve([]),
+            ]);
+            setLocations(locationResult);
+            setZones(zoneResult);
         } catch (err) {
             console.error('Failed to load locations from backend:', err);
             setError(getHttpErrorMessage(err, 'Không tải được vị trí kho từ backend'));
@@ -76,60 +83,112 @@ export function useWarehouse() {
     };
 
     useEffect(() => {
+        // Đổi kho thì bỏ luôn khu đang chọn và dữ liệu của kho cũ,
+        // mỗi kho có sơ đồ riêng nên không được để sót dữ liệu kho trước.
+        setSelectedZone(null);
+        setActiveLocation(null);
+        setLocations([]);
+        setZones([]);
         if (selectedWarehouseId !== null) {
             void loadLocations(selectedWarehouseId);
-        } else {
-            void loadLocations();
         }
     }, [selectedWarehouseId]);
 
-    const runMutation = async (operation: () => Promise<void>, fallback: string) => {
-        if (isSaving) return;
+    // Hàng đợi các thao tác ghi. Trước đây dùng `if (isSaving) return` nên thao tác thứ hai
+    // gửi lúc thao tác thứ nhất chưa xong sẽ bị bỏ qua im lặng — kéo thả nhanh trên mặt bằng
+    // là mất cú thả mà không báo gì. Giờ xếp hàng chạy tuần tự, không bỏ cú nào.
+    const mutationQueue = useRef<Promise<unknown>>(Promise.resolve());
+    const pendingMutations = useRef(0);
+    // Thao tác trong hàng đợi chạy sau, nên phải đọc kho đang chọn ở thời điểm chạy
+    // chứ không phải thời điểm xếp hàng: người dùng có thể đã đổi kho ở giữa.
+    const warehouseIdRef = useRef<number | null>(selectedWarehouseId);
+
+    useEffect(() => {
+        warehouseIdRef.current = selectedWarehouseId;
+    }, [selectedWarehouseId]);
+
+    const runMutation = (operation: () => Promise<void>, fallback: string): Promise<void> => {
+        pendingMutations.current += 1;
         setIsSaving(true);
-        setError(null);
-        try {
-            await operation();
-            await loadLocations(selectedWarehouseId);
-        } catch (err) {
-            console.error(fallback, err);
-            setError(getHttpErrorMessage(err, fallback));
-            window.alert(fallback);
-        } finally {
-            setIsSaving(false);
-        }
+
+        const task = mutationQueue.current.then(async () => {
+            setError(null);
+            try {
+                await operation();
+                await loadLocations(warehouseIdRef.current);
+            } catch (err) {
+                // Không dùng window.alert: nó chặn luồng nên các thao tác còn lại trong hàng đợi
+                // phải chờ người dùng bấm OK, và nhiều thao tác cùng lỗi sẽ bung một loạt hộp thoại.
+                // Lỗi đã hiện ở banner đầu trang LocationsPage.
+                console.error(fallback, err);
+                setError(getHttpErrorMessage(err, fallback));
+            } finally {
+                pendingMutations.current -= 1;
+                // Chỉ tắt cờ khi hàng đợi đã cạn, không tắt sớm giữa chừng.
+                if (pendingMutations.current === 0) setIsSaving(false);
+            }
+        });
+
+        // Nuốt lỗi ở mắt xích hàng đợi để một thao tác hỏng không chặn các thao tác sau.
+        mutationQueue.current = task.catch(() => undefined);
+        return task;
     };
 
-    const handleAddZone = async (code: string, name?: string, shelfCount = 4, layerCount = 4) => {
+    const handleAddZone = async (
+        code: string,
+        name?: string,
+        shelfCount = 4,
+        layerCount = 4,
+        options?: { gridRow?: number | null; gridCol?: number | null; openAfterCreate?: boolean },
+    ) => {
+        if (!selectedWarehouseId) {
+            setError('Chưa chọn kho, không thêm được khu vực.');
+            return;
+        }
         await runMutation(async () => {
             await warehouseService.createZone({
-                warehouseId: selectedWarehouseId ?? undefined,
+                warehouseId: selectedWarehouseId,
                 code,
                 name,
                 shelfCount,
                 layerCount,
+                gridRow: options?.gridRow ?? null,
+                gridCol: options?.gridCol ?? null,
+                gridSize: shelfCount,
             });
-            setSelectedZone(code);
+            if (options?.openAfterCreate !== false) setSelectedZone(code);
         }, 'Không thêm được khu vực kho.');
+    };
+
+    const handleSaveZoneLayout = async (
+        zoneId: number,
+        layout: { gridRow: number | null; gridCol: number | null; gridSize: number | null },
+    ) => {
+        await runMutation(
+            () => warehouseService.updateZoneLayout(zoneId, layout),
+            'Không lưu được vị trí khu trên mặt bằng.',
+        );
     };
 
     const getLocationInfo = (shelfCode: string, layerCode: string) => {
         return locations.find((loc) => loc.KhuVuc === selectedZone && loc.Ke === shelfCode && loc.Tang === layerCode);
     };
 
+    /** Mọi thao tác ghi đều phải biết đang ở kho nào, nếu không sẽ ghi nhầm sang kho khác. */
+    const requireWarehouse = (): number | null => {
+        if (!selectedWarehouseId) {
+            setError('Chưa chọn kho, không thực hiện được thao tác này.');
+            return null;
+        }
+        return selectedWarehouseId;
+    };
+
     const handleAddShelf = async () => {
         if (!selectedZone) return;
-        await runMutation(async () => {
-            if (zoneLocations.length === 0) {
-                await warehouseService.createZone({
-                    warehouseId: selectedWarehouseId ?? undefined,
-                    code: selectedZone,
-                    name: `Khu vực ${selectedZone}`,
-                    shelfCount: 1,
-                    layerCount: Math.max(layers.length, 1),
-                });
-                return;
-            }
+        const warehouseId = requireWarehouse();
+        if (!warehouseId) return;
 
+        await runMutation(async () => {
             const nextCodeInt = shelves.length > 0
                 ? Math.max(...shelves.map(shelf => parseInt(shelf.code, 10) || 0)) + 1
                 : 1;
@@ -137,35 +196,30 @@ export function useWarehouse() {
 
             await warehouseService.createShelf({
                 zoneCode: selectedZone,
-                warehouseId: selectedWarehouseId ?? undefined,
+                warehouseId,
                 code: shelfCode,
                 name: `Kệ ${shelfCode}`,
                 layerCount: Math.max(layers.length, 1),
             });
-        }, 'Không thêm được kệ. Kiểm tra khu vực kho đã tồn tại trong MySQL chưa.');
+        }, 'Không thêm được kệ. Kiểm tra khu vực có tồn tại trong kho đang chọn không.');
     };
 
     const handleAddLayer = async () => {
         if (!selectedZone) return;
+        const warehouseId = requireWarehouse();
+        if (!warehouseId) return;
+
         await runMutation(async () => {
-            if (zoneLocations.length === 0) {
-                await warehouseService.createZone({
-                    warehouseId: selectedWarehouseId ?? undefined,
-                    code: selectedZone,
-                    name: `Khu vực ${selectedZone}`,
-                    shelfCount: 1,
-                    layerCount: 1,
-                });
-                return;
-            }
+            const nextCodeInt = layers.length > 0
+                ? Math.max(...layers.map(layer => parseInt(layer.code, 10) || 0)) + 1
+                : 1;
 
-            const nextCodeInt = layers.length > 0 ? Math.max(...layers.map(layer => parseInt(layer.code, 10) || 0)) + 1 : 1;
-            const targetShelves = shelves.filter((shelf) => Number.isFinite(Number(shelf.id)));
-
-            if (targetShelves.length === 0) {
+            // Khu chưa có kệ nào thì thêm tầng cũng không sinh ra vị trí nào,
+            // nên phải tạo kệ đầu tiên kèm số tầng mong muốn.
+            if (shelves.length === 0) {
                 await warehouseService.createShelf({
                     zoneCode: selectedZone,
-                    warehouseId: selectedWarehouseId ?? undefined,
+                    warehouseId,
                     code: '01',
                     name: 'Kệ 01',
                     layerCount: nextCodeInt,
@@ -175,18 +229,21 @@ export function useWarehouse() {
 
             await warehouseService.createLayer({
                 zoneCode: selectedZone,
-                warehouseId: selectedWarehouseId ?? undefined,
+                warehouseId,
                 layerNo: nextCodeInt,
             });
-        }, 'Không thêm được tầng. Kiểm tra khu vực/kệ trong MySQL.');
+        }, 'Không thêm được tầng. Kiểm tra khu vực và kệ trong kho đang chọn.');
     };
 
     const handleSyncMatrix = async () => {
         if (!selectedZone) return;
+        const warehouseId = requireWarehouse();
+        if (!warehouseId) return;
+
         await runMutation(async () => {
             await warehouseService.syncLocationMatrix({
                 zoneCode: selectedZone,
-                warehouseId: selectedWarehouseId ?? undefined,
+                warehouseId,
             });
         }, 'Không đồng bộ được ma trận kệ/tầng.');
     };
@@ -239,6 +296,7 @@ export function useWarehouse() {
         layers,
         shelves,
         locations,
+        zones,
         isLoading,
         isSaving,
         error,
@@ -246,6 +304,7 @@ export function useWarehouse() {
         setActiveLocation,
         getLocationInfo,
         handleAddZone,
+        handleSaveZoneLayout,
         handleAddShelf,
         handleAddLayer,
         handleSyncMatrix,

@@ -35,7 +35,7 @@ describe('Backend integration with MySQL seed data', () => {
 
     if (!rows[0] || rows[0].total === 0) {
       throw new Error(
-        'Sample data is missing. Import backend/warehouse_sample_data.sql before running integration tests.',
+        'Sample data is missing. Import backend/warehouse_management_mysql.sql before running integration tests.',
       );
     }
   });
