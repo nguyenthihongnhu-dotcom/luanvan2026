@@ -1,10 +1,11 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
 import { attachmentService } from '@/features/attachments/services/attachmentService';
 import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { AttachmentItem } from '@/features/attachments/services/attachmentService';
+import { userService, type User } from '@/features/staff/services/userService';
 
 function formatDateTime(value: string): string {
     return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
@@ -19,6 +20,7 @@ function formatSize(value: number | null): string {
 
 export default function AttachmentsPage() {
     const [rows, setRows] = useState<AttachmentItem[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,12 @@ export default function AttachmentsPage() {
         setIsLoading(true);
         setError(null);
         try {
-            setRows(await attachmentService.listAttachments(search));
+            const [attachmentRows, userRows] = await Promise.all([
+                attachmentService.listAttachments(search),
+                userService.listUsers().catch(() => []),
+            ]);
+            setRows(attachmentRows);
+            setUsers(userRows);
         } catch (err) {
             console.error(err);
             setError(getHttpErrorMessage(err, 'Không tải được metadata file đính kèm từ backend'));
@@ -39,12 +46,22 @@ export default function AttachmentsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     useEffect(() => { void loadRows(''); }, []);
 
+    const userMap = useMemo(() => {
+        const map = new Map<number, string>();
+        for (const u of users) {
+            if (u.MaNguoiDung) {
+                map.set(u.MaNguoiDung, `${u.HoTen}${u.MaNhanVien ? ` (${u.MaNhanVien})` : ''}`);
+            }
+        }
+        return map;
+    }, [users]);
+
     const columns: ColumnProps<AttachmentItem>[] = [
         { key: 'file_name', title: 'Tên file', className: 'font-semibold text-gray-900' },
         { key: 'entity_type', title: 'Entity', render: (_, record) => `${record.entity_type} #${record.entity_id}` },
         { key: 'mime_type', title: 'Loại file', render: (value) => String(value || '-') },
         { key: 'file_size', title: 'Dung lượng', render: (value) => formatSize(value as number | null) },
-        { key: 'uploaded_by', title: 'Người tải lên', render: (value) => `#${String(value)}` },
+        { key: 'uploaded_by', title: 'Người tải lên', render: (value) => value ? (userMap.get(Number(value)) || `Người dùng #${String(value)}`) : 'Hệ thống' },
         { key: 'created_at', title: 'Thời gian', render: (value) => formatDateTime(String(value)) },
         { key: 'file_url', title: 'Liên kết', render: (value) => <a href={String(value)} target="_blank" rel="noreferrer" className="text-blue-600 hover:text-blue-900">Mở file</a> },
     ];

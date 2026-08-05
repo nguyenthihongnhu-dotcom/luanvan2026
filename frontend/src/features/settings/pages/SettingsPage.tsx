@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent } from 'react';
 import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
@@ -7,6 +7,7 @@ import { settingService } from '@/features/settings/services/settingService';
 import type { AppSetting } from '@/features/settings/services/settingService';
 import { usePermissions } from '@/shared/auth/usePermissions';
 import { getHttpErrorMessage } from '@/shared/services/httpClient';
+import { userService, type User } from '@/features/staff/services/userService';
 
 function formatDateTime(value: string): string {
     return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
@@ -21,6 +22,7 @@ export default function SettingsPage() {
     const { hasPermission } = usePermissions();
     const canUpdateSettings = hasPermission('settings:update');
     const [rows, setRows] = useState<AppSetting[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
@@ -35,7 +37,12 @@ export default function SettingsPage() {
         setIsLoading(true);
         setError(null);
         try {
-            setRows(await settingService.listSettings(search));
+            const [settingRows, userRows] = await Promise.all([
+                settingService.listSettings(search),
+                userService.listUsers().catch(() => []),
+            ]);
+            setRows(settingRows);
+            setUsers(userRows);
         } catch (err) {
             console.error(err);
             setError(getHttpErrorMessage(err, 'Không tải được cấu hình hệ thống từ backend'));
@@ -48,6 +55,16 @@ export default function SettingsPage() {
         void loadRows('');
         // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     }, []);
+
+    const userMap = useMemo(() => {
+        const map = new Map<number, string>();
+        for (const u of users) {
+            if (u.MaNguoiDung) {
+                map.set(u.MaNguoiDung, `${u.HoTen}${u.MaNhanVien ? ` (${u.MaNhanVien})` : ''}`);
+            }
+        }
+        return map;
+    }, [users]);
 
     function openEdit(setting: AppSetting) {
         setEditingSetting(setting);
@@ -109,7 +126,7 @@ export default function SettingsPage() {
         { key: 'setting_key', title: 'Khóa cấu hình', className: 'font-semibold text-gray-900' },
         { key: 'setting_value', title: 'Giá trị', render: (value) => <pre className="max-w-md whitespace-pre-wrap rounded bg-gray-50 px-2 py-1 text-xs text-gray-700">{formatJson(value)}</pre> },
         { key: 'description', title: 'Mô tả', render: (value) => String(value || '-') },
-        { key: 'updated_by', title: 'Cập nhật bởi', render: (value) => value ? `#${String(value)}` : 'Hệ thống' },
+        { key: 'updated_by', title: 'Cập nhật bởi', render: (value) => value ? (userMap.get(Number(value)) || `Người dùng #${String(value)}`) : 'Hệ thống' },
         { key: 'updated_at', title: 'Cập nhật lúc', render: (value) => formatDateTime(String(value)) },
         {
             key: 'actions',

@@ -5,6 +5,8 @@ import type { ColumnProps } from "@/shared/ui/Table/types";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 import { alertService } from "@/features/alerts/services/alertService";
 import type { AlertSeverity, AlertStatus, AlertType, InventoryAlert, NotificationItem } from "@/features/alerts/services/alertService";
+import { transferService, type CurrentStockItem, type WarehouseLocationOption } from "@/features/transfers/services/transferService";
+import { userService, type User } from "@/features/staff/services/userService";
 
 type ActiveTab = "alerts" | "notifications";
 
@@ -75,6 +77,9 @@ export default function AlertsPage() {
     const [activeTab, setActiveTab] = useState<ActiveTab>("alerts");
     const [alerts, setAlerts] = useState<InventoryAlert[]>([]);
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
+    const [locations, setLocations] = useState<WarehouseLocationOption[]>([]);
+    const [stockItems, setStockItems] = useState<CurrentStockItem[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<AlertStatus | "">("OPEN");
     const [isLoading, setIsLoading] = useState(false);
@@ -86,12 +91,18 @@ export default function AlertsPage() {
         setIsLoading(true);
         setError(null);
         try {
-            const [alertRows, notificationRows] = await Promise.all([
+            const [alertRows, notificationRows, locationRows, stockRows, userRows] = await Promise.all([
                 alertService.listAlerts({ search: nextSearch, status: nextStatus }),
                 alertService.listNotifications({ search: nextSearch }),
+                transferService.listLocationOptions().catch(() => []),
+                transferService.listCurrentStock().catch(() => []),
+                userService.listUsers().catch(() => []),
             ]);
             setAlerts(alertRows);
             setNotifications(notificationRows);
+            setLocations(locationRows);
+            setStockItems(stockRows);
+            setUsers(userRows);
         } catch (err) {
             console.error(err);
             setError(getHttpErrorMessage(err, "Không tải được cảnh báo/thông báo từ backend"));
@@ -102,6 +113,42 @@ export default function AlertsPage() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     useEffect(() => { void loadData("", "OPEN"); }, []);
+
+    const warehouseMap = useMemo(() => {
+        const map = new Map<number, string>();
+        for (const loc of locations) {
+            if (loc.warehouse_id && loc.warehouse_name) {
+                map.set(loc.warehouse_id, `${loc.warehouse_code ? `${loc.warehouse_code} - ` : ""}${loc.warehouse_name}`);
+            }
+        }
+        for (const stock of stockItems) {
+            if (stock.warehouse_id && stock.warehouse_name) {
+                map.set(stock.warehouse_id, `${stock.warehouse_code ? `${stock.warehouse_code} - ` : ""}${stock.warehouse_name}`);
+            }
+        }
+        return map;
+    }, [locations, stockItems]);
+
+    const variantMap = useMemo(() => {
+        const map = new Map<number, string>();
+        for (const stock of stockItems) {
+            if (stock.product_variant_id) {
+                const variantText = stock.variant_name ? ` (${stock.variant_name})` : "";
+                map.set(stock.product_variant_id, `${stock.sku} - ${stock.product_name}${variantText}`);
+            }
+        }
+        return map;
+    }, [stockItems]);
+
+    const userMap = useMemo(() => {
+        const map = new Map<number, string>();
+        for (const u of users) {
+            if (u.MaNguoiDung) {
+                map.set(u.MaNguoiDung, `${u.HoTen}${u.MaNhanVien ? ` (${u.MaNhanVien})` : ""}`);
+            }
+        }
+        return map;
+    }, [users]);
 
     async function runAction(action: () => Promise<void>, successMessage: string) {
         setIsGenerating(true);
@@ -155,8 +202,8 @@ export default function AlertsPage() {
             const status = value as AlertStatus;
             return <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${statusClass(status)}`}>{statusLabel(status)}</span>;
         } },
-        { key: "warehouse_id", title: "Kho", render: (value) => value ? `#${String(value)}` : "-" },
-        { key: "product_variant_id", title: "Variant", render: (value) => value ? `#${String(value)}` : "-" },
+        { key: "warehouse_id", title: "Kho", render: (value) => value ? (warehouseMap.get(Number(value)) || `Kho #${String(value)}`) : "-" },
+        { key: "product_variant_id", title: "Sản phẩm / Variant", render: (value) => value ? (variantMap.get(Number(value)) || `SKU #${String(value)}`) : "-" },
         { key: "created_at", title: "Thời gian", render: (value) => formatDateTime(value as string) },
         { key: "actions", title: "Thao tác", render: (_, record) => (
             <div className="flex flex-wrap gap-2">
@@ -173,7 +220,7 @@ export default function AlertsPage() {
                 <div className="text-xs text-gray-500">{record.message}</div>
             </div>
         ) },
-        { key: "user_id", title: "Người nhận", render: (value) => `#${String(value)}` },
+        { key: "user_id", title: "Người nhận", render: (value) => value ? (userMap.get(Number(value)) || `Người dùng #${String(value)}`) : "Hệ thống" },
         { key: "type", title: "Loại" },
         { key: "is_read", title: "Trạng thái", render: (value) => value ? "Đã đọc" : "Chưa đọc" },
         { key: "reference_id", title: "Tham chiếu", render: (_, record) => record.reference_type ? `${record.reference_type} #${record.reference_id ?? ""}` : "-" },

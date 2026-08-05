@@ -7,6 +7,8 @@ import { warehouseService } from '@/features/warehouses/services/warehouseServic
 import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { Warehouse, WarehouseInput, WarehouseStatus } from '@/features/warehouses/services/warehouseService';
 
+import { userService, type User } from '@/features/staff/services/userService';
+
 const initialFormState: WarehouseInput = {
     code: '',
     name: '',
@@ -63,6 +65,7 @@ function cleanInput(input: WarehouseInput): WarehouseInput {
 
 export default function WarehousesPage() {
     const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+    const [users, setUsers] = useState<User[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState<WarehouseStatus | ''>('');
     const [isLoading, setIsLoading] = useState(false);
@@ -76,7 +79,12 @@ export default function WarehousesPage() {
         setIsLoading(true);
         setError(null);
         try {
-            setWarehouses(await warehouseService.listWarehouses({ search: nextSearch, status: nextStatus }));
+            const [warehouseList, userList] = await Promise.all([
+                warehouseService.listWarehouses({ search: nextSearch, status: nextStatus }),
+                userService.listUsers().catch(() => []),
+            ]);
+            setWarehouses(warehouseList);
+            setUsers(userList);
         } catch (err) {
             console.error(err);
             setError(getHttpErrorMessage(err, 'Không tải được danh sách kho từ backend'));
@@ -87,6 +95,16 @@ export default function WarehousesPage() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     useEffect(() => { void loadWarehouses('', ''); }, []);
+
+    const userMap = useMemo(() => {
+        const map = new Map<number, string>();
+        for (const u of users) {
+            if (u.MaNguoiDung) {
+                map.set(u.MaNguoiDung, `${u.HoTen}${u.MaNhanVien ? ` (${u.MaNhanVien})` : ''}`);
+            }
+        }
+        return map;
+    }, [users]);
 
     const summary = useMemo(() => ({
         total: warehouses.length,
@@ -145,7 +163,7 @@ export default function WarehousesPage() {
         { key: 'code', title: 'Mã kho', className: 'font-semibold text-gray-900' },
         { key: 'name', title: 'Tên kho' },
         { key: 'address_line', title: 'Địa chỉ', render: (_, record) => addressLabel(record) },
-        { key: 'manager_user_id', title: 'Quản lý', render: (value) => value ? `#${String(value)}` : 'Chưa gán' },
+        { key: 'manager_user_id', title: 'Quản lý', render: (value) => value ? (userMap.get(Number(value)) || `Thủ kho #${String(value)}`) : 'Chưa gán' },
         {
             key: 'status',
             title: 'Trạng thái',

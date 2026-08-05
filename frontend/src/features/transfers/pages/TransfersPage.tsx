@@ -149,11 +149,26 @@ export default function TransfersPage() {
         await loadData();
     };
 
+    const warehouseMap = useMemo(() => {
+        const map = new Map<number, string>();
+        for (const item of stockItems) {
+            if (item.warehouse_id && item.warehouse_name) {
+                map.set(item.warehouse_id, `${item.warehouse_code ? `${item.warehouse_code} - ` : ""}${item.warehouse_name}`);
+            }
+        }
+        for (const loc of locations) {
+            if (loc.warehouse_id && loc.warehouse_name) {
+                map.set(loc.warehouse_id, `${loc.warehouse_code ? `${loc.warehouse_code} - ` : ""}${loc.warehouse_name}`);
+            }
+        }
+        return map;
+    }, [stockItems, locations]);
+
     const columns: ColumnProps<StockTransfer>[] = [
         { key: "transfer_code", title: "Mã phiếu", className: "font-semibold text-gray-900" },
         { key: "status", title: "Trạng thái", render: (value) => statusLabel(value as TransferStatus) },
-        { key: "source_warehouse_id", title: "Kho nguồn" },
-        { key: "destination_warehouse_id", title: "Kho đích" },
+        { key: "source_warehouse_id", title: "Kho nguồn", render: (value) => warehouseMap.get(Number(value)) || (value ? `Kho #${value}` : "-") },
+        { key: "destination_warehouse_id", title: "Kho đích", render: (value) => warehouseMap.get(Number(value)) || (value ? `Kho #${value}` : "-") },
         { key: "note", title: "Ghi chú", render: (value) => String(value || "-") },
         { key: "created_at", title: "Ngày tạo", render: (value) => formatDate(String(value ?? "")) },
         {

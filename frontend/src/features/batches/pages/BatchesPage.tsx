@@ -5,6 +5,8 @@ import type { ColumnProps } from "@/shared/ui/Table/types";
 import { batchService } from "@/features/batches/services/batchService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 import type { BatchStatus, ProductBatch } from "@/features/batches/services/batchService";
+import { partnerService, type Partner } from "@/features/partners/services/partnerService";
+import { transferService, type CurrentStockItem } from "@/features/transfers/services/transferService";
 
 const statusOptions: Array<{ value: BatchStatus | ""; label: string }> = [
     { value: "", label: "Tất cả trạng thái" },
@@ -61,6 +63,8 @@ function expiryLabel(value: string | null): string {
 
 export default function BatchesPage() {
     const [batches, setBatches] = useState<ProductBatch[]>([]);
+    const [partners, setPartners] = useState<Partner[]>([]);
+    const [stockItems, setStockItems] = useState<CurrentStockItem[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<BatchStatus | "">("");
     const [isLoading, setIsLoading] = useState(false);
@@ -70,7 +74,14 @@ export default function BatchesPage() {
         setIsLoading(true);
         setError(null);
         try {
-            setBatches(await batchService.listBatches({ search: nextSearch, status: nextStatus }));
+            const [batchList, partnerList, stockList] = await Promise.all([
+                batchService.listBatches({ search: nextSearch, status: nextStatus }),
+                partnerService.listPartners().catch(() => []),
+                transferService.listCurrentStock().catch(() => []),
+            ]);
+            setBatches(batchList);
+            setPartners(partnerList);
+            setStockItems(stockList);
         } catch (err) {
             console.error(err);
             setError(getHttpErrorMessage(err, "Không tải được danh sách lô hàng từ backend"));
@@ -82,6 +93,27 @@ export default function BatchesPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     useEffect(() => { void loadBatches("", ""); }, []);
 
+    const supplierMap = useMemo(() => {
+        const map = new Map<number, string>();
+        for (const p of partners) {
+            if (p.MaNCC && p.TenNCC) {
+                map.set(p.MaNCC, p.TenNCC);
+            }
+        }
+        return map;
+    }, [partners]);
+
+    const variantMap = useMemo(() => {
+        const map = new Map<number, string>();
+        for (const item of stockItems) {
+            if (item.product_variant_id) {
+                const variantText = item.variant_name ? ` (${item.variant_name})` : "";
+                map.set(item.product_variant_id, `${item.sku} - ${item.product_name}${variantText}`);
+            }
+        }
+        return map;
+    }, [stockItems]);
+
     const summary = useMemo(() => {
         const nearExpiry = batches.filter((batch) => batch.status === "NEAR_EXPIRY" || (daysUntil(batch.expiry_date) ?? Number.POSITIVE_INFINITY) <= 30).length;
         const expired = batches.filter((batch) => batch.status === "EXPIRED" || (daysUntil(batch.expiry_date) ?? 1) < 0).length;
@@ -90,8 +122,8 @@ export default function BatchesPage() {
 
     const columns: ColumnProps<ProductBatch>[] = [
         { key: "lot_number", title: "Số lô", className: "font-semibold text-gray-900" },
-        { key: "product_variant_id", title: "Variant", render: (value) => `#${String(value)}` },
-        { key: "supplier_id", title: "Nhà cung cấp", render: (value) => value ? `#${String(value)}` : "Không có" },
+        { key: "product_variant_id", title: "Sản phẩm / Variant", render: (value) => variantMap.get(Number(value)) || `#${String(value)}` },
+        { key: "supplier_id", title: "Nhà cung cấp", render: (value) => value ? (supplierMap.get(Number(value)) || `NCC #${String(value)}`) : "Không có" },
         { key: "manufacture_date", title: "Ngày sản xuất", render: (value) => formatDate(value as string | null) },
         { key: "received_date", title: "Ngày nhập", render: (value) => formatDate(value as string | null) },
         { key: "expiry_date", title: "Hạn sử dụng", render: (value) => (
