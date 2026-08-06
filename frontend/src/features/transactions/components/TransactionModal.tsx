@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import type { Transaction, TransactionItem } from "@/features/transactions/hooks/useTransactions";
-import type { AllocationPreviewItem, AllocationPreviewResult, AllocationStrategy } from "@/features/transactions/services/transactionService";
+import type { AllocationPreviewItem, AllocationPreviewResult, AllocationStrategy, CurrentStockRow } from "@/features/transactions/services/transactionService";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import type { Partner } from "@/features/partners/services/partnerService";
 import type { ProductItem } from "@/features/products/hooks/useProducts";
@@ -36,6 +36,7 @@ interface TransactionModalProps {
     suppliers?: Partner[];
     productVariants?: ProductItem[];
     locationOptions?: LocationOption[];
+    currentStock?: CurrentStockRow[];
     selectedWarehouseId: string;
     setSelectedWarehouseId: (warehouseId: string) => void;
     allocationStrategy: AllocationStrategy;
@@ -162,6 +163,83 @@ function LocationCascadePicker({
     );
 }
 
+/**
+ * Chọn hàng cần điều chỉnh bằng cách bấm thẳng vào một dòng tồn đang có, thay vì
+ * tự dò lại khu/kệ/ô. Chọn xong là điền sẵn cả ô lưu trữ lẫn lô, người dùng chỉ
+ * còn nhập số lượng. Đây cũng là cách chặn lỗi điều chỉnh giảm vào một ô không
+ * hề có tồn (STOCK_LOCATION_NOT_FOUND).
+ *
+ * Vẫn để lối chọn thủ công cho trường hợp điều chỉnh tăng vào một ô còn trống.
+ */
+function AdjustmentStockPicker({
+    stockRows,
+    locations,
+    hasWarehouse,
+    locationId,
+    batchId,
+    onPick,
+}: {
+    stockRows: CurrentStockRow[];
+    locations: LocationOption[];
+    hasWarehouse: boolean;
+    locationId: string;
+    batchId: string;
+    onPick: (locationId: string, batchId: string) => void;
+}) {
+    const keyOf = (row: CurrentStockRow) => `${row.locationId}:${row.batchId ?? ""}`;
+    const currentKey = locationId ? `${locationId}:${batchId}` : "";
+    const matched = stockRows.find((row) => keyOf(row) === currentKey);
+    const [manual, setManual] = useState(false);
+    // Đang chỉ vào một ô không nằm trong danh sách tồn thì chắc chắn là chọn tay.
+    const isManual = manual || (Boolean(locationId) && !matched);
+
+    return (
+        <div className="space-y-2">
+            <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Tồn hiện có</label>
+                <select
+                    value={isManual ? "__manual__" : currentKey}
+                    onChange={(event) => {
+                        if (event.target.value === "__manual__") {
+                            setManual(true);
+                            onPick("", "");
+                            return;
+                        }
+                        setManual(false);
+                        const picked = stockRows.find((row) => keyOf(row) === event.target.value);
+                        onPick(picked ? String(picked.locationId) : "", picked?.batchId ? String(picked.batchId) : "");
+                    }}
+                    className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                >
+                    <option value="">
+                        {!hasWarehouse
+                            ? "-- Chọn kho trước --"
+                            : stockRows.length === 0
+                                ? "-- Sản phẩm chưa có tồn trong kho này --"
+                                : "-- Chọn nơi đang có hàng --"}
+                    </option>
+                    {stockRows.map((row) => (
+                        <option key={keyOf(row)} value={keyOf(row)}>
+                            {row.locationCode}
+                            {row.batchId ? ` — Lô #${row.batchId}${row.lotNumber ? ` (${row.lotNumber})` : ""}` : " — Không theo lô"}
+                            {` — tồn ${row.quantity}`}
+                        </option>
+                    ))}
+                    <option value="__manual__">-- Chọn ô khác (thêm vào ô trống) --</option>
+                </select>
+            </div>
+            {isManual && (
+                <LocationCascadePicker
+                    locations={locations}
+                    hasWarehouse={hasWarehouse}
+                    value={locationId}
+                    onChange={(nextLocationId) => onPick(nextLocationId, "")}
+                />
+            )}
+        </div>
+    );
+}
+
 export default function TransactionModal({
     editingTransaction,
     formData,
@@ -177,6 +255,7 @@ export default function TransactionModal({
     suppliers = [],
     productVariants = [],
     locationOptions = [],
+    currentStock = [],
     selectedWarehouseId,
     setSelectedWarehouseId,
     allocationStrategy,
@@ -351,12 +430,29 @@ export default function TransactionModal({
                                         - Giúp thủ kho tìm đúng vị trí khi lấy hàng xuất kho hoặc cất hàng khi nhập kho.
                                     */}
                                     <div className="col-span-12 md:col-span-6">
-                                        <LocationCascadePicker
-                                            locations={filteredLocations}
-                                            hasWarehouse={Boolean(selectedWarehouseId)}
-                                            value={item.locationId}
-                                            onChange={(locationId) => handleItemChange(index, "locationId", locationId)}
-                                        />
+                                        {isAdjustment ? (
+                                            <AdjustmentStockPicker
+                                                stockRows={currentStock.filter((row) =>
+                                                    String(row.warehouseId) === String(selectedWarehouseId)
+                                                    && String(row.productVariantId) === String(item.productVariantId),
+                                                )}
+                                                locations={filteredLocations}
+                                                hasWarehouse={Boolean(selectedWarehouseId)}
+                                                locationId={item.locationId}
+                                                batchId={item.batchId}
+                                                onPick={(locationId, batchId) => {
+                                                    handleItemChange(index, "locationId", locationId);
+                                                    handleItemChange(index, "batchId", batchId);
+                                                }}
+                                            />
+                                        ) : (
+                                            <LocationCascadePicker
+                                                locations={filteredLocations}
+                                                hasWarehouse={Boolean(selectedWarehouseId)}
+                                                value={item.locationId}
+                                                onChange={(locationId) => handleItemChange(index, "locationId", locationId)}
+                                            />
+                                        )}
                                     </div>
                                     <div className="col-span-6 md:col-span-2">
                                         <label className="mb-1 block text-xs font-medium text-gray-600">Số lượng</label>

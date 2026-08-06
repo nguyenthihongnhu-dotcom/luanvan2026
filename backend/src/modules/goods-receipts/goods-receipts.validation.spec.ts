@@ -77,6 +77,35 @@ describe('goods-receipts.validation parseCreateGoodsReceipt', () => {
     ).toThrow(HttpError);
   });
 
+  it('normalises receivedAt sent by the date input (T separator, no seconds) into a MySQL DATETIME literal', () => {
+    const result = parseCreateGoodsReceipt({
+      ...validHeader,
+      receivedAt: '2026-08-06T22:01',
+      items: [validItem],
+    });
+
+    expect(result.receivedAt).toBe('2026-08-06 22:01:00');
+  });
+
+  it('rejects a UTC instant for receivedAt: the column has no timezone, so a Z value would shift the document date', () => {
+    expect(() =>
+      parseCreateGoodsReceipt({
+        ...validHeader,
+        receivedAt: '2026-08-06T15:01:35.000Z',
+        items: [validItem],
+      }),
+    ).toThrow(HttpError);
+  });
+
+  it('leaves receivedAt undefined when omitted so the column stays NULL until the receipt is confirmed', () => {
+    const result = parseCreateGoodsReceipt({
+      ...validHeader,
+      items: [validItem],
+    });
+
+    expect(result.receivedAt).toBeUndefined();
+  });
+
   it('rejects missing receiptCode', () => {
     expect(() => parseCreateGoodsReceipt({ items: [validItem] })).toThrow(
       HttpError,

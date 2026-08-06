@@ -1,4 +1,5 @@
 import { httpClient, unwrapData } from '@/shared/services/httpClient';
+import { toDisplayDate, withCurrentTime } from '@/shared/utils/datetime';
 import type { Transaction } from '@/features/transactions/hooks/useTransactions';
 import { warehouseService } from '@/features/warehouses/services/warehouseService';
 import type { WarehouseOption } from '@/features/warehouses/services/warehouseService';
@@ -31,6 +32,7 @@ type BackendReceipt = BackendRow & {
     receipt_code?: string;
     status?: string;
     created_at?: string;
+    received_at?: string | null;
     created_by?: string | number;
     supplier_id?: string | number;
 };
@@ -40,6 +42,7 @@ type BackendIssue = BackendRow & {
     issue_code?: string;
     status?: string;
     created_at?: string;
+    issued_at?: string | null;
     created_by?: string | number;
     external_reference?: string;
 };
@@ -54,9 +57,6 @@ type BackendAdjustment = BackendRow & {
     reason_code?: string;
 };
 
-function dateOnly(value: unknown): string {
-    return typeof value === 'string' ? value.slice(0, 10) : '';
-}
 
 function getUserDisplayName(nameVal: unknown, idVal: unknown): string {
     if (typeof nameVal === 'string' && nameVal.trim()) {
@@ -83,7 +83,15 @@ function toTransaction(row: BackendReceipt | BackendIssue | BackendAdjustment, t
         id: Number(row.id ?? 0),
         soPhieu: code ?? `${type}-${row.id ?? ''}`,
         loai: type,
-        ngay: dateOnly(row.created_at),
+        // Ưu tiên mốc người dùng khai trên phiếu; phiếu cũ chưa có thì lùi về
+        // thời điểm bản ghi được tạo.
+        ngay: toDisplayDate(
+            type === 'NHAP'
+                ? (row as BackendReceipt).received_at ?? row.created_at
+                : type === 'XUAT'
+                    ? (row as BackendIssue).issued_at ?? row.created_at
+                    : row.created_at,
+        ),
         status: String(row.status ?? ''),
         nguoiTao: createdByName,
         maNCC: type === 'NHAP' ? String((row as BackendReceipt).supplier_id ?? '') : undefined,
@@ -120,11 +128,15 @@ function mapItems(input: Transaction) {
 }
 
 export async function createTransaction(input: Transaction): Promise<void> {
+    // Ô "Ngày thực hiện" chỉ chọn được ngày, phần giờ lấy theo đồng hồ lúc lưu.
+    const performedAt = withCurrentTime(input.ngay);
+
     if (input.loai === 'NHAP') {
         await httpClient.post('/goods-receipts', {
             receiptCode: input.soPhieu || undefined,
             supplierId: input.maNCC ? Number(input.maNCC) : undefined,
             referenceNo: input.maDonHangThamChieu || undefined,
+            receivedAt: performedAt,
             note: input.lyDo || undefined,
             items: mapItems(input),
         });
@@ -135,12 +147,15 @@ export async function createTransaction(input: Transaction): Promise<void> {
         await httpClient.post('/goods-issues', {
             issueCode: input.soPhieu || undefined,
             referenceNo: input.maDonHangThamChieu || undefined,
+            issuedAt: performedAt,
             note: input.lyDo || undefined,
             items: mapItems(input),
         });
         return;
     }
 
+    // stock_adjustments chưa có cột thời điểm thực hiện nên phiếu điều chỉnh vẫn
+    // chỉ có created_at do MySQL sinh.
     await httpClient.post('/stock-adjustments', {
         adjustmentCode: input.soPhieu || undefined,
         reasonCode: input.lyDo || 'DIEU_CHINH_THU_CONG',
@@ -185,6 +200,46 @@ export async function cancelAdjustment(id: number): Promise<void> {
 
 export async function listWarehouses(): Promise<WarehouseOption[]> {
     return warehouseService.listWarehouses();
+}
+
+/** Một dòng tồn thực tế: đã gắn sẵn ô lưu trữ và lô, dùng để chọn nhanh khi điều chỉnh. */
+export interface CurrentStockRow {
+    warehouseId: number;
+    productVariantId: number;
+    locationId: number;
+    locationCode: string;
+    batchId: number | null;
+    lotNumber: string | null;
+    quantity: number;
+}
+
+type BackendCurrentStock = BackendRow & {
+    warehouse_id?: number;
+    product_variant_id?: number;
+    location_id?: number;
+    location_code?: string;
+    batch_id?: number | null;
+    lot_number?: string | null;
+    quantity?: string | number;
+};
+
+/**
+ * Tồn hiện có theo từng ô lưu trữ và lô. Lấy đủ cả dòng tồn bằng 0 (khác với
+ * màn chuyển kho vốn chỉ quan tâm hàng còn khả dụng), vì điều chỉnh tăng vẫn
+ * cần cộng vào một dòng đang trống.
+ */
+export async function listCurrentStock(): Promise<CurrentStockRow[]> {
+    const response = await httpClient.get<{ data: BackendCurrentStock[] }>('/stock/current');
+
+    return unwrapData(response).map((row) => ({
+        warehouseId: Number(row.warehouse_id ?? 0),
+        productVariantId: Number(row.product_variant_id ?? 0),
+        locationId: Number(row.location_id ?? 0),
+        locationCode: String(row.location_code ?? ''),
+        batchId: row.batch_id == null ? null : Number(row.batch_id),
+        lotNumber: row.lot_number ?? null,
+        quantity: Number(row.quantity ?? 0),
+    }));
 }
 
 export async function previewAllocation(input: {
@@ -249,6 +304,7 @@ export const transactionService = {
     rejectAdjustment,
     cancelAdjustment,
     listWarehouses,
+    listCurrentStock,
     previewAllocation,
     getTransactionDetail,
 };

@@ -74,6 +74,26 @@ describe('goods-issues.validation parseCreateGoodsIssue', () => {
     ).toThrow(HttpError);
   });
 
+  it('normalises issuedAt sent by the date input (T separator, no seconds) into a MySQL DATETIME literal', () => {
+    const result = parseCreateGoodsIssue({
+      ...validHeader,
+      issuedAt: '2026-08-06T22:01',
+      items: [validItem],
+    });
+
+    expect(result.issuedAt).toBe('2026-08-06 22:01:00');
+  });
+
+  it('rejects a UTC instant for issuedAt: the column has no timezone, so a Z value would shift the document date', () => {
+    expect(() =>
+      parseCreateGoodsIssue({
+        ...validHeader,
+        issuedAt: '2026-08-06T15:01:35.000Z',
+        items: [validItem],
+      }),
+    ).toThrow(HttpError);
+  });
+
   it('rejects missing issueCode', () => {
     expect(() => parseCreateGoodsIssue({ items: [validItem] })).toThrow(
       HttpError,

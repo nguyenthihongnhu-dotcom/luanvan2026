@@ -100,6 +100,7 @@ export default function Transactions() {
         suppliers,
         productVariants,
         locationOptions,
+        currentStock,
         selectedWarehouseId,
         setSelectedWarehouseId,
         handleAddItemRow,
@@ -231,6 +232,7 @@ export default function Transactions() {
                     suppliers={suppliers}
                     productVariants={productVariants}
                     locationOptions={locationOptions}
+                    currentStock={currentStock}
                     selectedWarehouseId={selectedWarehouseId}
                     setSelectedWarehouseId={setSelectedWarehouseId}
                     handleAddItemRow={handleAddItemRow}

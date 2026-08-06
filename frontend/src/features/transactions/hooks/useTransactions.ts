@@ -1,8 +1,9 @@
 import { useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import { useForm } from "@/shared/hooks/useForm";
+import { todayInputValue } from "@/shared/utils/datetime";
 import { transactionService } from "@/features/transactions/services/transactionService";
-import type { AllocationPreviewResult, AllocationStrategy } from "@/features/transactions/services/transactionService";
+import type { AllocationPreviewResult, AllocationStrategy, CurrentStockRow } from "@/features/transactions/services/transactionService";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
@@ -60,16 +61,6 @@ function makeEmptyItem(): TransactionItem {
     return { ...emptyItem };
 }
 
-/**
- * Ngày hôm nay ở dạng yyyy-MM-dd cho <input type="date">. Phải trừ chênh lệch
- * múi giờ trước khi lấy chuỗi ISO, nếu không những giờ đầu ngày ở GMT+7 sẽ ra
- * ngày hôm trước.
- */
-function todayInputValue(): string {
-    const now = new Date();
-    return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
-}
-
 import { partnerService, type Partner } from "@/features/partners/services/partnerService";
 import { productService, type LocationOption } from "@/features/products/services/productService";
 import type { ProductItem } from "@/features/products/hooks/useProducts";
@@ -85,6 +76,7 @@ export function useTransactions() {
     const [suppliers, setSuppliers] = useState<Partner[]>([]);
     const [productVariants, setProductVariants] = useState<ProductItem[]>([]);
     const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
+    const [currentStock, setCurrentStock] = useState<CurrentStockRow[]>([]);
     const [selectedWarehouseId, setSelectedWarehouseId] = useState("");
     const [allocationStrategy, setAllocationStrategy] = useState<AllocationStrategy>("FEFO");
     const [allocationPreview, setAllocationPreview] = useState<AllocationPreviewResult | null>(null);
@@ -106,12 +98,13 @@ export function useTransactions() {
             setIsLoading(true);
             setError(null);
             try {
-                const [result, warehouseRows, supplierRows, productRows, locationRows] = await Promise.all([
+                const [result, warehouseRows, supplierRows, productRows, locationRows, stockRows] = await Promise.all([
                     transactionService.listTransactions(),
                     transactionService.listWarehouses(),
                     partnerService.listPartners(),
                     productService.listProducts(),
                     productService.listLocationOptions(),
+                    transactionService.listCurrentStock().catch(() => []),
                 ]);
 
                 if (isMounted) {
@@ -120,6 +113,7 @@ export function useTransactions() {
                     setSuppliers(supplierRows);
                     setProductVariants(productRows);
                     setLocationOptions(locationRows);
+                    setCurrentStock(stockRows);
                     setSelectedWarehouseId((current) => current || (warehouseRows[0] ? String(warehouseRows[0].id) : ""));
                 }
             } catch (err) {
@@ -388,6 +382,7 @@ export function useTransactions() {
         suppliers,
         productVariants,
         locationOptions,
+        currentStock,
         selectedWarehouseId,
         setSelectedWarehouseId,
         allocationStrategy,
