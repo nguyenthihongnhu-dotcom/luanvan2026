@@ -105,7 +105,8 @@ const Login: React.FC = () => {
 
     return (
         <div style={{ maxWidth: '400px', margin: '50px auto', padding: '20px', border: '1px solid #ddd', borderRadius: '8px', boxShadow: '0 2px 5px rgba(0,0,0,0.1)' }}>
-            <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#DB2777' }}>Đăng nhập</h2>
+            <h2 style={{ textAlign: 'center', marginBottom: '20px', color: '#DB2777', font: 'bold 20px Arial' }}>Đăng nhập Bambi WMS</h2>
+            {/* <span className="truncate text-xl font-bold tracking-wider text-pink-600">Bambi WMS</span> */}
             {error && <p style={{ color: 'red', textAlign: 'center' }}>{error}</p>}
 
             <form onSubmit={handleLogin}>
@@ -138,13 +139,13 @@ const Login: React.FC = () => {
                     >
                         Đăng nhập
                     </button>
-                    <button
+                    {/* <button
                         type="button"
                         style={{ flex: 1, padding: '10px', backgroundColor: '#16b423', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '16px', fontWeight: 'bold' }}
                         onClick={() => setShowRegisterModal(true)}
                     >
                         Đăng ký
-                    </button>
+                    </button> */}
                 </div>
             </form>
 
