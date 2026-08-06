@@ -119,7 +119,10 @@ export async function findProducts(
   const [rows] = await db.query<CatalogRow[]>({
     sql: `
       SELECT pv.id, pv.sku, pv.variant_name, p.name AS product_name, c.name AS category_name,
-        pv.min_stock_level, COALESCE(SUM(sl.quantity), 0) AS stock,
+        pv.min_stock_level,
+        -- Cần cho màn hình lô hàng: biết SKU nào bắt buộc khai lô và hạn dùng
+        pv.requires_lot_tracking, pv.requires_expiry_tracking,
+        COALESCE(SUM(sl.quantity), 0) AS stock,
         MIN(pb.expiry_date) AS expiry_date,
         MIN(CASE WHEN sl.quantity > 0 THEN w.id END) AS warehouse_id,
         MIN(CASE WHEN sl.quantity > 0 THEN wl.id END) AS location_id,
@@ -134,7 +137,8 @@ export async function findProducts(
       LEFT JOIN warehouses w ON w.id = wz.warehouse_id
       LEFT JOIN product_batches pb ON pb.id = sl.batch_id
       WHERE ${where.join(' AND ')}
-      GROUP BY pv.id, pv.sku, pv.variant_name, p.name, c.name, pv.min_stock_level
+      GROUP BY pv.id, pv.sku, pv.variant_name, p.name, c.name, pv.min_stock_level,
+        pv.requires_lot_tracking, pv.requires_expiry_tracking
       ORDER BY pv.id
       LIMIT 100
     `,

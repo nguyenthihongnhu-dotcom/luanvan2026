@@ -13,6 +13,8 @@ type CatalogProductRow = {
     warehouse_id?: string | number | null;
     location_id?: string | number | null;
     locations?: string | null;
+    requires_lot_tracking?: number | boolean | null;
+    requires_expiry_tracking?: number | boolean | null;
 };
 
 type BackendLocationRow = {
@@ -67,6 +69,8 @@ export async function listProducts(): Promise<ProductItem[]> {
             locationId: row.location_id ? String(row.location_id) : '',
             locations: row.locations ?? '',
             status: calculateStatus(stock, minStock),
+            requiresLotTracking: Boolean(Number(row.requires_lot_tracking ?? 0)),
+            requiresExpiryTracking: Boolean(Number(row.requires_expiry_tracking ?? 0)),
         };
     });
 }

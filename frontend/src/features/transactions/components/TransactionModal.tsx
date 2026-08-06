@@ -22,6 +22,7 @@ interface TransactionModalProps {
         lyDo: string;
         nguoiPheDuyet: string;
     };
+    error?: string | null;
     handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => void;
     handleSubmit: (e: React.FormEvent) => void;
     onClose: () => void;
@@ -50,6 +51,7 @@ function formatDate(value: string | null): string {
 export default function TransactionModal({
     editingTransaction,
     formData,
+    error,
     handleInputChange,
     handleSubmit,
     onClose,
@@ -97,6 +99,11 @@ export default function TransactionModal({
                     <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng">×</button>
                 </div>
                 <form onSubmit={handleSubmit} className="max-h-[calc(92vh-72px)] space-y-4 overflow-y-auto p-6">
+                    {error && (
+                        <div className="rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-700 font-medium">
+                            ⚠️ {error}
+                        </div>
+                    )}
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-gray-700">Số phiếu</label>
@@ -215,8 +222,8 @@ export default function TransactionModal({
                                         - Bắt buộc với các sản phẩm có tính chất date/hạn dùng (sữa, dược phẩm, thực phẩm ăn dặm) để chạy xuất kho FEFO/FIFO.
                                     */}
                                     <div className="col-span-6 md:col-span-2">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Lô hàng (Batch ID)</label>
-                                        <input type="number" min="1" value={item.batchId} onChange={(e) => handleItemChange(index, "batchId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" placeholder="ID Lô (nếu có)" />
+                                        <label className="mb-1 block text-xs font-medium text-gray-600">Mã Lô hàng (Batch ID)</label>
+                                        <input type="number" min="1" value={item.batchId} onChange={(e) => handleItemChange(index, "batchId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" placeholder="ID Lô (nếu chọn lô có sẵn)" />
                                     </div>
                                     {/* 
                                         Location ID (Vị trí ô kho ID):

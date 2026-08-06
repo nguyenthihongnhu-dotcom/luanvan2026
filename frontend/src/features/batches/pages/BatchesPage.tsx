@@ -6,7 +6,9 @@ import { batchService } from "@/features/batches/services/batchService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 import type { BatchStatus, ProductBatch } from "@/features/batches/services/batchService";
 import { partnerService, type Partner } from "@/features/partners/services/partnerService";
-import { transferService, type CurrentStockItem } from "@/features/transfers/services/transferService";
+import { productService } from "@/features/products/services/productService";
+import type { ProductItem } from "@/features/products/hooks/useProducts";
+import BatchModal from "@/features/batches/components/BatchModal";
 
 const statusOptions: Array<{ value: BatchStatus | ""; label: string }> = [
     { value: "", label: "Tất cả trạng thái" },
@@ -64,24 +66,42 @@ function expiryLabel(value: string | null): string {
 export default function BatchesPage() {
     const [batches, setBatches] = useState<ProductBatch[]>([]);
     const [partners, setPartners] = useState<Partner[]>([]);
-    const [stockItems, setStockItems] = useState<CurrentStockItem[]>([]);
+    // Lấy toàn bộ SKU trong danh mục, không lấy theo tồn kho: lô mới thường thuộc SKU chưa có hàng.
+    const [products, setProducts] = useState<ProductItem[]>([]);
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<BatchStatus | "">("");
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [notice, setNotice] = useState<string | null>(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [editingBatch, setEditingBatch] = useState<ProductBatch | null>(null);
+
+    async function handleDelete(batch: ProductBatch) {
+        if (!window.confirm(`Xóa lô ${batch.lot_number}?`)) return;
+        setError(null);
+        setNotice(null);
+        try {
+            await batchService.deleteBatch(batch.id);
+            setNotice(`Đã xóa lô ${batch.lot_number}.`);
+            await loadBatches();
+        } catch (err) {
+            // Backend chặn xóa lô còn tồn hoặc đã có giao dịch, thông điệp đã đủ rõ để hiện thẳng.
+            setError(getHttpErrorMessage(err, "Không xóa được lô hàng"));
+        }
+    }
 
     async function loadBatches(nextSearch = searchTerm, nextStatus = statusFilter) {
         setIsLoading(true);
         setError(null);
         try {
-            const [batchList, partnerList, stockList] = await Promise.all([
+            const [batchList, partnerList, productList] = await Promise.all([
                 batchService.listBatches({ search: nextSearch, status: nextStatus }),
                 partnerService.listPartners().catch(() => []),
-                transferService.listCurrentStock().catch(() => []),
+                productService.listProducts().catch(() => []),
             ]);
             setBatches(batchList);
             setPartners(partnerList);
-            setStockItems(stockList);
+            setProducts(productList);
         } catch (err) {
             console.error(err);
             setError(getHttpErrorMessage(err, "Không tải được danh sách lô hàng từ backend"));
@@ -103,16 +123,14 @@ export default function BatchesPage() {
         return map;
     }, [partners]);
 
+    // Trước đây map này dựng từ tồn kho, nên lô của SKU chưa có hàng chỉ hiện được "#8".
     const variantMap = useMemo(() => {
         const map = new Map<number, string>();
-        for (const item of stockItems) {
-            if (item.product_variant_id) {
-                const variantText = item.variant_name ? ` (${item.variant_name})` : "";
-                map.set(item.product_variant_id, `${item.sku} - ${item.product_name}${variantText}`);
-            }
+        for (const product of products) {
+            map.set(product.id, `${product.sku} - ${product.name}`);
         }
         return map;
-    }, [stockItems]);
+    }, [products]);
 
     const summary = useMemo(() => {
         const nearExpiry = batches.filter((batch) => batch.status === "NEAR_EXPIRY" || (daysUntil(batch.expiry_date) ?? Number.POSITIVE_INFINITY) <= 30).length;
@@ -137,6 +155,24 @@ export default function BatchesPage() {
             return <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${statusClass(status)}`}>{statusLabel(status)}</span>;
         } },
         { key: "notes", title: "Ghi chú", render: (value) => String(value || "-") },
+        { key: "id", title: "Thao tác", render: (_value, record) => (
+            <div className="flex gap-2">
+                <button
+                    type="button"
+                    onClick={() => { setEditingBatch(record); setIsModalOpen(true); }}
+                    className="rounded border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-600 hover:border-pink-300 hover:text-pink-600"
+                >
+                    Sửa
+                </button>
+                <button
+                    type="button"
+                    onClick={() => void handleDelete(record)}
+                    className="rounded border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-600 hover:border-red-300 hover:text-red-600"
+                >
+                    Xóa
+                </button>
+            </div>
+        ) },
     ];
 
     return (
@@ -147,23 +183,38 @@ export default function BatchesPage() {
                         <h1 className="text-xl font-bold text-gray-800">Quản lý lô hàng</h1>
                         <p className="text-sm text-gray-500">Theo dõi số lô, hạn sử dụng và trạng thái lô của hàng mẹ & bé.</p>
                     </div>
-                    <div className="grid grid-cols-3 gap-2 text-center text-xs">
-                        <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
-                            <div className="font-bold text-gray-900">{summary.total}</div>
-                            <div className="text-gray-500">Tổng lô</div>
+                    <div className="flex flex-wrap items-center gap-3">
+                        <div className="grid grid-cols-3 gap-2 text-center text-xs">
+                            <div className="rounded-md border border-gray-200 bg-white px-3 py-2">
+                                <div className="font-bold text-gray-900">{summary.total}</div>
+                                <div className="text-gray-500">Tổng lô</div>
+                            </div>
+                            <div className="rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2">
+                                <div className="font-bold text-yellow-800">{summary.nearExpiry}</div>
+                                <div className="text-yellow-700">Gần hạn</div>
+                            </div>
+                            <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2">
+                                <div className="font-bold text-red-700">{summary.expired}</div>
+                                <div className="text-red-600">Hết hạn</div>
+                            </div>
                         </div>
-                        <div className="rounded-md border border-yellow-200 bg-yellow-50 px-3 py-2">
-                            <div className="font-bold text-yellow-800">{summary.nearExpiry}</div>
-                            <div className="text-yellow-700">Gần hạn</div>
-                        </div>
-                        <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2">
-                            <div className="font-bold text-red-700">{summary.expired}</div>
-                            <div className="text-red-600">Hết hạn</div>
-                        </div>
+                        <button
+                            type="button"
+                            onClick={() => setIsModalOpen(true)}
+                            className="rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white shadow-sm hover:bg-pink-700"
+                        >
+                            + Thêm lô hàng mới
+                        </button>
                     </div>
                 </div>
 
                 {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
+                {notice && (
+                    <div className="flex items-start justify-between gap-3 rounded-md border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm text-emerald-800">
+                        <span>{notice}</span>
+                        <button type="button" onClick={() => setNotice(null)} className="shrink-0 font-bold text-emerald-600 hover:text-emerald-800" aria-label="Đóng">×</button>
+                    </div>
+                )}
 
                 <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-4">
@@ -180,6 +231,18 @@ export default function BatchesPage() {
 
                 <Tablelayout columns={columns} dataSource={batches} rowKey="id" isLoading={isLoading} />
             </div>
+
+            <BatchModal
+                isOpen={isModalOpen}
+                onClose={() => { setIsModalOpen(false); setEditingBatch(null); }}
+                onSuccess={(message) => {
+                    setNotice(message);
+                    void loadBatches();
+                }}
+                products={products}
+                partners={partners}
+                editingBatch={editingBatch}
+            />
         </DashboardLayout>
     );
 }

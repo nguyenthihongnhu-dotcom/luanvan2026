@@ -21,6 +21,10 @@ export interface ProductItem {
     locationId: string;
     locations: string;
     status: ProductStockStatus;
+    /** SKU bắt buộc khai số lô khi nhập/xuất. */
+    requiresLotTracking: boolean;
+    /** SKU bắt buộc có hạn sử dụng, cần cho việc xuất theo FEFO. */
+    requiresExpiryTracking: boolean;
 }
 
 export const calculateStatus = (stock: number, minStock: number): ProductItem["status"] => {
@@ -127,6 +131,9 @@ export function useProducts() {
             locationId: formData.locationId,
             locations: editingProduct?.locations ?? "",
             status: calculateStatus(stockNum, minStockNum),
+            // Form sản phẩm hiện chưa cho chỉnh hai cờ này, giữ nguyên giá trị cũ khi sửa.
+            requiresLotTracking: editingProduct?.requiresLotTracking ?? false,
+            requiresExpiryTracking: editingProduct?.requiresExpiryTracking ?? false,
         };
 
         if (editingProduct) {

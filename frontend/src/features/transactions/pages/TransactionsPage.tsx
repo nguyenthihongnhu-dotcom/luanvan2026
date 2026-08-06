@@ -222,6 +222,7 @@ export default function Transactions() {
                 <TransactionModal
                     editingTransaction={editingTransaction}
                     formData={formData}
+                    error={error}
                     handleInputChange={handleInputChange}
                     handleSubmit={handleSubmit}
                     onClose={() => setShowModal(false)}

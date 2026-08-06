@@ -144,14 +144,16 @@ export function useTransactions() {
             const quantity = Number(item.quantity);
             const locationId = Number(item.locationId);
 
-            if (!Number.isInteger(productVariantId) || productVariantId <= 0) return `Dòng ${rowNumber}: Variant ID không hợp lệ.`;
-            if (!Number.isFinite(quantity) || quantity <= 0) return `Dòng ${rowNumber}: Số lượng phải lớn hơn 0.`;
-            if (!Number.isInteger(locationId) || locationId <= 0) return `Dòng ${rowNumber}: Vị trí kho không hợp lệ.`;
+            if (!Number.isInteger(productVariantId) || productVariantId <= 0) return `Dòng ${rowNumber}: Vui lòng chọn Sản phẩm / Biến thể.`;
+            if (!Number.isFinite(quantity) || quantity <= 0) return `Dòng ${rowNumber}: Nhập số lượng lớn hơn 0.`;
+            if (!Number.isInteger(locationId) || locationId <= 0) return `Dòng ${rowNumber}: Vui lòng chọn Vị trí kho.`;
             if (formData.loai === 'DIEU_CHINH' && item.adjustmentDirection !== 'IN' && item.adjustmentDirection !== 'OUT') return `Dòng ${rowNumber}: Hướng điều chỉnh không hợp lệ.`;
         }
 
         return null;
-    }    const handleSubmit = async (e: FormEvent) => {
+    }
+
+    const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
         const validationError = validateTransactionForm();
         if (validationError) {
@@ -166,19 +168,26 @@ export function useTransactions() {
             items
         };
 
-        if (!editingTransaction) {
-            await transactionService.createTransaction(transactionData);
-            await reloadTransactions();
-        } else {
-            setData(data.map((transaction) => transaction.id === editingTransaction.id ? { ...transaction, ...transactionData } : transaction));
-        }
+        try {
+            if (!editingTransaction) {
+                await transactionService.createTransaction(transactionData);
+                await reloadTransactions();
+            } else {
+                setData(data.map((transaction) => transaction.id === editingTransaction.id ? { ...transaction, ...transactionData } : transaction));
+            }
 
-        setShowModal(false);
-        setEditingTransaction(null);
-        resetTransactionForm();
+            setError(null);
+            setShowModal(false);
+            setEditingTransaction(null);
+            resetTransactionForm();
+        } catch (err) {
+            console.error("Lỗi tạo giao dịch:", err);
+            setError(getHttpErrorMessage(err, "Không thể lưu giao dịch"));
+        }
     };
 
     const handleAddClick = () => {
+        setError(null);
         setEditingTransaction(null);
         resetTransactionForm();
         setShowModal(true);
