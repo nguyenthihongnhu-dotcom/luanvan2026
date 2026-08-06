@@ -31,7 +31,6 @@ approveStockAdjustment(input)
       -> beginTransaction
       -> lock adjustment
       -> chỉ DRAFT hoặc PENDING được approve
-      -> chặn tự duyệt nếu creator == approver
       -> lấy items
       -> với IN: tăng/upsert stock_locations
       -> với OUT: kiểm tra tồn rồi giảm
@@ -42,7 +41,6 @@ approveStockAdjustment(input)
 
 ## Domain Error Quan Trọng
 
-- `SELF_APPROVAL_NOT_ALLOWED`: người tạo không được tự duyệt.
 - `STOCK_ADJUSTMENT_NOT_APPROVABLE`: sai trạng thái.
 - `INSUFFICIENT_STOCK`: OUT adjustment thiếu tồn.
 - `CONCURRENT_STOCK_UPDATE`: có tranh chấp tồn.

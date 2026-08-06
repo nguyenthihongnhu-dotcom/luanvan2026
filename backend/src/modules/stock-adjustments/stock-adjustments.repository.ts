@@ -277,10 +277,6 @@ export async function approveStockAdjustmentTransaction(
       throw new Error('STOCK_ADJUSTMENT_NOT_APPROVABLE');
     }
 
-    if (adjustment.created_by === input.approvedBy) {
-      throw new Error('SELF_APPROVAL_NOT_ALLOWED');
-    }
-
     const items = await lockAdjustmentItems(connection, adjustment.id);
 
     if (items.length === 0) {

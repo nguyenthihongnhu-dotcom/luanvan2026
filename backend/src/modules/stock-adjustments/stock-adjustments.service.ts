@@ -30,11 +30,6 @@ const approveErrorMap: Record<string, HttpError> = {
     'Only DRAFT or PENDING stock adjustments can be approved',
     'STOCK_ADJUSTMENT_NOT_APPROVABLE',
   ),
-  SELF_APPROVAL_NOT_ALLOWED: new HttpError(
-    403,
-    'Adjustment creator cannot approve their own adjustment',
-    'SELF_APPROVAL_NOT_ALLOWED',
-  ),
   STOCK_ADJUSTMENT_HAS_NO_ITEMS: new HttpError(
     422,
     'Stock adjustment has no items',
