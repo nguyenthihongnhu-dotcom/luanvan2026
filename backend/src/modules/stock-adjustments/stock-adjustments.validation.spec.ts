@@ -90,9 +90,15 @@ describe('stock-adjustments.validation parseCreateStockAdjustment', () => {
     ).toThrow(HttpError);
   });
 
-  it('rejects missing adjustmentCode', () => {
-    expect(() => parseCreateStockAdjustment({ items: [validItem] })).toThrow(
-      HttpError,
-    );
+  it('accepts missing adjustmentCode so the code can be generated later', () => {
+    const parsed = parseCreateStockAdjustment({ items: [validItem] });
+
+    expect(parsed.adjustmentCode).toBeUndefined();
+  });
+
+  it('rejects blank adjustmentCode', () => {
+    expect(() =>
+      parseCreateStockAdjustment({ adjustmentCode: '   ', items: [validItem] }),
+    ).toThrow(HttpError);
   });
 });

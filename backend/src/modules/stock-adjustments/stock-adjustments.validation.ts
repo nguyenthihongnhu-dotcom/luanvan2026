@@ -48,7 +48,8 @@ const createStockAdjustmentItemSchema = z.object({
 });
 
 const createStockAdjustmentSchema = z.object({
-  adjustmentCode: z.string().trim().min(1).max(80),
+  // Bỏ trống thì hệ thống tự sinh theo dạng DC-YYYYMM-NNN.
+  adjustmentCode: z.string().trim().min(1).max(80).optional(),
   warehouseId: z.coerce.number().int().positive().optional(),
   reasonCode: z.string().trim().min(1).max(100).optional(),
   note: z.string().trim().max(500).optional(),

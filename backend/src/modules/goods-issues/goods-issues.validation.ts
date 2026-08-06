@@ -39,7 +39,8 @@ const createGoodsIssueItemSchema = z.object({
 });
 
 const createGoodsIssueSchema = z.object({
-  issueCode: z.string().trim().min(1).max(80),
+  // Bỏ trống thì hệ thống tự sinh theo dạng PX-YYYYMM-NNN.
+  issueCode: z.string().trim().min(1).max(80).optional(),
   warehouseId: z.coerce.number().int().positive().optional(),
   referenceNo: z.string().trim().max(100).optional(),
   note: z.string().trim().max(500).optional(),

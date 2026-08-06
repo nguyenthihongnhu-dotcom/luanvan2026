@@ -83,7 +83,7 @@ export type CreateStockAdjustmentItemInput = {
 };
 
 export type CreateStockAdjustmentInput = {
-  adjustmentCode: string;
+  adjustmentCode?: string;
   warehouseId?: number;
   reasonCode?: string;
   note?: string;

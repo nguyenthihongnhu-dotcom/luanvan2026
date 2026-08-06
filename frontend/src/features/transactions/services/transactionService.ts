@@ -122,7 +122,7 @@ function mapItems(input: Transaction) {
 export async function createTransaction(input: Transaction): Promise<void> {
     if (input.loai === 'NHAP') {
         await httpClient.post('/goods-receipts', {
-            receiptCode: input.soPhieu,
+            receiptCode: input.soPhieu || undefined,
             supplierId: input.maNCC ? Number(input.maNCC) : undefined,
             referenceNo: input.maDonHangThamChieu || undefined,
             note: input.lyDo || undefined,
@@ -133,7 +133,7 @@ export async function createTransaction(input: Transaction): Promise<void> {
 
     if (input.loai === 'XUAT') {
         await httpClient.post('/goods-issues', {
-            issueCode: input.soPhieu,
+            issueCode: input.soPhieu || undefined,
             referenceNo: input.maDonHangThamChieu || undefined,
             note: input.lyDo || undefined,
             items: mapItems(input),
@@ -142,7 +142,7 @@ export async function createTransaction(input: Transaction): Promise<void> {
     }
 
     await httpClient.post('/stock-adjustments', {
-        adjustmentCode: input.soPhieu,
+        adjustmentCode: input.soPhieu || undefined,
         reasonCode: input.lyDo || 'DIEU_CHINH_THU_CONG',
         note: input.lyDo || undefined,
         items: mapItems(input),

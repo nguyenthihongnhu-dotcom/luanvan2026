@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import type { Transaction, TransactionItem } from "@/features/transactions/hooks/useTransactions";
 import type { AllocationPreviewItem, AllocationPreviewResult, AllocationStrategy } from "@/features/transactions/services/transactionService";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
@@ -48,6 +48,118 @@ function formatDate(value: string | null): string {
     return new Intl.DateTimeFormat("vi-VN").format(new Date(value));
 }
 
+/** Gom danh sách vị trí thành các mục [id, nhãn] duy nhất theo khu hoặc theo kệ. */
+function groupBy(
+    locations: LocationOption[],
+    idOf: (loc: LocationOption) => number,
+    labelOf: (loc: LocationOption) => string,
+): Array<[number, string]> {
+    const groups = new Map<number, string>();
+
+    locations.forEach((loc) => {
+        const id = idOf(loc);
+        if (id && !groups.has(id)) {
+            groups.set(id, labelOf(loc) || `#${id}`);
+        }
+    });
+
+    return [...groups.entries()].sort((a, b) => a[1].localeCompare(b[1], "vi"));
+}
+
+/**
+ * Chọn ô lưu trữ theo đúng thứ tự khu -> kệ -> ô, thay cho một dropdown phẳng
+ * đổ toàn bộ ô của kho ra cùng lúc. Kho đã được chọn ở phía trên nên danh sách
+ * `locations` truyền vào đây đã lọc sẵn theo kho.
+ */
+function LocationCascadePicker({
+    locations,
+    hasWarehouse,
+    value,
+    onChange,
+}: {
+    locations: LocationOption[];
+    hasWarehouse: boolean;
+    value: string;
+    onChange: (locationId: string) => void;
+}) {
+    const selected = locations.find((loc) => String(loc.id) === value) ?? null;
+    const [draftZoneId, setDraftZoneId] = useState("");
+    const [draftShelfId, setDraftShelfId] = useState("");
+
+    // Khi đã chốt được ô thì khu và kệ phải bám theo ô đó, để lúc mở lại phiếu
+    // hoặc đổi kho hai ô trên không hiển thị lệch với ô đang chọn.
+    // Chưa chọn kho thì khu của mọi kho sẽ trộn lẫn, nên chặn từ bước đầu.
+    const zones = hasWarehouse ? groupBy(locations, (loc) => loc.zoneId, (loc) => loc.zoneLabel) : [];
+    const pickedZoneId = selected ? String(selected.zoneId) : draftZoneId;
+    // Đổi kho làm khu/kệ đang chọn biến mất khỏi danh sách, khi đó phải quay về
+    // rỗng thay vì giữ một id không còn tồn tại.
+    const zoneId = zones.some(([id]) => String(id) === pickedZoneId) ? pickedZoneId : "";
+
+    const shelves = groupBy(
+        locations.filter((loc) => String(loc.zoneId) === zoneId),
+        (loc) => loc.shelfId,
+        (loc) => loc.shelfLabel,
+    );
+    const pickedShelfId = selected ? String(selected.shelfId) : draftShelfId;
+    const shelfId = shelves.some(([id]) => String(id) === pickedShelfId) ? pickedShelfId : "";
+
+    const cells = shelfId ? locations.filter((loc) => String(loc.shelfId) === shelfId) : [];
+
+    const selectClass = "w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500";
+
+    return (
+        <div className="grid grid-cols-3 gap-2">
+            <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Khu (Zone)</label>
+                <select
+                    value={zoneId}
+                    onChange={(event) => {
+                        setDraftZoneId(event.target.value);
+                        setDraftShelfId("");
+                        onChange("");
+                    }}
+                    className={selectClass}
+                >
+                    <option value="">{hasWarehouse ? "-- Chọn khu --" : "-- Chọn kho trước --"}</option>
+                    {zones.map(([id, label]) => (
+                        <option key={id} value={id}>{label}</option>
+                    ))}
+                </select>
+            </div>
+            <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Kệ (Shelf)</label>
+                <select
+                    value={shelfId}
+                    onChange={(event) => {
+                        setDraftShelfId(event.target.value);
+                        onChange("");
+                    }}
+                    className={selectClass}
+                >
+                    <option value="">{zoneId ? "-- Chọn kệ --" : "-- Chọn khu trước --"}</option>
+                    {shelves.map(([id, label]) => (
+                        <option key={id} value={id}>{label}</option>
+                    ))}
+                </select>
+            </div>
+            <div>
+                <label className="mb-1 block text-xs font-medium text-gray-600">Ô lưu trữ</label>
+                <select
+                    required
+                    value={value}
+                    onChange={(event) => onChange(event.target.value)}
+                    className={selectClass}
+                >
+                    <option value="">{shelfId ? "-- Chọn ô --" : "-- Chọn kệ trước --"}</option>
+                    {cells.map((loc) => (
+                        <option key={loc.id} value={loc.id}>{loc.label} (ID #{loc.id})</option>
+                    ))}
+                </select>
+            </div>
+        </div>
+    );
+}
+
 export default function TransactionModal({
     editingTransaction,
     formData,
@@ -73,6 +185,8 @@ export default function TransactionModal({
 }: TransactionModalProps) {
     const isIssue = formData.loai === "XUAT";
     const isAdjustment = formData.loai === "DIEU_CHINH";
+    // Số phiếu do backend sinh theo dạng <tiền tố>-YYYYMM-NNN, ở đây chỉ báo trước cho người dùng.
+    const codePrefixLabel = isIssue ? "PX-…" : isAdjustment ? "DC-…" : "PN-…";
     const isShortAllocated = allocationPreview ? allocationPreview.allocatedQuantity < allocationPreview.requestedQuantity : false;
 
     const selectedSupplier = suppliers.find((s) => String(s.MaNCC) === String(formData.maNCC));
@@ -107,7 +221,9 @@ export default function TransactionModal({
                     <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-gray-700">Số phiếu</label>
-                            <input type="text" name="soPhieu" required value={formData.soPhieu} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                            <div className="w-full rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
+                                {editingTransaction ? formData.soPhieu : `Tự sinh khi lưu (${codePrefixLabel})`}
+                            </div>
                         </div>
                         <div>
                             <label className="mb-1 block text-sm font-medium text-gray-700">Loại giao dịch</label>
@@ -157,22 +273,24 @@ export default function TransactionModal({
                                 )}
                             </div>
                             <div className="flex flex-wrap items-center gap-2">
-                                {isIssue && (
-                                    <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs">
-                                        <span className="font-semibold text-gray-600">Kho xuất</span>
-                                        <select value={selectedWarehouseId} onChange={(event) => setSelectedWarehouseId(event.target.value)} className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-pink-500">
-                                            <option value="">Chọn kho</option>
-                                            {warehouses.map((warehouse) => (
-                                                <option key={warehouse.id} value={warehouse.id}>{warehouse.code} - {warehouse.name ?? "Không tên"}</option>
-                                            ))}
-                                        </select>
-                                        <span className="font-semibold text-gray-600">Chiến lược xuất</span>
-                                        <select value={allocationStrategy} onChange={(event) => setAllocationStrategy(event.target.value as AllocationStrategy)} className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-pink-500">
-                                            <option value="FEFO">FEFO - hết hạn trước xuất trước</option>
-                                            <option value="FIFO">FIFO - nhập trước xuất trước</option>
-                                        </select>
-                                    </div>
-                                )}
+                                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs">
+                                    <span className="font-semibold text-gray-600">{isIssue ? "Kho xuất" : isAdjustment ? "Kho điều chỉnh" : "Kho nhập"}</span>
+                                    <select value={selectedWarehouseId} onChange={(event) => setSelectedWarehouseId(event.target.value)} className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-pink-500">
+                                        <option value="">Chọn kho</option>
+                                        {warehouses.map((warehouse) => (
+                                            <option key={warehouse.id} value={warehouse.id}>{warehouse.code} - {warehouse.name ?? "Không tên"}</option>
+                                        ))}
+                                    </select>
+                                    {isIssue && (
+                                        <>
+                                            <span className="font-semibold text-gray-600">Chiến lược xuất</span>
+                                            <select value={allocationStrategy} onChange={(event) => setAllocationStrategy(event.target.value as AllocationStrategy)} className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-pink-500">
+                                                <option value="FEFO">FEFO - hết hạn trước xuất trước</option>
+                                                <option value="FIFO">FIFO - nhập trước xuất trước</option>
+                                            </select>
+                                        </>
+                                    )}
+                                </div>
                                 <button type="button" onClick={handleAddItemRow} className="rounded-lg border border-pink-200 bg-pink-100 px-3 py-1.5 text-xs font-semibold text-pink-700 shadow-sm hover:bg-pink-200">+ Thêm dòng</button>
                             </div>
                         </div>
@@ -221,25 +339,22 @@ export default function TransactionModal({
                                         - Quản lý theo số lô nhà sản xuất (lot_number), ngày sản xuất (manufactured_date) và hạn sử dụng (expiry_date).
                                         - Bắt buộc với các sản phẩm có tính chất date/hạn dùng (sữa, dược phẩm, thực phẩm ăn dặm) để chạy xuất kho FEFO/FIFO.
                                     */}
-                                    <div className="col-span-6 md:col-span-2">
+                                    {/* <div className="col-span-6 md:col-span-2">
                                         <label className="mb-1 block text-xs font-medium text-gray-600">Mã Lô hàng (Batch ID)</label>
                                         <input type="number" min="1" value={item.batchId} onChange={(e) => handleItemChange(index, "batchId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" placeholder="ID Lô (nếu chọn lô có sẵn)" />
-                                    </div>
+                                    </div> */}
                                     {/* 
                                         Location ID (Vị trí ô kho ID):
                                         - Địa chỉ ô lưu trữ vật lý duy nhất trong kho (cấu trúc: MãKho-Khu-Kệ-Tầng, ví dụ HCM01-A-A01-01).
                                         - Giúp thủ kho tìm đúng vị trí khi lấy hàng xuất kho hoặc cất hàng khi nhập kho.
                                     */}
-                                    <div className="col-span-6 md:col-span-2">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Vị trí kho (Location ID)</label>
-                                        <select required value={item.locationId} onChange={(e) => handleItemChange(index, "locationId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500">
-                                            <option value="">-- Chọn vị trí --</option>
-                                            {filteredLocations.map((loc) => (
-                                                <option key={loc.id} value={loc.id}>
-                                                    {loc.label} (ID #{loc.id})
-                                                </option>
-                                            ))}
-                                        </select>
+                                    <div className="col-span-12 md:col-span-6">
+                                        <LocationCascadePicker
+                                            locations={filteredLocations}
+                                            hasWarehouse={Boolean(selectedWarehouseId)}
+                                            value={item.locationId}
+                                            onChange={(locationId) => handleItemChange(index, "locationId", locationId)}
+                                        />
                                     </div>
                                     <div className="col-span-6 md:col-span-2">
                                         <label className="mb-1 block text-xs font-medium text-gray-600">Số lượng</label>

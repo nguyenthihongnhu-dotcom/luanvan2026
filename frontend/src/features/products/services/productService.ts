@@ -23,6 +23,12 @@ type BackendLocationRow = {
     warehouse_id: number;
     warehouse_code?: string;
     warehouse_name?: string;
+    zone_id?: number;
+    zone_code?: string;
+    zone_name?: string;
+    shelf_id?: number;
+    shelf_code?: string;
+    shelf_name?: string;
 };
 
 export type LocationOption = {
@@ -30,6 +36,10 @@ export type LocationOption = {
     label: string;
     warehouseId: number;
     warehouseLabel: string;
+    zoneId: number;
+    zoneLabel: string;
+    shelfId: number;
+    shelfLabel: string;
 };
 
 function toNumber(value: unknown): number {
@@ -83,6 +93,10 @@ export async function listLocationOptions(): Promise<LocationOption[]> {
         label: location.code,
         warehouseId: location.warehouse_id,
         warehouseLabel: [location.warehouse_code, location.warehouse_name].filter(Boolean).join(' - '),
+        zoneId: location.zone_id ?? 0,
+        zoneLabel: [location.zone_code, location.zone_name].filter(Boolean).join(' - '),
+        shelfId: location.shelf_id ?? 0,
+        shelfLabel: [location.shelf_code, location.shelf_name].filter(Boolean).join(' - '),
     }));
 }
 

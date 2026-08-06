@@ -442,7 +442,7 @@ export default function WarehouseGridEditor({
                 {zones.length === 0 ? (
                     <div className="flex h-full min-h-56 items-center justify-center rounded-3xl border-2 border-dashed border-gray-300 bg-white p-8 text-center">
                         <div>
-                            <p className="text-sm font-semibold text-gray-700">Kho này chưa có khu vực nào</p>
+                            <p className="text-sm font-medium text-gray-700">Kho này chưa có khu vực nào</p>
                             <p className="mt-1 text-xs text-gray-500">Dùng ô "Thêm khu mới" ở sidebar bên trái để tạo khu đầu tiên.</p>
                         </div>
                     </div>
@@ -472,15 +472,13 @@ export default function WarehouseGridEditor({
                                         if (suppressClick.current || !zone) return;
                                         onSelectZone?.(zone.code);
                                     }}
-                                    className={`relative flex h-16 items-center justify-center overflow-hidden rounded-2xl border-2 text-sm transition-colors ${
-                                        zone ? "cursor-grab border-transparent shadow-sm active:cursor-grabbing" : "border-dashed border-gray-300"
-                                    } ${
-                                        isPreview
+                                    className={`relative flex h-16 items-center justify-center overflow-hidden rounded-2xl border-2 text-sm transition-colors ${zone ? "cursor-grab border-transparent shadow-sm active:cursor-grabbing" : "border-dashed border-gray-300"
+                                        } ${isPreview
                                             ? previewBlocked
                                                 ? "border-red-400 bg-red-100"
                                                 : "border-pink-500 bg-pink-100"
                                             : ""
-                                    } ${zone && isZoneFull(zone) && !isPreview ? "border-solid border-red-400" : ""}`}
+                                        } ${zone && isZoneFull(zone) && !isPreview ? "border-solid border-red-400" : ""}`}
                                     style={zone && color && !isPreview ? { backgroundColor: `${color}25` } : undefined}
                                     title={
                                         zone

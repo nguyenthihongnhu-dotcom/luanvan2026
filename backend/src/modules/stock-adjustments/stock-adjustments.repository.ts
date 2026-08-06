@@ -5,6 +5,7 @@ import type {
 } from 'mysql2/promise';
 import { insertAuditLog } from '../../common/audit/audit.repository';
 import { buildUniqueCode } from '../../common/code/code-generator';
+import { generateDocumentCode } from '../../common/code/document-code';
 import { db } from '../../database/db';
 import type {
   ApproveStockAdjustmentInput,
@@ -616,11 +617,15 @@ export async function insertStockAdjustment(
           'SELECT id FROM users WHERE employee_code = ? LIMIT 1',
           ['NV-KHO-01'],
         );
+    const adjustmentCode =
+      input.adjustmentCode ??
+      (await generateDocumentCode(connection, 'stock_adjustments', 'adjustment_code', 'DC'));
+
     const [result] = await connection.query<ResultSetHeader>(
       `INSERT INTO stock_adjustments (adjustment_code, warehouse_id, adjustment_type, status, reason_code, note, created_by)
        VALUES (?, ?, 'MANUAL', 'DRAFT', ?, ?, ?)`,
       [
-        input.adjustmentCode,
+        adjustmentCode,
         warehouseRows[0]?.id,
         input.reasonCode ?? 'DIEU_CHINH_THU_CONG',
         input.note ?? null,

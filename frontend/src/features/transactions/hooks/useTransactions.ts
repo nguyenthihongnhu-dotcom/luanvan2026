@@ -134,7 +134,6 @@ export function useTransactions() {
 
 
     function validateTransactionForm(): string | null {
-        if (!formData.soPhieu.trim()) return 'Nhập số phiếu trước khi lưu.';
         if (!selectedWarehouseId) return 'Chọn kho trước khi lưu chứng từ.';
         if (items.length === 0) return 'Chứng từ cần ít nhất một dòng hàng.';
 
@@ -240,13 +239,11 @@ export function useTransactions() {
         setError(null);
         try {
             const detail = await transactionService.getTransactionDetail(transaction.loai, transaction.id);
-            const prefix = transaction.loai === 'NHAP' ? 'PN' : transaction.loai === 'XUAT' ? 'PX' : 'DC';
-            const yearMonth = new Date().toISOString().slice(2, 7).replace('-', '');
-            const randSuffix = Math.floor(100 + Math.random() * 900);
-            const newCode = `${prefix}-${yearMonth}-${randSuffix}`;
 
             setFormData({
-                soPhieu: newCode,
+                // Để trống cho backend cấp số phiếu chạy tiếp theo tháng, thay vì
+                // bốc số ngẫu nhiên ở client vốn có thể trùng mã đã tồn tại.
+                soPhieu: '',
                 loai: transaction.loai,
                 status: 'MOI_TAO',
                 ngay: new Date().toISOString().slice(0, 10),

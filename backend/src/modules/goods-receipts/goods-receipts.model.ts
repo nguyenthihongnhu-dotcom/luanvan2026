@@ -69,7 +69,7 @@ export type CreateGoodsReceiptItemInput = {
 };
 
 export type CreateGoodsReceiptInput = {
-  receiptCode: string;
+  receiptCode?: string;
   warehouseId?: number;
   supplierId?: number;
   referenceNo?: string;

@@ -5,6 +5,7 @@ import type {
 } from 'mysql2/promise';
 import { insertAuditLog } from '../../common/audit/audit.repository';
 import { buildUniqueCode } from '../../common/code/code-generator';
+import { generateDocumentCode } from '../../common/code/document-code';
 import { reverseInventoryReference } from '../../common/inventory/reversal.repository';
 import { db } from '../../database/db';
 import type {
@@ -503,11 +504,15 @@ export async function insertGoodsReceipt(
           'SELECT id FROM users WHERE employee_code = ? LIMIT 1',
           ['NV-KHO-01'],
         );
+    const receiptCode =
+      input.receiptCode ??
+      (await generateDocumentCode(connection, 'goods_receipts', 'receipt_code', 'PN'));
+
     const [result] = await connection.query<ResultSetHeader>(
       `INSERT INTO goods_receipts (receipt_code, warehouse_id, supplier_id, status, reference_no, note, created_by)
        VALUES (?, ?, ?, 'DRAFT', ?, ?, ?)`,
       [
-        input.receiptCode,
+        receiptCode,
         warehouseRows[0]?.id,
         input.supplierId ?? null,
         input.referenceNo ?? null,

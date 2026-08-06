@@ -31,7 +31,8 @@ const createGoodsReceiptItemSchema = z.object({
 });
 
 const createGoodsReceiptSchema = z.object({
-  receiptCode: z.string().trim().min(1).max(80),
+  // Bỏ trống thì hệ thống tự sinh theo dạng PN-YYYYMM-NNN.
+  receiptCode: z.string().trim().min(1).max(80).optional(),
   warehouseId: z.coerce.number().int().positive().optional(),
   supplierId: z.coerce.number().int().positive().optional(),
   referenceNo: z.string().trim().max(100).optional(),

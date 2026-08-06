@@ -5,6 +5,7 @@ import type {
 } from 'mysql2/promise';
 import { insertAuditLog } from '../../common/audit/audit.repository';
 import { buildUniqueCode } from '../../common/code/code-generator';
+import { generateDocumentCode } from '../../common/code/document-code';
 import { reverseInventoryReference } from '../../common/inventory/reversal.repository';
 import { db } from '../../database/db';
 import type { AllocationStrategy } from '../stock/stock.model';
@@ -618,11 +619,15 @@ export async function insertGoodsIssue(
           'SELECT id FROM users WHERE employee_code = ? LIMIT 1',
           ['NV-KHO-01'],
         );
+    const issueCode =
+      input.issueCode ??
+      (await generateDocumentCode(connection, 'goods_issues', 'issue_code', 'PX'));
+
     const [result] = await connection.query<ResultSetHeader>(
       `INSERT INTO goods_issues (issue_code, warehouse_id, status, reference_no, note, created_by)
        VALUES (?, ?, 'DRAFT', ?, ?, ?)`,
       [
-        input.issueCode,
+        issueCode,
         warehouseRows[0]?.id,
         input.referenceNo ?? null,
         input.note ?? null,

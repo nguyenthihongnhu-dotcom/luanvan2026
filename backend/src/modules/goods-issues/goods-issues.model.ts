@@ -69,7 +69,7 @@ export type CreateGoodsIssueItemInput = {
 };
 
 export type CreateGoodsIssueInput = {
-  issueCode: string;
+  issueCode?: string;
   warehouseId?: number;
   referenceNo?: string;
   note?: string;
