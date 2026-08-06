@@ -60,6 +60,16 @@ function makeEmptyItem(): TransactionItem {
     return { ...emptyItem };
 }
 
+/**
+ * Ngày hôm nay ở dạng yyyy-MM-dd cho <input type="date">. Phải trừ chênh lệch
+ * múi giờ trước khi lấy chuỗi ISO, nếu không những giờ đầu ngày ở GMT+7 sẽ ra
+ * ngày hôm trước.
+ */
+function todayInputValue(): string {
+    const now = new Date();
+    return new Date(now.getTime() - now.getTimezoneOffset() * 60_000).toISOString().slice(0, 10);
+}
+
 import { partnerService, type Partner } from "@/features/partners/services/partnerService";
 import { productService, type LocationOption } from "@/features/products/services/productService";
 import type { ProductItem } from "@/features/products/hooks/useProducts";
@@ -125,7 +135,9 @@ export function useTransactions() {
     }, []);
 
     const resetTransactionForm = () => {
-        resetForm();
+        // Mặc định ngày thực hiện là hôm nay, tính lại mỗi lần mở form để phiên
+        // làm việc qua đêm không giữ lại ngày cũ.
+        setFormData({ ...initialFormState, ngay: todayInputValue() });
         setItems([makeEmptyItem()]);
         setAllocationStrategy("FEFO");
         setAllocationPreview(null);
@@ -246,7 +258,7 @@ export function useTransactions() {
                 soPhieu: '',
                 loai: transaction.loai,
                 status: 'MOI_TAO',
-                ngay: new Date().toISOString().slice(0, 10),
+                ngay: todayInputValue(),
                 nguoiTao: '',
                 maNCC: detail.header.supplier_id ? String(detail.header.supplier_id) : '',
                 maDonHangThamChieu: detail.header.reference_no ? String(detail.header.reference_no) : (detail.header.external_reference ? String(detail.header.external_reference) : ''),

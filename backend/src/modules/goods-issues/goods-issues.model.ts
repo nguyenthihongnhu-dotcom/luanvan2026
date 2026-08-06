@@ -72,6 +72,8 @@ export type CreateGoodsIssueInput = {
   issueCode?: string;
   warehouseId?: number;
   referenceNo?: string;
+  /** Giờ địa phương dạng `YYYY-MM-DD HH:mm:ss`, ghi thẳng vào cột issued_at. */
+  issuedAt?: string;
   note?: string;
   createdBy?: number;
   items?: CreateGoodsIssueItemInput[];

@@ -11,6 +11,8 @@ interface TransactionModalProps {
     formData: {
         soPhieu: string;
         loai: "NHAP" | "XUAT" | "DIEU_CHINH";
+        // Các trường này do useForm(initialFormState) cấp nên luôn là chuỗi;
+        // <input type="date"> và <select> cũng chỉ nhận chuỗi.
         ngay: string;
         status: string;
         nguoiTao: string;
@@ -86,10 +88,10 @@ function LocationCascadePicker({
     const [draftZoneId, setDraftZoneId] = useState("");
     const [draftShelfId, setDraftShelfId] = useState("");
 
-    // Khi đã chốt được ô thì khu và kệ phải bám theo ô đó, để lúc mở lại phiếu
-    // hoặc đổi kho hai ô trên không hiển thị lệch với ô đang chọn.
     // Chưa chọn kho thì khu của mọi kho sẽ trộn lẫn, nên chặn từ bước đầu.
     const zones = hasWarehouse ? groupBy(locations, (loc) => loc.zoneId, (loc) => loc.zoneLabel) : [];
+    // Khi đã chốt được ô thì khu và kệ phải bám theo ô đó, để lúc mở lại phiếu
+    // hoặc đổi kho hai ô trên không hiển thị lệch với ô đang chọn.
     const pickedZoneId = selected ? String(selected.zoneId) : draftZoneId;
     // Đổi kho làm khu/kệ đang chọn biến mất khỏi danh sách, khi đó phải quay về
     // rỗng thay vì giữ một id không còn tồn tại.

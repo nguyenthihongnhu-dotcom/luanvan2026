@@ -509,13 +509,14 @@ export async function insertGoodsReceipt(
       (await generateDocumentCode(connection, 'goods_receipts', 'receipt_code', 'PN'));
 
     const [result] = await connection.query<ResultSetHeader>(
-      `INSERT INTO goods_receipts (receipt_code, warehouse_id, supplier_id, status, reference_no, note, created_by)
-       VALUES (?, ?, ?, 'DRAFT', ?, ?, ?)`,
+      `INSERT INTO goods_receipts (receipt_code, warehouse_id, supplier_id, status, reference_no, received_at, note, created_by)
+       VALUES (?, ?, ?, 'DRAFT', ?, ?, ?, ?)`,
       [
         receiptCode,
         warehouseRows[0]?.id,
         input.supplierId ?? null,
         input.referenceNo ?? null,
+        input.receivedAt ?? null,
         input.note ?? null,
         userRows[0]?.id,
       ],

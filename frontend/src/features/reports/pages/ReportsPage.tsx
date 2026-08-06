@@ -5,6 +5,9 @@ import type { ColumnProps } from '@/shared/ui/Table/types';
 import { reportService } from '@/features/reports/services/reportService';
 import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { ReportFilters, ReportRow } from '@/features/reports/services/reportService';
+import { warehouseService, type Warehouse } from '@/features/warehouses/services/warehouseService';
+import { productService } from '@/features/products/services/productService';
+import type { ProductItem } from '@/features/products/hooks/useProducts';
 
 type ReportTab = 'product-stock' | 'near-expiry' | 'inventory-movements' | 'inventory-transactions';
 
@@ -67,6 +70,8 @@ export default function ReportsPage() {
     const [filters, setFilters] = useState<ReportFilters>({});
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
+    const [variants, setVariants] = useState<ProductItem[]>([]);
 
     async function loadReport(tab = activeTab, nextFilters = filters) {
         setIsLoading(true);
@@ -90,6 +95,22 @@ export default function ReportsPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- initial load is mount-only; filters reload via explicit user action.
     useEffect(() => { void loadReport('product-stock', {}); }, []);
 
+    // Danh mục cho hai bộ lọc kho và sản phẩm, để người dùng chọn theo tên thay vì nhớ id.
+    useEffect(() => {
+        void (async () => {
+            try {
+                const [warehouseRows, variantRows] = await Promise.all([
+                    warehouseService.listWarehouses(),
+                    productService.listProducts(),
+                ]);
+                setWarehouses(warehouseRows);
+                setVariants(variantRows);
+            } catch (err) {
+                console.error('Failed to load report filter options:', err);
+            }
+        })();
+    }, []);
+
     const columns = useMemo(() => columnsFor(rows), [rows]);
 
     function switchTab(tab: ReportTab) {
@@ -112,8 +133,18 @@ export default function ReportsPage() {
                 <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
                     <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
                         <input value={filters.search ?? ''} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Tìm kiếm..." className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
-                        <input value={filters.warehouseId ?? ''} onChange={(event) => setFilters({ ...filters, warehouseId: event.target.value })} placeholder="Warehouse ID" className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
-                        <input value={filters.productVariantId ?? ''} onChange={(event) => setFilters({ ...filters, productVariantId: event.target.value })} placeholder="Variant ID" className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                        <select value={filters.warehouseId ?? ''} onChange={(event) => setFilters({ ...filters, warehouseId: event.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
+                            <option value="">Tất cả kho</option>
+                            {warehouses.map((warehouse) => (
+                                <option key={warehouse.id} value={warehouse.id}>{warehouse.code} - {warehouse.name ?? 'Không tên'}</option>
+                            ))}
+                        </select>
+                        <select value={filters.productVariantId ?? ''} onChange={(event) => setFilters({ ...filters, productVariantId: event.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
+                            <option value="">Tất cả sản phẩm</option>
+                            {variants.map((variant) => (
+                                <option key={variant.id} value={variant.id}>{variant.sku} - {variant.name}</option>
+                            ))}
+                        </select>
                         <input type="date" value={filters.dateFrom ?? ''} onChange={(event) => setFilters({ ...filters, dateFrom: event.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
                         <div className="flex gap-2">
                             <input type="date" value={filters.dateTo ?? ''} onChange={(event) => setFilters({ ...filters, dateTo: event.target.value })} className="min-w-0 flex-1 rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />

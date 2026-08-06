@@ -13,7 +13,6 @@ export interface User {
     roleCode: UserRoleCode;
 }
 
-
 export interface UpdateUserInput {
     fullName: string;
     email: string;

@@ -624,12 +624,13 @@ export async function insertGoodsIssue(
       (await generateDocumentCode(connection, 'goods_issues', 'issue_code', 'PX'));
 
     const [result] = await connection.query<ResultSetHeader>(
-      `INSERT INTO goods_issues (issue_code, warehouse_id, status, reference_no, note, created_by)
-       VALUES (?, ?, 'DRAFT', ?, ?, ?)`,
+      `INSERT INTO goods_issues (issue_code, warehouse_id, status, reference_no, issued_at, note, created_by)
+       VALUES (?, ?, 'DRAFT', ?, ?, ?, ?)`,
       [
         issueCode,
         warehouseRows[0]?.id,
         input.referenceNo ?? null,
+        input.issuedAt ?? null,
         input.note ?? null,
         userRows[0]?.id,
       ],

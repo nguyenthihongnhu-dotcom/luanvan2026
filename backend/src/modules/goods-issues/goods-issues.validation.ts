@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { localDateTimeSchema } from '../../common/validation/datetime';
 import { validateInput } from '../../common/validation/validate';
 import type {
   GoodsIssuesFilters,
@@ -43,6 +44,8 @@ const createGoodsIssueSchema = z.object({
   issueCode: z.string().trim().min(1).max(80).optional(),
   warehouseId: z.coerce.number().int().positive().optional(),
   referenceNo: z.string().trim().max(100).optional(),
+  // Ngày giờ thực hiện do người dùng chọn trên form. Bỏ trống thì cột để NULL.
+  issuedAt: localDateTimeSchema.optional(),
   note: z.string().trim().max(500).optional(),
   createdBy: z.coerce.number().int().positive().optional(),
   // Bắt buộc có ít nhất một dòng hàng: không có endpoint thêm dòng vào phiếu đã tạo,

@@ -9,6 +9,9 @@ import { warehouseService } from "@/features/warehouses/services/warehouseServic
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import { userService, type User } from "@/features/staff/services/userService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
+import { productService, type LocationOption } from "@/features/products/services/productService";
+import { categoryService, type Category } from "@/features/products/services/categoryService";
+import type { ProductItem } from "@/features/products/hooks/useProducts";
 
 const initialFormState = {
     warehouseId: "",
@@ -63,33 +66,33 @@ function getScopeReferenceConfig(scopeType: StockCountScopeType) {
     switch (scopeType) {
         case "ZONE":
             return {
-                label: "Mã ID Khu kho (Zone ID)",
-                placeholder: "Nhập ID khu (VD: 1)",
-                helpText: "Nhập mã số ID của Khu kho cần kiểm kê trong kho đã chọn (wz.id).",
+                label: "Khu kho",
+                placeholder: "-- Chọn khu cần kiểm kê --",
+                helpText: "Chỉ kiểm kê hàng nằm trong khu này của kho đã chọn.",
             };
         case "SHELF":
             return {
-                label: "Mã ID Kệ kho (Shelf ID)",
-                placeholder: "Nhập ID kệ (VD: 5)",
-                helpText: "Nhập mã số ID của Kệ kho cần kiểm kê (ws.id).",
+                label: "Kệ kho",
+                placeholder: "-- Chọn kệ cần kiểm kê --",
+                helpText: "Chỉ kiểm kê hàng nằm trên kệ này.",
             };
         case "LOCATION":
             return {
-                label: "Mã ID Vị trí (Location ID)",
-                placeholder: "Nhập ID vị trí (VD: 12)",
-                helpText: "Nhập mã số ID của Vị trí lưu trữ chính xác cần kiểm kê (wl.id).",
+                label: "Ô lưu trữ",
+                placeholder: "-- Chọn ô cần kiểm kê --",
+                helpText: "Chỉ kiểm kê đúng một ô lưu trữ.",
             };
         case "SKU":
             return {
-                label: "Mã ID Biến thể sản phẩm (Variant / SKU ID)",
-                placeholder: "Nhập ID biến thể (VD: 102)",
-                helpText: "Nhập mã số ID của Biến thể sản phẩm (product_variant_id) cần kiểm kê.",
+                label: "Sản phẩm / Biến thể",
+                placeholder: "-- Chọn sản phẩm cần kiểm kê --",
+                helpText: "Chỉ kiểm kê một biến thể sản phẩm trong toàn kho đã chọn.",
             };
         case "CATEGORY":
             return {
-                label: "Mã ID Danh mục sản phẩm (Category ID)",
-                placeholder: "Nhập ID danh mục (VD: 3)",
-                helpText: "Nhập mã số ID của Danh mục sản phẩm cần kiểm kê.",
+                label: "Danh mục sản phẩm",
+                placeholder: "-- Chọn danh mục cần kiểm kê --",
+                helpText: "Kiểm kê toàn bộ sản phẩm thuộc danh mục này.",
             };
         default:
             return null;
@@ -101,6 +104,9 @@ export default function StockCountsPage() {
     const [items, setItems] = useState<StockCountItem[]>([]);
     const [warehouses, setWarehouses] = useState<WarehouseOption[]>([]);
     const [users, setUsers] = useState<User[]>([]);
+    const [locationOptions, setLocationOptions] = useState<LocationOption[]>([]);
+    const [variants, setVariants] = useState<ProductItem[]>([]);
+    const [categories, setCategories] = useState<Category[]>([]);
     const [selectedCount, setSelectedCount] = useState<StockCount | null>(null);
     const [formData, setFormData] = useState(initialFormState);
     const [itemDrafts, setItemDrafts] = useState<Record<number, { actualQuantity: string; reasonCode: string; note: string }>>({});
@@ -113,18 +119,58 @@ export default function StockCountsPage() {
     const warehousesById = useMemo(() => new Map(warehouses.map((warehouse) => [warehouse.id, warehouse])), [warehouses]);
     const userMap = useMemo(() => new Map(users.map((u) => [u.MaNguoiDung, u.HoTen])), [users]);
 
+    /**
+     * Danh sách để chọn cho ô "phạm vi", lấy theo đúng loại phạm vi đang chọn và
+     * giới hạn trong kho đã chọn. Trước đây ô này bắt người dùng tự gõ id trong DB.
+     */
+    const scopeOptions = useMemo<Array<{ id: number; label: string }>>(() => {
+        const inWarehouse = locationOptions.filter(
+            (loc) => !formData.warehouseId || String(loc.warehouseId) === formData.warehouseId,
+        );
+        const dedupe = (rows: Array<{ id: number; label: string }>) => {
+            const seen = new Map<number, string>();
+            rows.forEach((row) => {
+                if (row.id && !seen.has(row.id)) seen.set(row.id, row.label);
+            });
+            return [...seen.entries()]
+                .map(([id, label]) => ({ id, label }))
+                .sort((a, b) => a.label.localeCompare(b.label, "vi"));
+        };
+
+        switch (formData.scopeType) {
+            case "ZONE":
+                return dedupe(inWarehouse.map((loc) => ({ id: loc.zoneId, label: loc.zoneLabel })));
+            case "SHELF":
+                return dedupe(inWarehouse.map((loc) => ({ id: loc.shelfId, label: loc.shelfLabel })));
+            case "LOCATION":
+                return dedupe(inWarehouse.map((loc) => ({ id: loc.id, label: loc.label })));
+            case "SKU":
+                return dedupe(variants.map((variant) => ({ id: variant.id, label: `${variant.sku} - ${variant.name}` })));
+            case "CATEGORY":
+                return dedupe(categories.map((category) => ({ id: category.id, label: category.name })));
+            default:
+                return [];
+        }
+    }, [formData.scopeType, formData.warehouseId, locationOptions, variants, categories]);
+
     async function loadCounts() {
         setIsLoading(true);
         setError(null);
         try {
-            const [countRows, warehouseRows, userRows] = await Promise.all([
+            const [countRows, warehouseRows, userRows, locationRows, variantRows, categoryRows] = await Promise.all([
                 stockCountService.listStockCounts(),
                 warehouseService.listWarehouses(),
                 userService.listUsers().catch(() => []),
+                productService.listLocationOptions().catch(() => []),
+                productService.listProducts().catch(() => []),
+                categoryService.listCategories().catch(() => []),
             ]);
             setCounts(countRows);
             setWarehouses(warehouseRows);
             setUsers(userRows);
+            setLocationOptions(locationRows);
+            setVariants(variantRows);
+            setCategories(categoryRows);
             setFormData((current) => ({
                 ...current,
                 warehouseId: current.warehouseId || (warehouseRows[0] ? String(warehouseRows[0].id) : ""),
@@ -282,39 +328,21 @@ export default function StockCountsPage() {
                             {formData.scopeType !== "WAREHOUSE" && (() => {
                                 const scopeConfig = getScopeReferenceConfig(formData.scopeType);
                                 if (!scopeConfig) return null;
-                                if (formData.scopeType === "ZONE") {
-                                    const defaultZones = [
-                                        { id: "1", name: "Khu A - Sữa và tã" },
-                                        { id: "2", name: "Khu B - Đồ chơi và xe đẩy" },
-                                        { id: "3", name: "Khu C - Thời trang trẻ em" },
-                                        { id: "4", name: "Khu D - Thực phẩm ăn dặm" },
-                                        { id: "5", name: "Khu E - Chăm sóc sức khỏe" },
-                                    ];
 
-                                    return (
-                                        <div>
-                                            <label className="mb-1 block text-sm font-medium text-gray-700">Khu vực kho (Zone)</label>
-                                            <select
-                                                required
-                                                value={formData.scopeReferenceId}
-                                                onChange={(event) => setFormData({ ...formData, scopeReferenceId: event.target.value })}
-                                                className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm font-semibold outline-none focus:ring-2 focus:ring-pink-500"
-                                            >
-                                                <option value="">Chọn khu vực kho cần kiểm kê</option>
-                                                {defaultZones.map((z) => (
-                                                    <option key={z.id} value={z.id}>
-                                                        {z.name} (ID: {z.id})
-                                                    </option>
-                                                ))}
-                                            </select>
-                                            <p className="mt-1 text-xs text-gray-500">Chọn phân khu kho hàng cụ thể để giới hạn phạm vi kiểm kê.</p>
-                                        </div>
-                                    );
-                                }
                                 return (
                                     <div>
                                         <label className="mb-1 block text-sm font-medium text-gray-700">{scopeConfig.label}</label>
-                                        <input required type="number" min="1" placeholder={scopeConfig.placeholder} value={formData.scopeReferenceId} onChange={(event) => setFormData({ ...formData, scopeReferenceId: event.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                                        <select
+                                            required
+                                            value={formData.scopeReferenceId}
+                                            onChange={(event) => setFormData({ ...formData, scopeReferenceId: event.target.value })}
+                                            className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500"
+                                        >
+                                            <option value="">{scopeConfig.placeholder}</option>
+                                            {scopeOptions.map((option) => (
+                                                <option key={option.id} value={option.id}>{option.label}</option>
+                                            ))}
+                                        </select>
                                         <p className="mt-1 text-xs text-gray-500">{scopeConfig.helpText}</p>
                                     </div>
                                 );

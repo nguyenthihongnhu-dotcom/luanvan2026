@@ -73,6 +73,8 @@ export type CreateGoodsReceiptInput = {
   warehouseId?: number;
   supplierId?: number;
   referenceNo?: string;
+  /** Giờ địa phương dạng `YYYY-MM-DD HH:mm:ss`, ghi thẳng vào cột received_at. */
+  receivedAt?: string;
   note?: string;
   createdBy?: number;
   items?: CreateGoodsReceiptItemInput[];

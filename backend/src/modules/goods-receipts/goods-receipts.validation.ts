@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { localDateTimeSchema } from '../../common/validation/datetime';
 import { validateInput } from '../../common/validation/validate';
 import type {
   GoodsReceiptsFilters,
@@ -36,6 +37,9 @@ const createGoodsReceiptSchema = z.object({
   warehouseId: z.coerce.number().int().positive().optional(),
   supplierId: z.coerce.number().int().positive().optional(),
   referenceNo: z.string().trim().max(100).optional(),
+  // Ngày giờ thực hiện do người dùng chọn trên form. Bỏ trống thì cột để NULL và
+  // lúc xác nhận phiếu sẽ được lấp bằng thời điểm xác nhận.
+  receivedAt: localDateTimeSchema.optional(),
   note: z.string().trim().max(500).optional(),
   createdBy: z.coerce.number().int().positive().optional(),
   // Bắt buộc có ít nhất một dòng hàng. Không có endpoint nào thêm dòng hàng vào phiếu
