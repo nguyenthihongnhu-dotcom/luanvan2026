@@ -275,9 +275,39 @@ async function getActiveShelvesByZone(
   return shelfRows;
 }
 
+/** Tiền tố kho dùng trong mã ô: `KHO-HCM-01` -> `HCM01`. */
+export function warehouseCodePrefix(warehouseCode: string): string {
+  return warehouseCode.replace(/^KHO-/i, '').replaceAll('-', '');
+}
+
+async function getWarehousePrefixByZone(
+  connection: PoolConnection,
+  zoneId: number,
+): Promise<string> {
+  const [rows] = await connection.query<Array<RowDataPacket & { code: string }>>(
+    `
+      SELECT w.code
+      FROM warehouse_zones wz
+      JOIN warehouses w ON w.id = wz.warehouse_id
+      WHERE wz.id = ?
+      LIMIT 1
+    `,
+    [zoneId],
+  );
+
+  const warehouseCode = rows[0]?.code;
+
+  if (!warehouseCode) {
+    throw new Error('ZONE_NOT_FOUND');
+  }
+
+  return warehouseCodePrefix(warehouseCode);
+}
+
 async function ensureLocationForShelfLayer(
   connection: PoolConnection,
   input: {
+    warehousePrefix: string;
     zoneCode: string;
     shelfId: number;
     shelfCode: string;
@@ -286,7 +316,10 @@ async function ensureLocationForShelfLayer(
   },
 ): Promise<number> {
   const layerCode = String(input.layerNo).padStart(2, '0');
-  const locationCode = `${input.zoneCode}-${input.shelfCode}-${layerCode}`;
+  // Cột code là UNIQUE trên toàn bảng chứ không phải theo từng kho, nên mã bắt
+  // buộc phải mang tiền tố kho. Thiếu nó thì hai kho cùng có khu A kệ A01 sẽ
+  // sinh ra cùng một mã và lệnh đồng bộ ma trận của kho thứ hai sẽ vỡ vì trùng khoá.
+  const locationCode = `${input.warehousePrefix}-${input.zoneCode}-${input.shelfCode}-${layerCode}`;
   const locationName = `${input.shelfName} tầng ${layerCode}`;
   const [existingRows] = await connection.query<
     Array<RowDataPacket & { id: number; deleted_at: Date | null }>
@@ -345,11 +378,16 @@ async function ensureZoneLocationMatrix(
   input: { zoneId: number; zoneCode: string; layerCount: number },
 ): Promise<number> {
   const shelves = await getActiveShelvesByZone(connection, input.zoneId);
+  const warehousePrefix = await getWarehousePrefixByZone(
+    connection,
+    input.zoneId,
+  );
   let createdLocationCount = 0;
 
   for (const shelf of shelves) {
     for (let layerNo = 1; layerNo <= input.layerCount; layerNo += 1) {
       createdLocationCount += await ensureLocationForShelfLayer(connection, {
+        warehousePrefix,
         zoneCode: input.zoneCode,
         shelfId: shelf.id,
         shelfCode: shelf.code,
