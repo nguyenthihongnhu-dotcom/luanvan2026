@@ -428,6 +428,11 @@ export default function StockCountsPage() {
                                         {items.map((item) => {
                                             const draft = itemDrafts[item.id] ?? { actualQuantity: "", reasonCode: "", note: "" };
                                             const difference = item.difference_quantity == null ? null : Number(item.difference_quantity);
+                                            // Còn Đang kiểm kê (chưa gửi duyệt) thì sửa lại bao nhiêu lần cũng được,
+                                            // kể cả dòng đã lưu. Gửi duyệt xong là chốt — đúng như backend chặn ghi
+                                            // khi phiếu rời khỏi trạng thái IN_PROGRESS.
+                                            const isCounted = item.actual_quantity != null;
+                                            const canEditRow = canCount;
                                             return (
                                                 <tr key={item.id} className="align-middle hover:bg-gray-50/70">
                                                     <td className="py-3 pr-3">
@@ -437,7 +442,7 @@ export default function StockCountsPage() {
                                                     <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-gray-600">{item.location_code || `#${item.location_id}`}</td>
                                                     <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-gray-600">{formatNumber(item.system_quantity)}</td>
                                                     <td className="whitespace-nowrap px-3 py-3 text-right">
-                                                        {canCount ? (
+                                                        {canEditRow ? (
                                                             <input
                                                                 type="number"
                                                                 min="0"
@@ -464,7 +469,7 @@ export default function StockCountsPage() {
                                                         )}
                                                     </td>
                                                     <td className="px-3 py-3">
-                                                        {canCount ? (
+                                                        {canEditRow ? (
                                                             <input
                                                                 value={draft.reasonCode}
                                                                 aria-label={`Lý do lệch của ${item.sku ?? item.product_variant_id}`}
@@ -478,7 +483,23 @@ export default function StockCountsPage() {
                                                     </td>
                                                     {canCount && (
                                                         <td className="whitespace-nowrap py-3 pl-3 text-right">
-                                                            <button type="button" onClick={() => handleRecordItem(item)} disabled={isSaving} className="rounded-md bg-pink-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-pink-700 disabled:opacity-60">Lưu đếm</button>
+                                                            <div className="flex items-center justify-end gap-2">
+                                                                {isCounted && (
+                                                                    <span className="whitespace-nowrap text-xs font-semibold text-green-700" title="Dòng này đã được lưu, vẫn sửa lại được cho tới khi gửi duyệt">
+                                                                        ✓ Đã đếm
+                                                                    </span>
+                                                                )}
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => handleRecordItem(item)}
+                                                                    disabled={isSaving}
+                                                                    className={`rounded-md px-3 py-1.5 text-xs font-semibold disabled:opacity-60 ${isCounted
+                                                                        ? "border border-gray-300 bg-white text-gray-700 hover:bg-gray-50"
+                                                                        : "bg-pink-600 text-white hover:bg-pink-700"}`}
+                                                                >
+                                                                    {isCounted ? "Lưu lại" : "Lưu đếm"}
+                                                                </button>
+                                                            </div>
                                                         </td>
                                                     )}
                                                 </tr>
