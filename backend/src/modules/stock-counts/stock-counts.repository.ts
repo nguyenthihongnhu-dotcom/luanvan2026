@@ -5,6 +5,7 @@ import type {
 } from 'mysql2/promise';
 import { insertAuditLog } from '../../common/audit/audit.repository';
 import { buildUniqueCode } from '../../common/code/code-generator';
+import { generateDocumentCode } from '../../common/code/document-code';
 import { db } from '../../database/db';
 import type {
   ApproveStockCountInput,
@@ -284,7 +285,12 @@ export async function createStockCountTransaction(
       throw new Error('STOCK_COUNT_SNAPSHOT_EMPTY');
     }
 
-    const countCode = buildUniqueCode('COUNT', input.warehouseId);
+    const countCode = await generateDocumentCode(
+      connection,
+      'stock_counts',
+      'count_code',
+      'KK',
+    );
     const [insertResult] = await connection.query<ResultSetHeader>(
       `
         INSERT INTO stock_counts (

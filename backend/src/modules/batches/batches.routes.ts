@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { asyncHandler } from '../../common/http';
+import { verifyToken } from '../auth/auth.module';
 import {
   createBatchController,
   deleteBatchController,
@@ -10,6 +11,19 @@ import {
 export const batchesRouter = Router();
 
 batchesRouter.get('/', asyncHandler(listBatchesController));
-batchesRouter.post('/', asyncHandler(createBatchController));
-batchesRouter.put('/:id', asyncHandler(updateBatchController));
-batchesRouter.delete('/:id', asyncHandler(deleteBatchController));
+// Thêm/sửa/xóa lô hàng bắt buộc phải đăng nhập.
+batchesRouter.post(
+  '/',
+  asyncHandler(verifyToken),
+  asyncHandler(createBatchController),
+);
+batchesRouter.put(
+  '/:id',
+  asyncHandler(verifyToken),
+  asyncHandler(updateBatchController),
+);
+batchesRouter.delete(
+  '/:id',
+  asyncHandler(verifyToken),
+  asyncHandler(deleteBatchController),
+);
