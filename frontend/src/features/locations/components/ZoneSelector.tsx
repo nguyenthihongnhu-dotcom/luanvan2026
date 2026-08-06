@@ -125,11 +125,11 @@ export default function ZoneSelector({
                 )}
             </div>
 
-            <div className="flex gap-4 text-sm font-medium text-slate-600">
+            {/* <div className="flex gap-4 text-sm font-medium text-slate-600">
                 <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded border border-green-400 bg-green-100 shadow-sm" /><span>Trống</span></div>
                 <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded border border-orange-400 bg-orange-100 shadow-sm" /><span>Đang chứa</span></div>
                 <div className="flex items-center gap-1.5"><span className="h-3.5 w-3.5 rounded border border-red-400 bg-red-100 shadow-sm" /><span>Đầy</span></div>
-            </div>
+            </div> */}
         </div>
     );
 }
