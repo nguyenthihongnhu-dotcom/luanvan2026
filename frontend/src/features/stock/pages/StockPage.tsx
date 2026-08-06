@@ -152,8 +152,13 @@ export default function StockPage() {
         {
             field: "lot_number",
             headerName: "Lô",
-            minWidth: 140,
-            valueFormatter: ({ value }) => String(value || "Không có"),
+            minWidth: 160,
+            // Kèm id lô: số lô nhà sản xuất có thể trùng giữa các lần nhập nên
+            // chỉ mình lot_number không đủ để đối chiếu với phiếu.
+            valueGetter: ({ data }) => {
+                if (!data?.batch_id) return data?.lot_number || "Không có";
+                return data.lot_number ? `#${data.batch_id} - ${data.lot_number}` : `#${data.batch_id}`;
+            },
         },
         {
             field: "expiry_date",
@@ -194,7 +199,15 @@ export default function StockPage() {
     const expiryColumns = useMemo<ColDef<NearExpiryStockItem>[]>(() => [
         { field: "sku", headerName: "SKU", pinned: "left", cellClass: "font-semibold text-gray-900", minWidth: 140 },
         { field: "product_name", headerName: "Sản phẩm", minWidth: 240 },
-        { field: "lot_number", headerName: "Lô", minWidth: 150 },
+        {
+            field: "lot_number",
+            headerName: "Lô",
+            minWidth: 170,
+            valueGetter: ({ data }) => {
+                if (!data?.batch_id) return data?.lot_number || "Không có";
+                return data.lot_number ? `#${data.batch_id} - ${data.lot_number}` : `#${data.batch_id}`;
+            },
+        },
         { field: "location_code", headerName: "Vị trí", minWidth: 130 },
         {
             field: "expiry_date",

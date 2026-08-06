@@ -152,7 +152,15 @@ export default function TransactionDetailPage() {
     const columns: ColumnProps<TransactionDetailLine>[] = [
         { key: 'sku', title: 'SKU', className: 'font-semibold text-gray-900', render: (value) => formatValue(value) },
         { key: 'product_name', title: 'Sản phẩm', render: (_, record) => [record.product_name, record.variant_name].filter(Boolean).join(' - ') || '-' },
-        { key: 'lot_number', title: 'Lô', render: (value) => formatValue(value) },
+        {
+            key: 'lot_number',
+            title: 'Lô',
+            // Kèm id lô để đối chiếu được với dữ liệu tồn kho, vì số lô của nhà sản
+            // xuất có thể trùng nhau giữa các lần nhập.
+            render: (_, record) => record.batch_id
+                ? `#${record.batch_id}${record.lot_number ? ` - ${record.lot_number}` : ''}`
+                : formatValue(record.lot_number),
+        },
         { key: 'expiry_date', title: 'Hạn dùng', render: (value) => formatValue(value) },
         { key: 'location_code', title: 'Vị trí', render: (value) => formatValue(value) },
         { key: 'quantity', title: 'Số lượng', render: (value) => Number(value ?? 0).toLocaleString('vi-VN') },
