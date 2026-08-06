@@ -30,7 +30,7 @@ approveStockAdjustment(input)
   -> approveStockAdjustmentTransaction(input)
       -> beginTransaction
       -> lock adjustment
-      -> chỉ PENDING được approve
+      -> chỉ DRAFT hoặc PENDING được approve
       -> chặn tự duyệt nếu creator == approver
       -> lấy items
       -> với IN: tăng/upsert stock_locations

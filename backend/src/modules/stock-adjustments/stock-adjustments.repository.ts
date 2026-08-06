@@ -273,7 +273,7 @@ export async function approveStockAdjustmentTransaction(
       };
     }
 
-    if (adjustment.status !== 'PENDING') {
+    if (!['DRAFT', 'PENDING'].includes(adjustment.status)) {
       throw new Error('STOCK_ADJUSTMENT_NOT_APPROVABLE');
     }
 
@@ -474,7 +474,7 @@ export async function rejectStockAdjustmentTransaction(
       };
     }
 
-    if (adjustment.status !== 'PENDING') {
+    if (!['DRAFT', 'PENDING'].includes(adjustment.status)) {
       throw new Error('STOCK_ADJUSTMENT_NOT_REJECTABLE');
     }
 

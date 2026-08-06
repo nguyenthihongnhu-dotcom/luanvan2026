@@ -163,9 +163,9 @@ export default function Transactions() {
                     status === 'CONFIRMED' &&
                     ((record.loai === 'NHAP' && hasPermission('goods_receipts:reverse')) ||
                         (record.loai === 'XUAT' && hasPermission('goods_issues:reverse')));
-                const canApproveAdjustment = record.loai === 'DIEU_CHINH' && ['PENDING_APPROVAL', 'SUBMITTED', 'PENDING'].includes(status) && hasPermission('stock_adjustments:approve');
-                const canRejectAdjustment = record.loai === 'DIEU_CHINH' && ['PENDING_APPROVAL', 'SUBMITTED', 'PENDING'].includes(status) && hasPermission('stock_adjustments:reject');
-                const canCancelAdjustment = record.loai === 'DIEU_CHINH' && ['DRAFT', 'MOI_TAO', 'PENDING_APPROVAL', 'PENDING'].includes(status) && hasPermission('stock_adjustments:cancel');
+                const canApproveAdjustment = record.loai === 'DIEU_CHINH' && ['DRAFT', 'PENDING'].includes(status) && hasPermission('stock_adjustments:approve');
+                const canRejectAdjustment = record.loai === 'DIEU_CHINH' && ['DRAFT', 'PENDING'].includes(status) && hasPermission('stock_adjustments:reject');
+                const canCancelAdjustment = record.loai === 'DIEU_CHINH' && ['DRAFT', 'PENDING'].includes(status) && hasPermission('stock_adjustments:cancel');
                 const canRecreate = ['REVERSED', 'CANCELLED', 'DA_DAO_PHIEU', 'DA_HUY'].includes(status);
 
                 return (

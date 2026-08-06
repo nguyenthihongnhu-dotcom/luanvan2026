@@ -27,7 +27,7 @@ const approveErrorMap: Record<string, HttpError> = {
   ),
   STOCK_ADJUSTMENT_NOT_APPROVABLE: new HttpError(
     409,
-    'Only PENDING stock adjustments can be approved',
+    'Only DRAFT or PENDING stock adjustments can be approved',
     'STOCK_ADJUSTMENT_NOT_APPROVABLE',
   ),
   SELF_APPROVAL_NOT_ALLOWED: new HttpError(
@@ -62,7 +62,7 @@ const approveErrorMap: Record<string, HttpError> = {
   ),
   STOCK_ADJUSTMENT_NOT_REJECTABLE: new HttpError(
     409,
-    'Only PENDING stock adjustments can be rejected',
+    'Only DRAFT or PENDING stock adjustments can be rejected',
     'STOCK_ADJUSTMENT_NOT_REJECTABLE',
   ),
   STOCK_ADJUSTMENT_NOT_CANCELLABLE: new HttpError(
