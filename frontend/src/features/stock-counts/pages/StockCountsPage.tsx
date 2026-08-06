@@ -369,79 +369,128 @@ export default function StockCountsPage() {
                 </div>
             )}
 
-            {showItemsModal && selectedCount && (
+            {showItemsModal && selectedCount && (() => {
+                // Backend chỉ nhận ghi số đếm khi phiếu Đang kiểm kê; ngoài trạng thái đó
+                // thì hiện dạng chỉ đọc thay vì rải ô nhập mờ khắp bảng.
+                const canCount = selectedCount.status === "IN_PROGRESS";
+                const variedCount = items.filter((item) => Number(item.difference_quantity ?? 0) !== 0).length;
+
+                return (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md">
-                    <div className="w-full max-w-5xl overflow-hidden rounded-xl bg-white shadow-xl">
+                    <div className="flex max-h-[88vh] w-full max-w-5xl flex-col overflow-hidden rounded-xl bg-white shadow-xl">
                         <div className="flex items-start justify-between gap-4 border-b border-gray-100 bg-pink-50 px-6 py-4">
                             <div className="min-w-0">
-                                <h2 className="text-lg font-bold text-pink-700">Chi tiết kiểm kê</h2>
-                                <div className="mt-1 flex flex-wrap items-center gap-2">
-                                    <span className="font-mono text-sm text-gray-700">{selectedCount.count_code}</span>
+                                <div className="flex flex-wrap items-center gap-2.5">
+                                    <h2 className="text-lg font-bold text-pink-700">Chi tiết kiểm kê</h2>
                                     <span className="rounded-full border border-pink-200 bg-white px-2.5 py-0.5 text-xs font-semibold text-pink-700">
                                         {statusLabel(selectedCount.status)}
                                     </span>
                                 </div>
+                                <p className="mt-1 text-sm text-gray-500">
+                                    <span className="font-mono">{selectedCount.count_code}</span>
+                                    {items.length > 0 && (
+                                        <>
+                                            <span className="mx-2 text-gray-300">·</span>
+                                            {items.length} dòng
+                                            {variedCount > 0 && <span className="text-red-600">, {variedCount} dòng lệch</span>}
+                                        </>
+                                    )}
+                                </p>
                             </div>
-                            <button type="button" onClick={() => setShowItemsModal(false)} className="shrink-0 text-2xl leading-none text-gray-400 hover:text-gray-600" aria-label="Đóng">×</button>
+                            <button type="button" onClick={() => setShowItemsModal(false)} className="shrink-0 rounded p-1 text-2xl leading-none text-gray-400 hover:bg-white/70 hover:text-gray-600" aria-label="Đóng">×</button>
                         </div>
-                        <div className="max-h-[72vh] overflow-auto p-6">
-                            {/* Ngoài trạng thái Đang kiểm kê thì backend từ chối ghi số đếm,
-                                nên phải nói rõ lý do thay vì để ô nhập mờ đi không giải thích. */}
-                            {selectedCount.status !== "IN_PROGRESS" && (
+                        <div className="min-h-0 flex-1 overflow-auto px-6 py-5">
+                            {!canCount && (
                                 <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                                     Phiếu đang ở trạng thái <strong>{statusLabel(selectedCount.status)}</strong> nên không nhập được số đếm.
                                     {selectedCount.status === "DRAFT" && " Bấm \"Bắt đầu\" ở danh sách để chuyển sang Đang kiểm kê."}
                                 </div>
                             )}
                             {items.length === 0 ? (
-                                <div className="text-sm text-gray-500">Phiếu chưa có dòng kiểm kê.</div>
-                            ) : (
-                                <div className="overflow-x-auto">
-                                    <table className="w-full min-w-[880px] text-left text-sm">
-                                        <thead className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
-                                            <tr>
-                                                <th className="px-3 py-2.5">Sản phẩm</th>
-                                                <th className="px-3 py-2.5">Vị trí</th>
-                                                <th className="px-3 py-2.5 text-right">Hệ thống</th>
-                                                <th className="px-3 py-2.5 text-right">Thực tế</th>
-                                                <th className="px-3 py-2.5 text-right">Lệch</th>
-                                                <th className="px-3 py-2.5">Lý do</th>
-                                                <th className="px-3 py-2.5 text-right">Thao tác</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody className="divide-y divide-gray-100">
-                                            {items.map((item) => {
-                                                const draft = itemDrafts[item.id] ?? { actualQuantity: "", reasonCode: "", note: "" };
-                                                const canCount = selectedCount.status === "IN_PROGRESS";
-                                                const difference = item.difference_quantity == null ? null : Number(item.difference_quantity);
-                                                return (
-                                                    <tr key={item.id} className="align-middle hover:bg-gray-50">
-                                                        <td className="px-3 py-2.5 font-medium text-gray-900">{item.sku ? `${item.sku} - ${item.product_name || ''}` : `#${item.product_variant_id}`}</td>
-                                                        <td className="px-3 py-2.5 font-mono text-xs text-gray-600">{item.location_code || `#${item.location_id}`}</td>
-                                                        <td className="px-3 py-2.5 text-right tabular-nums text-gray-700">{formatNumber(item.system_quantity)}</td>
-                                                        <td className="px-3 py-2.5 text-right">
-                                                            <input type="number" min="0" step="0.001" value={draft.actualQuantity} onChange={(event) => setItemDrafts({ ...itemDrafts, [item.id]: { ...draft, actualQuantity: event.target.value } })} disabled={!canCount} className="w-24 rounded-md border border-gray-300 px-2 py-1 text-right text-sm tabular-nums outline-none focus:ring-2 focus:ring-pink-500 disabled:bg-gray-50 disabled:text-gray-400" />
-                                                        </td>
-                                                        <td className={`px-3 py-2.5 text-right font-semibold tabular-nums ${difference == null ? "text-gray-400" : difference < 0 ? "text-red-600" : difference > 0 ? "text-green-600" : "text-gray-500"}`}>
-                                                            {difference == null ? "–" : difference > 0 ? `+${formatNumber(difference)}` : formatNumber(difference)}
-                                                        </td>
-                                                        <td className="px-3 py-2.5">
-                                                            <input value={draft.reasonCode} onChange={(event) => setItemDrafts({ ...itemDrafts, [item.id]: { ...draft, reasonCode: event.target.value } })} disabled={!canCount} className="w-44 rounded-md border border-gray-300 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-pink-500 disabled:bg-gray-50 disabled:text-gray-400" placeholder="Lý do lệch" />
-                                                        </td>
-                                                        <td className="px-3 py-2.5 text-right">
-                                                            {canCount && <button type="button" onClick={() => handleRecordItem(item)} disabled={isSaving} className="rounded-md bg-pink-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-pink-700 disabled:opacity-60">Lưu đếm</button>}
-                                                        </td>
-                                                    </tr>
-                                                );
-                                            })}
-                                        </tbody>
-                                    </table>
+                                <div className="rounded-lg border border-dashed border-gray-300 px-4 py-10 text-center text-sm text-gray-500">
+                                    Phiếu chưa có dòng kiểm kê nào.
                                 </div>
+                            ) : (
+                                <table className="w-full table-auto text-left text-sm">
+                                    <thead className="border-b border-gray-200 text-xs uppercase tracking-wide text-gray-500">
+                                        <tr>
+                                            <th className="py-2.5 pr-3">Sản phẩm</th>
+                                            <th className="whitespace-nowrap px-3 py-2.5">Vị trí</th>
+                                            <th className="whitespace-nowrap px-3 py-2.5 text-right">Hệ thống</th>
+                                            <th className="whitespace-nowrap px-3 py-2.5 text-right">Thực tế</th>
+                                            <th className="whitespace-nowrap px-3 py-2.5 text-right">Lệch</th>
+                                            <th className="px-3 py-2.5">Lý do</th>
+                                            {canCount && <th className="whitespace-nowrap py-2.5 pl-3 text-right">Thao tác</th>}
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100">
+                                        {items.map((item) => {
+                                            const draft = itemDrafts[item.id] ?? { actualQuantity: "", reasonCode: "", note: "" };
+                                            const difference = item.difference_quantity == null ? null : Number(item.difference_quantity);
+                                            return (
+                                                <tr key={item.id} className="align-middle hover:bg-gray-50/70">
+                                                    <td className="py-3 pr-3">
+                                                        <div className="font-semibold text-gray-900">{item.sku ?? `#${item.product_variant_id}`}</div>
+                                                        {item.product_name && <div className="text-xs text-gray-500">{item.product_name}</div>}
+                                                    </td>
+                                                    <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-gray-600">{item.location_code || `#${item.location_id}`}</td>
+                                                    <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-gray-600">{formatNumber(item.system_quantity)}</td>
+                                                    <td className="whitespace-nowrap px-3 py-3 text-right">
+                                                        {canCount ? (
+                                                            <input
+                                                                type="number"
+                                                                min="0"
+                                                                step="0.001"
+                                                                aria-label={`Số thực tế của ${item.sku ?? item.product_variant_id}`}
+                                                                value={draft.actualQuantity}
+                                                                onChange={(event) => setItemDrafts({ ...itemDrafts, [item.id]: { ...draft, actualQuantity: event.target.value } })}
+                                                                className="w-24 rounded-md border border-gray-300 px-2 py-1.5 text-right text-sm tabular-nums outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-200"
+                                                            />
+                                                        ) : (
+                                                            <span className="font-semibold tabular-nums text-gray-900">
+                                                                {item.actual_quantity == null ? "—" : formatNumber(item.actual_quantity)}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    {/* Lệch là thứ người dùng mở phiếu ra để xem, nên được nhấn bằng pill màu. */}
+                                                    <td className="whitespace-nowrap px-3 py-3 text-right">
+                                                        {difference == null ? (
+                                                            <span className="text-gray-300">—</span>
+                                                        ) : (
+                                                            <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${difference < 0 ? "bg-red-50 text-red-700" : difference > 0 ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>
+                                                                {difference > 0 ? `+${formatNumber(difference)}` : formatNumber(difference)}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-3 py-3">
+                                                        {canCount ? (
+                                                            <input
+                                                                value={draft.reasonCode}
+                                                                aria-label={`Lý do lệch của ${item.sku ?? item.product_variant_id}`}
+                                                                onChange={(event) => setItemDrafts({ ...itemDrafts, [item.id]: { ...draft, reasonCode: event.target.value } })}
+                                                                className="w-full min-w-[9rem] rounded-md border border-gray-300 px-2 py-1.5 text-sm outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-200"
+                                                                placeholder="Lý do lệch"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-gray-600">{item.reason_code || "—"}</span>
+                                                        )}
+                                                    </td>
+                                                    {canCount && (
+                                                        <td className="whitespace-nowrap py-3 pl-3 text-right">
+                                                            <button type="button" onClick={() => handleRecordItem(item)} disabled={isSaving} className="rounded-md bg-pink-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-pink-700 disabled:opacity-60">Lưu đếm</button>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
                             )}
                         </div>
                     </div>
                 </div>
-            )}
+                );
+            })()}
         </DashboardLayout>
     );
 }
