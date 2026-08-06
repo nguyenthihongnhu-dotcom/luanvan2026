@@ -168,9 +168,9 @@ export default function TransactionDetailPage() {
     const canReverse = currentStatus === 'CONFIRMED' &&
         ((transactionType === 'NHAP' && hasPermission('goods_receipts:reverse')) ||
             (transactionType === 'XUAT' && hasPermission('goods_issues:reverse')));
-    const canApproveAdjustment = transactionType === 'DIEU_CHINH' && ['DRAFT', 'MOI_TAO', 'PENDING', 'PENDING_APPROVAL', 'SUBMITTED'].includes(currentStatus) && hasPermission('stock_adjustments:approve');
-    const canRejectAdjustment = transactionType === 'DIEU_CHINH' && ['DRAFT', 'MOI_TAO', 'PENDING', 'PENDING_APPROVAL', 'SUBMITTED'].includes(currentStatus) && hasPermission('stock_adjustments:reject');
-    const canCancelAdjustment = transactionType === 'DIEU_CHINH' && ['DRAFT', 'MOI_TAO', 'PENDING', 'PENDING_APPROVAL'].includes(currentStatus) && hasPermission('stock_adjustments:cancel');
+    const canApproveAdjustment = transactionType === 'DIEU_CHINH' && ['DRAFT', 'PENDING'].includes(currentStatus) && hasPermission('stock_adjustments:approve');
+    const canRejectAdjustment = transactionType === 'DIEU_CHINH' && ['DRAFT', 'PENDING'].includes(currentStatus) && hasPermission('stock_adjustments:reject');
+    const canCancelAdjustment = transactionType === 'DIEU_CHINH' && ['DRAFT', 'PENDING'].includes(currentStatus) && hasPermission('stock_adjustments:cancel');
 
     async function handleConfirm() {
         if (!window.confirm('Xác nhận chứng từ này và cập nhật tồn kho?')) return;
