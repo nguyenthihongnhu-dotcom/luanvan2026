@@ -264,13 +264,40 @@ export default function StockCountsPage() {
             return;
         }
 
-        await runCountAction(async () => {
+        // Lưu một dòng thì chỉ tải lại danh sách dòng của phiếu này. Trước đây dùng
+        // runCountAction nên nó nạp lại cả trang (phiếu, kho, người dùng, vị trí,
+        // sản phẩm, danh mục) rồi dựng lại toàn bộ ô nhập từ server — màn hình giật
+        // và số đang gõ dở ở những dòng chưa lưu bị xoá sạch.
+        const hasVariance = actualQuantity !== Number(item.system_quantity);
+        setIsSaving(true);
+        setError(null);
+        try {
             await stockCountService.recordStockCountItem(selectedCount.id, item.id, {
                 actualQuantity,
-                reasonCode: draft?.reasonCode || undefined,
+                // Khớp số thì không gửi lý do, tránh dính lý do thừa từ lần gõ trước.
+                reasonCode: hasVariance ? draft?.reasonCode || undefined : undefined,
                 note: draft?.note || undefined,
             });
-        });
+
+            const rows = await stockCountService.listStockCountItems(selectedCount.id);
+            setItems(rows);
+            setItemDrafts((current) => Object.fromEntries(rows.map((row) => {
+                const typed = current[row.id];
+                // Chỉ dòng vừa lưu mới lấy lại giá trị từ server; các dòng khác giữ
+                // nguyên những gì người dùng đang gõ.
+                if (row.id !== item.id && typed) return [row.id, typed];
+                return [row.id, {
+                    actualQuantity: row.actual_quantity == null ? "" : String(row.actual_quantity),
+                    reasonCode: row.reason_code ?? "",
+                    note: row.note ?? "",
+                }];
+            })));
+        } catch (err) {
+            console.error(err);
+            setError(getHttpErrorMessage(err, "Không lưu được số đếm"));
+        } finally {
+            setIsSaving(false);
+        }
     }
 
     const columns: ColumnProps<StockCount>[] = [
@@ -427,12 +454,21 @@ export default function StockCountsPage() {
                                     <tbody className="divide-y divide-gray-100">
                                         {items.map((item) => {
                                             const draft = itemDrafts[item.id] ?? { actualQuantity: "", reasonCode: "", note: "" };
-                                            const difference = item.difference_quantity == null ? null : Number(item.difference_quantity);
                                             // Còn Đang kiểm kê (chưa gửi duyệt) thì sửa lại bao nhiêu lần cũng được,
                                             // kể cả dòng đã lưu. Gửi duyệt xong là chốt — đúng như backend chặn ghi
                                             // khi phiếu rời khỏi trạng thái IN_PROGRESS.
                                             const isCounted = item.actual_quantity != null;
                                             const canEditRow = canCount;
+                                            // Khi đang sửa thì tính lệch ngay từ số đang gõ, không đợi lưu —
+                                            // nhờ vậy người đếm thấy ngay chênh lệch và hiểu vì sao ô lý do mở hay khoá.
+                                            const typedActual = draft.actualQuantity.trim();
+                                            const difference = canEditRow
+                                                ? (typedActual === "" || !Number.isFinite(Number(typedActual))
+                                                    ? null
+                                                    : Number(typedActual) - Number(item.system_quantity))
+                                                : (item.difference_quantity == null ? null : Number(item.difference_quantity));
+                                            // Không lệch thì không có gì để giải thích.
+                                            const hasVariance = difference != null && difference !== 0;
                                             return (
                                                 <tr key={item.id} className="align-middle hover:bg-gray-50/70">
                                                     <td className="py-3 pr-3">
@@ -471,11 +507,12 @@ export default function StockCountsPage() {
                                                     <td className="px-3 py-3">
                                                         {canEditRow ? (
                                                             <input
-                                                                value={draft.reasonCode}
+                                                                value={hasVariance ? draft.reasonCode : ""}
+                                                                disabled={!hasVariance}
                                                                 aria-label={`Lý do lệch của ${item.sku ?? item.product_variant_id}`}
                                                                 onChange={(event) => setItemDrafts({ ...itemDrafts, [item.id]: { ...draft, reasonCode: event.target.value } })}
-                                                                className="w-full min-w-[9rem] rounded-md border border-gray-300 px-2 py-1.5 text-sm outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-200"
-                                                                placeholder="Lý do lệch"
+                                                                className="w-full min-w-[9rem] rounded-md border border-gray-300 px-2 py-1.5 text-sm outline-none focus:border-pink-500 focus:ring-2 focus:ring-pink-200 disabled:cursor-not-allowed disabled:border-gray-200 disabled:bg-gray-50 disabled:text-gray-400"
+                                                                placeholder={difference == null ? "Nhập số thực tế trước" : hasVariance ? "Lý do lệch" : "Khớp, không cần lý do"}
                                                             />
                                                         ) : (
                                                             <span className="text-gray-600">{item.reason_code || "—"}</span>
