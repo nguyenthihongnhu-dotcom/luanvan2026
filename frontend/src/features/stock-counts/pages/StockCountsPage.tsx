@@ -374,6 +374,7 @@ export default function StockCountsPage() {
                 // thì hiện dạng chỉ đọc thay vì rải ô nhập mờ khắp bảng.
                 const canCount = selectedCount.status === "IN_PROGRESS";
                 const variedCount = items.filter((item) => Number(item.difference_quantity ?? 0) !== 0).length;
+                const uncountedCount = items.filter((item) => item.actual_quantity == null).length;
 
                 return (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md">
@@ -403,7 +404,7 @@ export default function StockCountsPage() {
                             {!canCount && (
                                 <div className="mb-4 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-sm text-amber-800">
                                     Phiếu đang ở trạng thái <strong>{statusLabel(selectedCount.status)}</strong> nên không nhập được số đếm.
-                                    {selectedCount.status === "DRAFT" && " Bấm \"Bắt đầu\" ở danh sách để chuyển sang Đang kiểm kê."}
+                                    {selectedCount.status === "DRAFT" && " Bấm \"Bắt đầu kiểm kê\" bên dưới để mở phiếu ra đếm."}
                                 </div>
                             )}
                             {items.length === 0 ? (
@@ -486,6 +487,65 @@ export default function StockCountsPage() {
                                     </tbody>
                                 </table>
                             )}
+                        </div>
+                        {/* Hành động của phiếu để ngay trong modal: trước đây người dùng phải
+                            đóng modal, tìm lại đúng dòng trong danh sách rồi mới bấm được. */}
+                        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-6 py-4">
+                            <p className="text-sm text-gray-500">
+                                {selectedCount.status === "DRAFT" && "Bắt đầu để chốt số liệu hệ thống và mở phiếu ra đếm."}
+                                {selectedCount.status === "IN_PROGRESS" && (
+                                    uncountedCount > 0
+                                        ? `Còn ${uncountedCount}/${items.length} dòng chưa nhập số thực tế.`
+                                        : "Đã nhập đủ số thực tế, có thể gửi duyệt."
+                                )}
+                                {selectedCount.status === "SUBMITTED" && "Duyệt sẽ sinh phiếu điều chỉnh tồn cho các dòng lệch."}
+                                {selectedCount.status === "APPROVED" && "Phiếu đã duyệt, chỉ xem lại."}
+                            </p>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <button
+                                    type="button"
+                                    onClick={() => setShowItemsModal(false)}
+                                    className="rounded-md border border-gray-300 bg-white px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+                                >
+                                    Đóng
+                                </button>
+                                {selectedCount.status === "DRAFT" && (
+                                    <button
+                                        type="button"
+                                        disabled={isSaving}
+                                        onClick={() => void runCountAction(() => stockCountService.startStockCount(selectedCount.id))}
+                                        className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+                                    >
+                                        {isSaving ? "Đang xử lý" : "Bắt đầu kiểm kê"}
+                                    </button>
+                                )}
+                                {selectedCount.status === "IN_PROGRESS" && (
+                                    <button
+                                        type="button"
+                                        disabled={isSaving}
+                                        onClick={() => {
+                                            if (uncountedCount > 0 && !window.confirm(`Còn ${uncountedCount} dòng chưa nhập số thực tế. Vẫn gửi duyệt?`)) return;
+                                            void runCountAction(() => stockCountService.submitStockCount(selectedCount.id));
+                                        }}
+                                        className="rounded-md bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:opacity-60"
+                                    >
+                                        {isSaving ? "Đang xử lý" : "Gửi duyệt"}
+                                    </button>
+                                )}
+                                {selectedCount.status === "SUBMITTED" && (
+                                    <button
+                                        type="button"
+                                        disabled={isSaving}
+                                        onClick={() => {
+                                            if (!window.confirm(`Duyệt phiếu ${selectedCount.count_code}? Hệ thống sẽ sinh phiếu điều chỉnh cho ${variedCount} dòng lệch.`)) return;
+                                            void runCountAction(() => stockCountService.approveStockCount(selectedCount.id));
+                                        }}
+                                        className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
+                                    >
+                                        {isSaving ? "Đang xử lý" : "Duyệt phiếu"}
+                                    </button>
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
