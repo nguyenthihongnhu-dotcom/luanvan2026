@@ -76,8 +76,19 @@ export async function submitStockCount(id: number): Promise<void> {
     await httpClient.post(`/stock-counts/${id}/submit`);
 }
 
-export async function approveStockCount(id: number): Promise<void> {
-    await httpClient.post(`/stock-counts/${id}/approve`);
+/** Kết quả duyệt: phiếu điều chỉnh tồn được sinh ra cho các dòng lệch, còn chờ duyệt tiếp. */
+export interface ApproveStockCountResult {
+    adjustmentId: number | null;
+    adjustmentCode: string | null;
+}
+
+export async function approveStockCount(id: number): Promise<ApproveStockCountResult> {
+    const response = await httpClient.post<{ data: ApproveStockCountResult }>(`/stock-counts/${id}/approve`);
+    const data = unwrapData(response);
+    return {
+        adjustmentId: data?.adjustmentId ?? null,
+        adjustmentCode: data?.adjustmentCode ?? null,
+    };
 }
 
 export const stockCountService = {

@@ -190,11 +190,19 @@ function AdjustmentStockPicker({
     const currentKey = locationId ? `${locationId}:${batchId}` : "";
     const matched = stockRows.find((row) => keyOf(row) === currentKey);
     const [manual, setManual] = useState(false);
+    // Sản phẩm chưa có tồn nào trong kho thì không có gì để chọn: đi thẳng vào
+    // chọn ô thủ công, thay vì bắt người dùng mở một dropdown chỉ có dòng báo rỗng.
+    const noStock = hasWarehouse && stockRows.length === 0;
     // Đang chỉ vào một ô không nằm trong danh sách tồn thì chắc chắn là chọn tay.
-    const isManual = manual || (Boolean(locationId) && !matched);
+    const isManual = manual || noStock || (Boolean(locationId) && !matched);
 
     return (
         <div className="space-y-2">
+            {noStock ? (
+                <p className="text-xs text-gray-500">
+                    Sản phẩm chưa có tồn trong kho này — chọn ô để nhập hàng vào.
+                </p>
+            ) : (
             <div>
                 <label className="mb-1 block text-xs font-medium text-gray-600">Tồn hiện có</label>
                 <select
@@ -228,6 +236,7 @@ function AdjustmentStockPicker({
                     <option value="__manual__">-- Chọn ô khác (thêm vào ô trống) --</option>
                 </select>
             </div>
+            )}
             {isManual && (
                 <LocationCascadePicker
                     locations={locations}

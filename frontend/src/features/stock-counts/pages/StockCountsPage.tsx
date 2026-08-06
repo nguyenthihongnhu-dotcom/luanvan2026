@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
+import { Link } from "react-router-dom";
 import DashboardLayout from "@/layouts/dashboard/DashboardLayout";
 import Tablelayout from "@/shared/ui/Table/TableLayout";
 import type { ColumnProps } from "@/shared/ui/Table/types";
@@ -115,6 +116,9 @@ export default function StockCountsPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    // Phiếu điều chỉnh sinh ra sau khi duyệt kiểm kê. Duyệt kiểm kê CHƯA trừ tồn:
+    // phải duyệt tiếp phiếu này thì tồn mới đổi, nên phải nói rõ cho người dùng.
+    const [pendingAdjustment, setPendingAdjustment] = useState<{ id: number; code: string } | null>(null);
 
     const warehousesById = useMemo(() => new Map(warehouses.map((warehouse) => [warehouse.id, warehouse])), [warehouses]);
     const userMap = useMemo(() => new Map(users.map((u) => [u.MaNguoiDung, u.HoTen])), [users]);
@@ -255,6 +259,34 @@ export default function StockCountsPage() {
         }
     }
 
+    /**
+     * Duyệt phiếu kiểm kê. Bước này KHÔNG trừ tồn: nó sinh ra một phiếu điều chỉnh
+     * ở trạng thái chờ xử lý, phải duyệt tiếp phiếu đó tồn mới thay đổi. Giữ hai
+     * bước để tách người kiểm đếm khỏi người chốt tồn, nhưng phải chỉ đường rõ
+     * ràng, nếu không ai cũng tưởng duyệt xong là số liệu đã được cập nhật.
+     */
+    async function handleApproveCount(count: StockCount) {
+        setIsSaving(true);
+        setError(null);
+        try {
+            const result = await stockCountService.approveStockCount(count.id);
+            const freshCounts = await loadCounts();
+            const fresh = freshCounts.find((row) => row.id === count.id);
+            if (showItemsModal && fresh) await openItems(fresh);
+
+            setPendingAdjustment(
+                result.adjustmentId && result.adjustmentCode
+                    ? { id: result.adjustmentId, code: result.adjustmentCode }
+                    : null,
+            );
+        } catch (err) {
+            console.error(err);
+            setError(getHttpErrorMessage(err, "Không duyệt được phiếu kiểm kê"));
+        } finally {
+            setIsSaving(false);
+        }
+    }
+
     async function handleRecordItem(item: StockCountItem) {
         if (!selectedCount) return;
         const draft = itemDrafts[item.id];
@@ -318,7 +350,7 @@ export default function StockCountsPage() {
                     <button type="button" onClick={() => void openItems(record)} className="btn-action btn-blue">Chi tiết</button>
                     {record.status === "DRAFT" && <button type="button" onClick={() => runCountAction(() => stockCountService.startStockCount(record.id))} className="btn-action btn-green">Bắt đầu</button>}
                     {record.status === "IN_PROGRESS" && <button type="button" onClick={() => runCountAction(() => stockCountService.submitStockCount(record.id))} className="btn-action btn-pink">Gửi duyệt</button>}
-                    {record.status === "SUBMITTED" && <button type="button" onClick={() => runCountAction(() => stockCountService.approveStockCount(record.id))} className="btn-action btn-green">Duyệt</button>}
+                    {record.status === "SUBMITTED" && <button type="button" onClick={() => void handleApproveCount(record)} className="btn-action btn-green">Duyệt</button>}
                 </div>
             ),
         },
@@ -332,6 +364,29 @@ export default function StockCountsPage() {
                     <button type="button" onClick={() => setShowCreateModal(true)} className="rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700">+ Tạo phiếu kiểm kê</button>
                 </div>
                 {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
+                {pendingAdjustment && (
+                    <div className="flex flex-wrap items-center justify-between gap-3 rounded-md border border-blue-200 bg-blue-50 px-4 py-3 text-sm text-blue-900">
+                        <p>
+                            Đã duyệt kiểm kê và tạo phiếu điều chỉnh <strong className="font-mono">{pendingAdjustment.code}</strong>.
+                            {" "}<strong>Tồn kho chưa thay đổi</strong> — cần duyệt tiếp phiếu điều chỉnh này.
+                        </p>
+                        <div className="flex items-center gap-2">
+                            <Link
+                                to={`/adjustments/${pendingAdjustment.id}`}
+                                className="rounded-md bg-blue-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-blue-700"
+                            >
+                                Đi duyệt phiếu điều chỉnh
+                            </Link>
+                            <button
+                                type="button"
+                                onClick={() => setPendingAdjustment(null)}
+                                className="rounded-md border border-blue-300 bg-white px-3 py-1.5 text-xs font-medium text-blue-800 hover:bg-blue-50"
+                            >
+                                Để sau
+                            </button>
+                        </div>
+                    </div>
+                )}
                 <Tablelayout columns={columns} dataSource={counts} rowKey="id" isLoading={isLoading} />
             </div>
 
@@ -596,7 +651,7 @@ export default function StockCountsPage() {
                                         disabled={isSaving}
                                         onClick={() => {
                                             if (!window.confirm(`Duyệt phiếu ${selectedCount.count_code}? Hệ thống sẽ sinh phiếu điều chỉnh cho ${variedCount} dòng lệch.`)) return;
-                                            void runCountAction(() => stockCountService.approveStockCount(selectedCount.id));
+                                            void handleApproveCount(selectedCount);
                                         }}
                                         className="rounded-md bg-green-600 px-4 py-2 text-sm font-semibold text-white hover:bg-green-700 disabled:opacity-60"
                                     >

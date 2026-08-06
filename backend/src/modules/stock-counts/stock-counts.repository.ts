@@ -638,7 +638,14 @@ export async function approveStockCountTransaction(
     let adjustmentCode: string | null = null;
 
     if (differenceItems.length > 0) {
-      adjustmentCode = buildUniqueCode('ADJ-COUNT', stockCount.count_code);
+      // Cùng quy ước số phiếu với điều chỉnh tạo tay (DC-YYYYMM-NNN); nguồn gốc
+      // từ kiểm kê đã được ghi ở cột stock_count_id và adjustment_type = 'COUNT'.
+      adjustmentCode = await generateDocumentCode(
+        connection,
+        'stock_adjustments',
+        'adjustment_code',
+        'DC',
+      );
       const [adjustmentInsert] = await connection.query<ResultSetHeader>(
         `
           INSERT INTO stock_adjustments (
