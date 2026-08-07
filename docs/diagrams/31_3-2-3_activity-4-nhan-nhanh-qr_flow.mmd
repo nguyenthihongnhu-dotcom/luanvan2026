@@ -1,0 +1,45 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu: POST /stock/quick-receive"]) --> A["BEGIN TRANSACTION"]
+    A --> B["Tra SKU theo mã quét: sku, barcode hoặc qr_code_value"]
+    B --> C{"Tìm thấy SKU đang hoạt động?"}
+    C -->|Không| C1["ROLLBACK, trả 404 PRODUCT_NOT_FOUND"]
+    C1 --> End1(["Kết thúc: Không ghi nhận tồn"])
+    C -->|Có| Dn["Tra vị trí theo mã quét, khóa FOR UPDATE"]
+    Dn --> E{"Tìm thấy vị trí ở trạng thái ACTIVE?"}
+    E -->|Không| E1["ROLLBACK, trả 404 LOCATION_NOT_FOUND"]
+    E1 --> End1
+    E -->|Có| F{"Tìm được người thực hiện đang ACTIVE?"}
+    F -->|Không| F1["ROLLBACK, trả 422 PERFORMED_BY_NOT_FOUND"]
+    F1 --> End1
+    F -->|Có| G{"Có nhập số lô hoặc hạn dùng?"}
+    G -->|Có| H["Khóa product_batches theo lô, tạo mới nếu chưa có"]
+    G -->|Không| I["Bỏ qua lô, batch_id để trống"]
+    H --> J["Đọc tồn hiện tại làm quantity_before"]
+    I --> J
+    J --> K["UPSERT stock_locations, cộng quantity, tăng version"]
+    K --> L["Ghi inventory_transactions RECEIPT, reference_type QUICK_RECEIVE"]
+    L --> M["COMMIT"]
+    M --> End2(["Kết thúc: Tồn tại vị trí đã tăng"])

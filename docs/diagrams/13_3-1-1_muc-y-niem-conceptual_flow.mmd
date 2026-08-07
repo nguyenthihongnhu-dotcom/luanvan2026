@@ -1,0 +1,37 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart LR
+    A["Xác thực và phân quyền"]
+    B["Cấu trúc kho"]
+    C["Danh mục và lô hàng"]
+    Dc["Tồn kho lõi"]
+    E["Chứng từ nghiệp vụ"]
+    F["Vận hành và hệ thống"]
+
+    A -->|cấp quyền thao tác| E
+    B -->|xác định vị trí lưu trữ| Dc
+    C -->|xác định SKU và lô| Dc
+    E -->|làm thay đổi| Dc
+    Dc -->|cung cấp số liệu| F
+    E -->|ghi vết thao tác| F

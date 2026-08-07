@@ -1,0 +1,64 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart LR
+    ROOT["Hệ thống Bambi WMS"]
+    ROOT --> A["1. Quản trị hệ thống"]
+    ROOT --> B["2. Danh mục hàng hóa"]
+    ROOT --> C["3. Cấu trúc kho"]
+    ROOT --> Dm["4. Nghiệp vụ tồn kho"]
+    ROOT --> E["5. Báo cáo và vận hành"]
+
+    A --> A1["1.1 Đăng nhập, đăng xuất, làm mới token"]
+    A --> A2["1.2 Đặt lại mật khẩu"]
+    A --> A3["1.3 Quản lý người dùng"]
+    A --> A4["1.4 Quản lý vai trò và quyền"]
+    A --> A5["1.5 Cấu hình tham số hệ thống"]
+
+    B --> B1["2.1 Danh mục sản phẩm"]
+    B --> B2["2.2 Sản phẩm và biến thể SKU"]
+    B --> B3["2.3 Nhà cung cấp"]
+    B --> B4["2.4 Lô hàng và hạn sử dụng"]
+
+    C --> C1["3.1 Quản lý kho"]
+    C --> C2["3.2 Khu vực, kệ, tầng, vị trí"]
+    C --> C3["3.3 Đồng bộ ma trận vị trí"]
+    C --> C4["3.4 Lịch sử theo vị trí"]
+
+    Dm --> D1["4.1 Xem tồn hiện tại"]
+    Dm --> D2["4.2 Phiếu nhập kho"]
+    Dm --> D3["4.3 Phiếu xuất kho"]
+    Dm --> D4["4.4 Phiếu chuyển kho"]
+    Dm --> D5["4.5 Kiểm kê"]
+    Dm --> D6["4.6 Điều chỉnh tồn"]
+    Dm --> D7["4.7 Đảo chứng từ"]
+    Dm --> D8["4.8 Nhận nhanh bằng QR"]
+    Dm --> D9["4.9 Xem trước phân bổ FEFO hoặc FIFO"]
+    Dm --> D10["4.10 Lịch sử giao dịch tồn"]
+
+    E --> E1["5.1 Báo cáo tồn và hàng cận hạn"]
+    E --> E2["5.2 Báo cáo biến động tồn"]
+    E --> E3["5.3 Cảnh báo"]
+    E --> E4["5.4 Thông báo"]
+    E --> E5["5.5 Nhật ký thao tác"]
+    E --> E6["5.6 Tệp đính kèm"]

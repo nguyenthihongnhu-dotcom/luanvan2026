@@ -1,0 +1,76 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'attributeBackgroundColorOdd': '#ffffff',
+    'attributeBackgroundColorEven': '#ffffff'
+  },
+  'er': { 'entityPadding': 12, 'minEntityWidth': 130, 'useMaxWidth': false }
+}}%%
+erDiagram
+    categories ||--o{ products : category_id
+    brands ||--o{ products : brand_id
+    products ||--o{ product_variants : product_id
+    units ||--o{ product_variants : unit_id
+    product_variants ||--o{ product_batches : product_variant_id
+    suppliers ||--o{ product_batches : supplier_id
+
+    categories {
+        bigint id PK
+        string name
+    }
+    brands {
+        bigint id PK
+        string name
+    }
+    units {
+        bigint id PK
+        string name
+    }
+    suppliers {
+        bigint id PK
+        string code
+        string name
+    }
+    products {
+        bigint id PK
+        bigint category_id FK
+        bigint brand_id FK
+        string code
+        string name
+        enum status
+    }
+    product_variants {
+        bigint id PK
+        bigint product_id FK
+        bigint unit_id FK
+        string sku
+        bool requires_lot_tracking
+        bool requires_expiry_tracking
+        decimal min_stock_level
+        decimal max_stock_level
+    }
+    product_batches {
+        bigint id PK
+        bigint product_variant_id FK
+        bigint supplier_id FK
+        string lot_number
+        date expiry_date
+        enum status
+    }
