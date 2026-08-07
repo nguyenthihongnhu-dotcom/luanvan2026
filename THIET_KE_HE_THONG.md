@@ -627,11 +627,11 @@ flowchart LR
 
 > Sơ đồ vẽ theo đúng notation UML: actor là hình người que đặt ngoài ranh giới hệ thống, use case là hình elip đặt trong khung `Hệ thống Bambi WMS`, đường liên kết (association) là nét liền gấp khúc 90° và không cắt nhau. Quan hệ dùng chung (Đăng nhập, Xem báo cáo) được nêu ở bảng mô tả bên dưới.
 >
-> Sơ đồ này viết bằng **PlantUML** (`docs/diagrams/12_2-4-3_so-do-use-case-tong-quat_usecase.puml`) vì Mermaid không có ký hiệu chuẩn cho use case diagram; 67 sơ đồ còn lại vẫn dùng Mermaid.
+> **Nguồn của sơ đồ này là `docs/diagrams/12_2-4-3_so-do-use-case-tong-quat_usecase.drawio`** — mở bằng [draw.io](https://app.diagrams.net) rồi xuất `.svg` để chèn vào Word.
 >
-> **Lưu ý khi xem:** GitHub và Markdown Preview của VS Code render được Mermaid nhưng **không render PlantUML**, nên khối mã bên dưới sẽ hiện ra dạng chữ chứ không thành hình — đó là lý do không thấy hình người que. Xem bản đã render ngay dưới đây, hoặc mở `docs/diagrams/12_2-4-3_so-do-use-case-tong-quat_usecase.svg` (dùng bản `.svg` khi chèn vào Word).
-
-![Sơ đồ use case tổng quát — 3 actor (Nhân viên kho, Quản lý kho, Quản trị viên) và 19 use case trong ranh giới hệ thống Bambi WMS](docs/diagrams/12_2-4-3_so-do-use-case-tong-quat_usecase.png)
+> Bố cục được đặt sao cho **không có đường nào cắt nhau**: ba actor xếp một cột bên trái theo thứ tự kế thừa, khối use case của mỗi actor nằm đúng tầm actor đó và không xen kẽ khối của actor khác, nên các nan quạt không giao nhau; hai mũi tên kế thừa chạy trong hai làn riêng bên trái, tách khỏi vùng có đường liên kết.
+>
+> Bản PlantUML cũ (`...usecase.puml`) vẫn giữ trong kho làm đối chiếu, nhưng `linetype ortho` khiến các đường đi vòng và cắt nhau nên không dùng nữa. Khối mã bên dưới là bản PlantUML đó; GitHub và VS Code không render PlantUML nên nó hiện ra dạng chữ.
 
 ```plantuml
 @startuml
