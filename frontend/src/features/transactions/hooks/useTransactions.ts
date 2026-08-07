@@ -7,6 +7,15 @@ import type { AllocationPreviewResult, AllocationStrategy, CurrentStockRow } fro
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
+/**
+ * Kiểu điều chỉnh, chỉ dùng cho phiếu điều chỉnh:
+ * - QUANTITY: sửa số lượng tại chỗ (tăng hoặc giảm) — một dòng.
+ * - LOCATION: hàng nằm sai ô, chuyển nguyên số sang ô khác — sinh hai dòng
+ *   (giảm ở ô cũ, tăng ở ô mới).
+ * - BOTH: vừa sai ô vừa sai số — giảm số cũ ở ô cũ, tăng số đếm được ở ô mới.
+ */
+export type AdjustmentMode = "QUANTITY" | "LOCATION" | "BOTH";
+
 export interface TransactionItem {
     productVariantId: string;
     batchId: string;
@@ -14,6 +23,11 @@ export interface TransactionItem {
     quantity: string;
     adjustmentDirection: "IN" | "OUT";
     note: string;
+    adjustmentMode: AdjustmentMode;
+    /** Ô đích khi chuyển vị trí (LOCATION, BOTH). */
+    targetLocationId: string;
+    /** Số thực tế đếm được ở ô đích, chỉ dùng cho BOTH. */
+    targetQuantity: string;
 }
 
 export interface Transaction {
@@ -40,6 +54,9 @@ const emptyItem: TransactionItem = {
     quantity: "",
     adjustmentDirection: "IN",
     note: "",
+    adjustmentMode: "QUANTITY",
+    targetLocationId: "",
+    targetQuantity: "",
 };
 
 const initialFormState = {
@@ -152,7 +169,23 @@ export function useTransactions() {
             if (!Number.isInteger(productVariantId) || productVariantId <= 0) return `Dòng ${rowNumber}: Vui lòng chọn Sản phẩm / Biến thể.`;
             if (!Number.isFinite(quantity) || quantity <= 0) return `Dòng ${rowNumber}: Nhập số lượng lớn hơn 0.`;
             if (!Number.isInteger(locationId) || locationId <= 0) return `Dòng ${rowNumber}: Vui lòng chọn Vị trí kho.`;
-            if (formData.loai === 'DIEU_CHINH' && item.adjustmentDirection !== 'IN' && item.adjustmentDirection !== 'OUT') return `Dòng ${rowNumber}: Hướng điều chỉnh không hợp lệ.`;
+
+            if (formData.loai === 'DIEU_CHINH') {
+                if (item.adjustmentMode === 'QUANTITY' && item.adjustmentDirection !== 'IN' && item.adjustmentDirection !== 'OUT') {
+                    return `Dòng ${rowNumber}: Hướng điều chỉnh không hợp lệ.`;
+                }
+
+                if (item.adjustmentMode === 'LOCATION' || item.adjustmentMode === 'BOTH') {
+                    const targetLocationId = Number(item.targetLocationId);
+                    if (!Number.isInteger(targetLocationId) || targetLocationId <= 0) return `Dòng ${rowNumber}: Vui lòng chọn ô chuyển đến.`;
+                    if (targetLocationId === locationId) return `Dòng ${rowNumber}: Ô chuyển đến phải khác ô hiện tại.`;
+                }
+
+                if (item.adjustmentMode === 'BOTH') {
+                    const targetQuantity = Number(item.targetQuantity);
+                    if (!Number.isFinite(targetQuantity) || targetQuantity <= 0) return `Dòng ${rowNumber}: Nhập số thực tế ở ô chuyển đến.`;
+                }
+            }
         }
 
         return null;
@@ -275,6 +308,11 @@ export function useTransactions() {
                     quantity: item.quantity ? String(item.quantity) : '1',
                     adjustmentDirection: (item.adjustment_direction as 'IN' | 'OUT') || 'IN',
                     note: item.note ?? '',
+                    // Phiếu cũ đã được lưu thành từng dòng một vị trí, nên tạo lại
+                    // luôn ở dạng sửa số lượng; muốn chuyển vị trí thì đổi kiểu sau.
+                    adjustmentMode: 'QUANTITY' as const,
+                    targetLocationId: '',
+                    targetQuantity: '',
                 })));
             }
 

@@ -1,0 +1,49 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TB
+    Start(["Bắt đầu: Mở ứng dụng"]) --> A["Trang /login, nhập email và mật khẩu"]
+    A --> B{"Xác thực hợp lệ?"}
+    B -->|Không| A
+    B -->|Có| C["Trang /dashboard"]
+    C --> Dm{"Chọn nhóm chức năng"}
+    Dm -->|Danh mục| F1["/products, /categories, /batches, /partners"]
+    Dm -->|Cấu trúc kho| F2["/warehouses, /locations"]
+    Dm -->|Chứng từ kho| F3["/receipts/:id, /issues/:id, /transfers"]
+    Dm -->|Nhận nhanh| F4["/quick-receive, quét QR sản phẩm và vị trí"]
+    Dm -->|Kiểm kê| F5["/stock-counts, /adjustments/:id"]
+    Dm -->|Tồn và giao dịch| F6["/stock, /transactions, /inventory-transactions"]
+    Dm -->|Báo cáo và vận hành| F7["/reports, /alerts, /notifications, /audit-logs"]
+    Dm -->|Quản trị| F8["/employees, /authorization, /settings"]
+    Dm -->|Đăng xuất| End1(["Kết thúc: Đã đăng xuất"])
+    F3 --> G["Soạn phiếu, lưu ở trạng thái DRAFT"]
+    G --> H["Quản lý xác nhận hoặc duyệt phiếu"]
+    H --> I["Xem tồn kho đã cập nhật tại /stock"]
+    I --> C
+    F1 --> C
+    F2 --> C
+    F4 --> C
+    F5 --> C
+    F6 --> C
+    F7 --> C
+    F8 --> C

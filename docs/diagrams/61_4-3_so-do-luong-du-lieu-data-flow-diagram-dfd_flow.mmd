@@ -1,0 +1,46 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart LR
+    Staff(["Nhân viên kho"])
+    Manager(["Quản lý kho"])
+    P1(("1.0 Xử lý nhập kho"))
+    P2(("2.0 Xử lý xuất kho"))
+    P3(("3.0 Tổng hợp báo cáo"))
+    P4(("4.0 Sinh cảnh báo"))
+    D1[("D1 stock_locations")]
+    D2[("D2 inventory_transactions")]
+    D3[("D3 alerts")]
+
+    Staff -->|Dữ liệu phiếu nhập| P1
+    Staff -->|Dữ liệu phiếu xuất| P2
+    P1 -->|Tăng tồn| D1
+    P2 -->|Giảm tồn| D1
+    P1 -->|Ghi biến động| D2
+    P2 -->|Ghi biến động| D2
+    D1 -->|Tồn hiện tại| P3
+    D2 -->|Lịch sử biến động| P3
+    D1 -->|Tồn so với ngưỡng| P4
+    P4 -->|Cảnh báo mới| D3
+    D3 -->|Danh sách cảnh báo| Manager
+    P3 -->|Báo cáo tồn và hàng cận hạn| Manager

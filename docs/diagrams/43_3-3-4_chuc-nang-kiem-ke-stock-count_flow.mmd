@@ -1,0 +1,40 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu: Tạo phiếu kiểm kê DRAFT"]) --> B["POST /:id/start, chốt snapshot tồn hệ thống"]
+    B --> C{"Snapshot có dòng nào?"}
+    C -->|Rỗng| C1["Trả STOCK_COUNT_SNAPSHOT_EMPTY"]
+    C1 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    C -->|Có| Dn["Ghi actual_quantity cho từng dòng"]
+    Dn --> E{"Đã đếm hết các dòng?"}
+    E -->|Chưa| Dn
+    E -->|Rồi| F["POST /:id/submit, phiếu chuyển SUBMITTED"]
+    F --> G["POST /:id/approve, hệ thống so sánh số đếm với tồn"]
+    G --> H{"Có dòng chênh lệch khác 0?"}
+    H -->|Không| I["Chuyển APPROVED, tồn kho giữ nguyên"]
+    I --> End2(["Kết thúc: Kiểm kê khớp"])
+    H -->|Có| J["Sinh phiếu stock_adjustments loại COUNT, trạng thái PENDING"]
+    J --> K["Chuyển phiếu kiểm kê sang APPROVED"]
+    K --> L["Người duyệt gọi POST /stock-adjustments/:id/approve"]
+    L --> End3(["Kết thúc: Tồn kho đổi sau khi duyệt phiếu điều chỉnh"])

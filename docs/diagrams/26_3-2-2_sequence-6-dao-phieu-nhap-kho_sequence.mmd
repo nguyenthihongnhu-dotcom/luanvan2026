@@ -1,0 +1,87 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px',
+    'actorBkg': '#ffffff',
+    'actorBorder': '#000000',
+    'actorTextColor': '#000000',
+    'actorLineColor': '#000000',
+    'signalColor': '#000000',
+    'signalTextColor': '#000000',
+    'labelBoxBkgColor': '#ffffff',
+    'labelBoxBorderColor': '#000000',
+    'labelTextColor': '#000000',
+    'loopTextColor': '#000000',
+    'noteBkgColor': '#ffffff',
+    'noteBorderColor': '#000000',
+    'noteTextColor': '#000000',
+    'activationBkgColor': '#ffffff',
+    'activationBorderColor': '#000000',
+    'altBackground': '#ffffff'
+  },
+  'sequence': { 'mirrorActors': false, 'messageMargin': 40, 'boxMargin': 10, 'useMaxWidth': false }
+}}%%
+sequenceDiagram
+    actor M as Quản lý kho
+    participant MW as Middleware xác thực và phân quyền
+    participant S as goods-receipts.service
+    participant Repo as reversal.repository
+    participant DB as MySQL
+
+    M->>MW: POST /goods-receipts/:id/reverse
+    MW->>MW: requirePermission(goods_receipts:reverse)
+    alt Thiếu quyền
+        MW-->>M: 403 FORBIDDEN
+    else Đủ quyền
+        MW->>S: reverseGoodsReceipt(id, reversedBy)
+        S->>Repo: reverseGoodsReceiptTransaction(id)
+        Repo->>DB: BEGIN TRANSACTION
+        Repo->>DB: SELECT goods_receipts FOR UPDATE
+        DB-->>Repo: phiếu kèm status
+        alt Trạng thái không phải CONFIRMED
+            Repo->>DB: ROLLBACK
+            Repo-->>S: GOODS_RECEIPT_NOT_REVERSIBLE
+            S-->>M: 409 GOODS_RECEIPT_NOT_REVERSIBLE
+        else Trạng thái CONFIRMED
+            Repo->>DB: SELECT inventory_transactions WHERE reference_id = ? AND transaction_type <> 'REVERSAL'
+            DB-->>Repo: danh sách giao dịch gốc
+            alt Đã có giao dịch đảo trước đó
+                Repo->>DB: ROLLBACK
+                Repo-->>S: REFERENCE_ALREADY_REVERSED
+                S-->>M: 409 REFERENCE_ALREADY_REVERSED
+            else Chưa từng đảo
+                loop Mỗi giao dịch gốc
+                    Repo->>DB: SELECT stock_locations FOR UPDATE
+                    alt Tồn hiện tại không đủ để hoàn tác
+                        Repo->>DB: ROLLBACK
+                        Repo-->>S: REVERSAL_INSUFFICIENT_STOCK
+                        S-->>M: 409 REVERSAL_INSUFFICIENT_STOCK
+                    else Tồn đủ
+                        Repo->>DB: UPDATE stock_locations trừ lại số đã nhập
+                        Repo->>DB: INSERT inventory_transactions loại REVERSAL
+                    end
+                end
+                Repo->>DB: UPDATE goods_receipts SET status = 'CANCELLED'
+                Repo->>DB: INSERT audit_logs action REVERSE
+                Repo->>DB: COMMIT
+                Repo-->>S: thành công
+                S-->>M: 200 phiếu CANCELLED
+            end
+        end
+    end
