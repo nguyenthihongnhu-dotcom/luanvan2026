@@ -203,39 +203,39 @@ function AdjustmentStockPicker({
                     Sản phẩm chưa có tồn trong kho này — chọn ô để nhập hàng vào.
                 </p>
             ) : (
-            <div>
-                <label className="mb-1 block text-xs font-medium text-gray-600">Tồn hiện có</label>
-                <select
-                    value={isManual ? "__manual__" : currentKey}
-                    onChange={(event) => {
-                        if (event.target.value === "__manual__") {
-                            setManual(true);
-                            onPick("", "");
-                            return;
-                        }
-                        setManual(false);
-                        const picked = stockRows.find((row) => keyOf(row) === event.target.value);
-                        onPick(picked ? String(picked.locationId) : "", picked?.batchId ? String(picked.batchId) : "");
-                    }}
-                    className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
-                >
-                    <option value="">
-                        {!hasWarehouse
-                            ? "-- Chọn kho trước --"
-                            : stockRows.length === 0
-                                ? "-- Sản phẩm chưa có tồn trong kho này --"
-                                : "-- Chọn nơi đang có hàng --"}
-                    </option>
-                    {stockRows.map((row) => (
-                        <option key={keyOf(row)} value={keyOf(row)}>
-                            {row.locationCode}
-                            {row.batchId ? ` — Lô #${row.batchId}${row.lotNumber ? ` (${row.lotNumber})` : ""}` : " — Không theo lô"}
-                            {` — tồn ${row.quantity}`}
+                <div>
+                    <label className="mb-1 block text-xs font-medium text-gray-600">Tồn hiện có</label>
+                    <select
+                        value={isManual ? "__manual__" : currentKey}
+                        onChange={(event) => {
+                            if (event.target.value === "__manual__") {
+                                setManual(true);
+                                onPick("", "");
+                                return;
+                            }
+                            setManual(false);
+                            const picked = stockRows.find((row) => keyOf(row) === event.target.value);
+                            onPick(picked ? String(picked.locationId) : "", picked?.batchId ? String(picked.batchId) : "");
+                        }}
+                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                    >
+                        <option value="">
+                            {!hasWarehouse
+                                ? "-- Chọn kho trước --"
+                                : stockRows.length === 0
+                                    ? "-- Sản phẩm chưa có tồn trong kho này --"
+                                    : "-- Chọn nơi đang có hàng --"}
                         </option>
-                    ))}
-                    <option value="__manual__">-- Chọn ô khác (thêm vào ô trống) --</option>
-                </select>
-            </div>
+                        {stockRows.map((row) => (
+                            <option key={keyOf(row)} value={keyOf(row)}>
+                                {row.locationCode}
+                                {row.batchId ? ` — Lô #${row.batchId}${row.lotNumber ? ` (${row.lotNumber})` : ""}` : " — Không theo lô"}
+                                {` — tồn ${row.quantity}`}
+                            </option>
+                        ))}
+                        <option value="__manual__">-- Chọn ô khác (thêm vào ô trống) --</option>
+                    </select>
+                </div>
             )}
             {isManual && (
                 <LocationCascadePicker
@@ -429,10 +429,10 @@ export default function TransactionModal({
                                         - Quản lý theo số lô nhà sản xuất (lot_number), ngày sản xuất (manufactured_date) và hạn sử dụng (expiry_date).
                                         - Bắt buộc với các sản phẩm có tính chất date/hạn dùng (sữa, dược phẩm, thực phẩm ăn dặm) để chạy xuất kho FEFO/FIFO.
                                     */}
-                                    {/* <div className="col-span-6 md:col-span-2">
+                                    <div className="col-span-6 md:col-span-2">
                                         <label className="mb-1 block text-xs font-medium text-gray-600">Mã Lô hàng (Batch ID)</label>
                                         <input type="number" min="1" value={item.batchId} onChange={(e) => handleItemChange(index, "batchId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" placeholder="ID Lô (nếu chọn lô có sẵn)" />
-                                    </div> */}
+                                    </div>
                                     {/* 
                                         Location ID (Vị trí ô kho ID):
                                         - Địa chỉ ô lưu trữ vật lý duy nhất trong kho (cấu trúc: MãKho-Khu-Kệ-Tầng, ví dụ HCM01-A-A01-01).
