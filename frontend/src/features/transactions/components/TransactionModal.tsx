@@ -249,6 +249,70 @@ function AdjustmentStockPicker({
     );
 }
 
+const formatQty = (value: number) => Number(value).toLocaleString("vi-VN");
+
+/**
+ * Cho người điều chỉnh thấy mình đang tác động lên con số nào: tồn hiện tại ở ô
+ * nguồn, ở ô đích, tổng tồn trong kho, và số sau khi phiếu được duyệt. Thiếu
+ * phần này thì thao tác chỉ là nhập số vào chỗ trống, và sai sót chỉ lộ ra khi
+ * duyệt phiếu (INSUFFICIENT_STOCK).
+ */
+function AdjustmentSummary({
+    stockRows,
+    item,
+}: {
+    stockRows: CurrentStockRow[];
+    item: TransactionItem;
+}) {
+    if (!item.productVariantId) return null;
+
+    const quantity = Number(item.quantity) || 0;
+    const targetQuantity = Number(item.targetQuantity) || 0;
+    const totalInWarehouse = stockRows.reduce((sum, row) => sum + row.quantity, 0);
+
+    const sourceRow = stockRows.find(
+        (row) => String(row.locationId) === item.locationId
+            && String(row.batchId ?? "") === (item.batchId || ""),
+    );
+    const sourceQty = sourceRow?.quantity ?? 0;
+    const targetRow = stockRows.find((row) => String(row.locationId) === item.targetLocationId);
+    const targetQty = targetRow?.quantity ?? 0;
+
+    const movesOut = item.adjustmentMode !== "QUANTITY" || item.adjustmentDirection === "OUT";
+    const sourceAfter = item.adjustmentMode === "QUANTITY"
+        ? sourceQty + (item.adjustmentDirection === "IN" ? quantity : -quantity)
+        : sourceQty - quantity;
+    const targetAfter = targetQty + (item.adjustmentMode === "BOTH" ? targetQuantity : quantity);
+    const shortOfStock = movesOut && quantity > sourceQty;
+
+    return (
+        <div className="col-span-12 rounded-md border border-gray-200 bg-white px-3 py-2 text-xs">
+            <div className="flex flex-wrap items-center gap-x-5 gap-y-1 text-gray-600">
+                <span>
+                    Tổng tồn trong kho: <strong className="text-gray-900">{formatQty(totalInWarehouse)}</strong>
+                </span>
+                {item.locationId && (
+                    <span>
+                        Ô hiện tại: <strong className="text-gray-900">{formatQty(sourceQty)}</strong>
+                        {quantity > 0 && <> → <strong className={shortOfStock ? "text-red-600" : "text-gray-900"}>{formatQty(sourceAfter)}</strong></>}
+                    </span>
+                )}
+                {item.adjustmentMode !== "QUANTITY" && item.targetLocationId && (
+                    <span>
+                        Ô chuyển đến: <strong className="text-gray-900">{formatQty(targetQty)}</strong>
+                        {(quantity > 0 || targetQuantity > 0) && <> → <strong className="text-green-700">{formatQty(targetAfter)}</strong></>}
+                    </span>
+                )}
+            </div>
+            {shortOfStock && (
+                <p className="mt-1 font-semibold text-red-600">
+                    Ô hiện tại chỉ có {formatQty(sourceQty)} — không đủ để trừ {formatQty(quantity)}. Phiếu sẽ bị từ chối khi duyệt.
+                </p>
+            )}
+        </div>
+    );
+}
+
 export default function TransactionModal({
     editingTransaction,
     formData,
@@ -438,6 +502,20 @@ export default function TransactionModal({
                                         - Địa chỉ ô lưu trữ vật lý duy nhất trong kho (cấu trúc: MãKho-Khu-Kệ-Tầng, ví dụ HCM01-A-A01-01).
                                         - Giúp thủ kho tìm đúng vị trí khi lấy hàng xuất kho hoặc cất hàng khi nhập kho.
                                     */}
+                                    {isAdjustment && (
+                                        <div className="col-span-6 md:col-span-2">
+                                            <label className="mb-1 block text-xs font-medium text-gray-600">Kiểu điều chỉnh</label>
+                                            <select
+                                                value={item.adjustmentMode}
+                                                onChange={(e) => handleItemChange(index, "adjustmentMode", e.target.value)}
+                                                className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                                            >
+                                                <option value="QUANTITY">Sửa số lượng</option>
+                                                <option value="LOCATION">Chuyển vị trí</option>
+                                                <option value="BOTH">Chuyển vị trí và sửa số</option>
+                                            </select>
+                                        </div>
+                                    )}
                                     <div className="col-span-12 md:col-span-6">
                                         {isAdjustment ? (
                                             <AdjustmentStockPicker
@@ -463,11 +541,30 @@ export default function TransactionModal({
                                             />
                                         )}
                                     </div>
+                                    {isAdjustment && item.adjustmentMode !== "QUANTITY" && (
+                                        <div className="col-span-12 md:col-span-6">
+                                            <p className="mb-1 text-xs font-semibold text-pink-700">Chuyển đến ô</p>
+                                            <LocationCascadePicker
+                                                locations={filteredLocations}
+                                                hasWarehouse={Boolean(selectedWarehouseId)}
+                                                value={item.targetLocationId}
+                                                onChange={(locationId) => handleItemChange(index, "targetLocationId", locationId)}
+                                            />
+                                        </div>
+                                    )}
                                     <div className="col-span-6 md:col-span-2">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Số lượng</label>
+                                        <label className="mb-1 block text-xs font-medium text-gray-600">
+                                            {isAdjustment && item.adjustmentMode !== "QUANTITY" ? "Số rời ô cũ" : "Số lượng"}
+                                        </label>
                                         <input required type="number" min="0.001" step="0.001" value={item.quantity} onChange={(e) => handleItemChange(index, "quantity", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" />
                                     </div>
-                                    {isAdjustment && (
+                                    {isAdjustment && item.adjustmentMode === "BOTH" && (
+                                        <div className="col-span-6 md:col-span-2">
+                                            <label className="mb-1 block text-xs font-medium text-gray-600">Số vào ô mới</label>
+                                            <input required type="number" min="0.001" step="0.001" value={item.targetQuantity} onChange={(e) => handleItemChange(index, "targetQuantity", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" />
+                                        </div>
+                                    )}
+                                    {isAdjustment && item.adjustmentMode === "QUANTITY" && (
                                         <div className="col-span-6 md:col-span-2">
                                             <label className="mb-1 block text-xs font-medium text-gray-600">Hướng</label>
                                             <select value={item.adjustmentDirection} onChange={(e) => handleItemChange(index, "adjustmentDirection", e.target.value as TransactionItem["adjustmentDirection"])} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500">
@@ -486,6 +583,15 @@ export default function TransactionModal({
                                         </button>
                                     )}
                                     <button type="button" onClick={() => handleRemoveItemRow(index)} className="col-span-2 rounded p-1.5 text-xs text-red-500 hover:bg-red-50 hover:text-red-700 md:col-span-1">Xóa</button>
+                                    {isAdjustment && (
+                                        <AdjustmentSummary
+                                            stockRows={currentStock.filter((row) =>
+                                                String(row.warehouseId) === String(selectedWarehouseId)
+                                                && String(row.productVariantId) === String(item.productVariantId),
+                                            )}
+                                            item={item}
+                                        />
+                                    )}
                                 </div>
                             ))}
                         </div>

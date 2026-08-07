@@ -115,16 +115,42 @@ export async function listTransactions(): Promise<Transaction[]> {
     ].sort((a, b) => b.ngay.localeCompare(a.ngay));
 }
 
+/**
+ * Một dòng trên form có thể thành hai dòng gửi lên backend. Bảng
+ * stock_adjustment_items mỗi dòng chỉ mang một vị trí và một hướng tăng/giảm,
+ * nên việc chuyển hàng sang ô khác được diễn đạt bằng cặp: giảm ở ô cũ, tăng ở
+ * ô mới — cùng nằm trong một phiếu nên duyệt một lần là áp dụng cả hai.
+ */
 function mapItems(input: Transaction) {
-    return (input.items ?? []).map((item) => ({
-        productVariantId: Number(item.productVariantId),
-        batchId: item.batchId ? Number(item.batchId) : undefined,
-        locationId: Number(item.locationId),
-        quantity: Number(item.quantity),
-        adjustmentDirection: item.adjustmentDirection,
-        reasonCode: input.lyDo || undefined,
-        note: item.note || undefined,
-    }));
+    const isAdjustment = input.loai === 'DIEU_CHINH';
+
+    return (input.items ?? []).flatMap((item) => {
+        const base = {
+            productVariantId: Number(item.productVariantId),
+            batchId: item.batchId ? Number(item.batchId) : undefined,
+            reasonCode: input.lyDo || undefined,
+            note: item.note || undefined,
+        };
+
+        if (isAdjustment && (item.adjustmentMode === 'LOCATION' || item.adjustmentMode === 'BOTH')) {
+            const movedOut = Number(item.quantity);
+            // Chuyển nguyên số thì số vào ô mới bằng số rời ô cũ; sai cả số thì
+            // lấy số đếm được ở ô mới.
+            const movedIn = item.adjustmentMode === 'BOTH' ? Number(item.targetQuantity) : movedOut;
+
+            return [
+                { ...base, locationId: Number(item.locationId), adjustmentDirection: 'OUT' as const, quantity: movedOut },
+                { ...base, locationId: Number(item.targetLocationId), adjustmentDirection: 'IN' as const, quantity: movedIn },
+            ];
+        }
+
+        return [{
+            ...base,
+            locationId: Number(item.locationId),
+            quantity: Number(item.quantity),
+            adjustmentDirection: item.adjustmentDirection,
+        }];
+    });
 }
 
 export async function createTransaction(input: Transaction): Promise<void> {
