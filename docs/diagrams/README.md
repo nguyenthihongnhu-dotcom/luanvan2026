@@ -26,7 +26,7 @@ Những chỗ lược đồ cơ sở dữ liệu rộng hơn phần đã cài đ
 
 ## Sơ đồ luồng dùng bản draw.io để không có đường cắt nhau
 
-Mermaid để thư viện dagre tự dàn trang, không cho can thiệp vào đường đi, nên các sơ đồ có nhánh quay ngược (nhánh lỗi sửa rồi thử lại, vòng lặp *còn dòng hàng*) luôn sinh ra đường cắt qua nhau. Vì vậy **24 sơ đồ luồng** được sinh thêm bản `.drawio` bằng `docs/gen-drawio.mjs`, với bố cục do script tự đặt tọa độ:
+Mermaid để thư viện dagre tự dàn trang, không cho can thiệp vào đường đi, nên các sơ đồ có nhánh quay ngược (nhánh lỗi sửa rồi thử lại, vòng lặp *còn dòng hàng*) luôn sinh ra đường cắt qua nhau. Vì vậy **25 sơ đồ luồng** được sinh thêm bản `.drawio` bằng `docs/gen-drawio.mjs`, với bố cục do script tự đặt tọa độ:
 
 - Nhánh chính chạy dọc ở cột giữa; mỗi nhánh rẽ treo sang trái, bắt đầu ở hàng **dưới** node quyết định nên đoạn nối ngang luôn đi qua vùng trống.
 - Nhánh chính chỉ đi tiếp sau khi mọi nhánh rẽ tại bước đó đã kết thúc, nhờ vậy các cột nhánh không bao giờ chồng khoảng y.
@@ -34,7 +34,7 @@ Mermaid để thư viện dagre tự dàn trang, không cho can thiệp vào đ�
 - Cạnh quay ngược đi theo **kênh dọc riêng** phía ngoài cùng bên trái, cạnh có khoảng cách ngắn nằm ở kênh gần hơn nên các kênh lồng nhau chứ không cắt nhau.
 - Mọi cạnh dùng `edgeStyle=orthogonalEdgeStyle;rounded=0` → gấp khúc 90°, không đường cong, không đường chéo.
 
-Với 24 sơ đồ này, **`.png`/`.svg` được export từ bản `.drawio`**, không phải từ Mermaid. File `.mmd` vẫn giữ làm nguồn nội dung (bố cục draw.io được sinh lại từ chính nó), và khối mermaid trong tài liệu thiết kế vẫn dùng để xem nhanh trên GitHub/VS Code. Nội dung hai bản luôn khớp nhau vì cùng sinh từ một nguồn; chỉ khác cách dàn trang.
+Với 25 sơ đồ này, **`.png`/`.svg` được export từ bản `.drawio`**, không phải từ Mermaid. File `.mmd` vẫn giữ làm nguồn nội dung (bố cục draw.io được sinh lại từ chính nó), và khối mermaid trong tài liệu thiết kế vẫn dùng để xem nhanh trên GitHub/VS Code. Nội dung hai bản luôn khớp nhau vì cùng sinh từ một nguồn; chỉ khác cách dàn trang.
 
 Muốn chỉnh tay: mở file `.drawio` bằng [draw.io](https://app.diagrams.net) hoặc extension *Draw.io Integration* trong VS Code. Lưu ý chạy lại `gen-drawio.mjs` sẽ **ghi đè** chỉnh sửa tay.
 
@@ -42,7 +42,7 @@ Muốn chỉnh tay: mở file `.drawio` bằng [draw.io](https://app.diagrams.ne
 
 ## File và cách chèn vào Word
 
-- Mỗi sơ đồ có 3 file cùng tên: nguồn (`.mmd` hoặc `.puml`), `.png` (raster nền trắng, 2x) và `.svg` (vector).
+- Mỗi sơ đồ có 3 file cùng tên: nguồn (`.mmd`, hoặc `.drawio` với sơ đồ 12), `.png` (raster nền trắng, 2x) và `.svg` (vector).
 - **Chèn Word nên dùng `.svg`**: Insert > Pictures > chọn SVG.
 - Sơ đồ cao trên 3200 px (cột *Ghi chú*) nên đặt riêng một trang.
 
@@ -57,9 +57,9 @@ draw.io --no-sandbox -x -f png -s 2 -b 10 -o <ten-file>.png <ten-file>.drawio
 npx -y @mermaid-js/mermaid-cli -i <ten-file>.mmd -o <ten-file>.svg -b white
 npx -y @mermaid-js/mermaid-cli -i <ten-file>.mmd -o <ten-file>.png -b white -s 2
 
-# Sơ đồ 12 (PlantUML) — cần plantuml.jar và Java
-java -jar plantuml.jar -charset UTF-8 -tsvg 12_2-4-3_so-do-use-case-tong-quat_usecase.puml
-java -jar plantuml.jar -charset UTF-8 -Sdpi=192 -tpng 12_2-4-3_so-do-use-case-tong-quat_usecase.puml
+# Sơ đồ 12 (use case) — nguồn là .drawio, render như các sơ đồ .drawio khác
+draw.io --no-sandbox -x -f svg -b 10 -o 12_2-4-3_so-do-use-case-tong-quat_usecase.svg 12_2-4-3_so-do-use-case-tong-quat_usecase.drawio
+draw.io --no-sandbox -x -f png -s 2 -b 10 -o 12_2-4-3_so-do-use-case-tong-quat_usecase.png 12_2-4-3_so-do-use-case-tong-quat_usecase.drawio
 ```
 
 Quy trình sửa hàng loạt:
@@ -71,7 +71,7 @@ Quy trình sửa hàng loạt:
 5. `node docs/check-diagrams.mjs` — kiểm tra nhánh cụt, cạnh quyết định thiếu nhãn, màu sót lại
 6. `node docs/gen-readme.mjs` — sinh lại bảng dưới đây
 
-> **Vì sao sơ đồ 12 dùng PlantUML:** Mermaid không có ký hiệu chuẩn cho use case diagram (không hình người que, không ranh giới hệ thống, không quan hệ tổng quát hóa), vẽ bằng Mermaid sẽ sai notation và dàn thành một hàng rất dài.
+> **Vì sao sơ đồ 12 dùng draw.io:** Mermaid không có ký hiệu chuẩn cho use case diagram (không hình người que, không ranh giới hệ thống, không quan hệ tổng quát hóa). Bản PlantUML trước đó đúng notation nhưng `linetype ortho` đẩy các đường đi vòng và cắt nhau, nên chuyển sang draw.io để đặt tọa độ thủ công: ba actor xếp một cột bên trái theo thứ tự kế thừa, khối use case của mỗi actor chiếm một dải y không chồng lấn khối của actor khác, hai mũi tên kế thừa chạy trong hai làn riêng bên trái — nhờ vậy không đường nào cắt nhau. File `.puml` cũ vẫn giữ để đối chiếu.
 
 ## Danh sách
 
@@ -88,7 +88,7 @@ Quy trình sửa hàng loạt:
 | 09 | 2.4.1 Quy trình nghiệp vụ | Luồng/Hoạt động | `.mmd` + `.drawio` | `09_2-4-1_8-quy-trinh-nhan-nhanh-qr-quick-receive_flow` | 2013×3571 | Cao — đặt trang riêng, nên dùng SVG |
 | 10 | 2.4.1 Quy trình nghiệp vụ | Luồng/Hoạt động | `.mmd` + `.drawio` | `10_2-4-1_9-quy-trinh-canh-bao-va-thong-bao_flow` | 1843×3699 | Cao — đặt trang riêng, nên dùng SVG |
 | 11 | 2.4.2 Sơ đồ chức năng | Luồng/Hoạt động | `.mmd` | `11_2-4-2_so-do-chuc-nang_flow` | 1560×6128 | Cao — đặt trang riêng, nên dùng SVG |
-| 12 | 2.4.3 Use case tổng quát | Use case (UML) | `.puml` | `12_2-4-3_so-do-use-case-tong-quat_usecase` | 1448×2920 |  |
+| 12 | 2.4.3 Use case tổng quát | Use case (UML) | `.drawio` | `12_2-4-3_so-do-use-case-tong-quat_usecase` | 1448×2920 |  |
 | 13 | 3.1.1 Mô hình ý niệm | Luồng/Hoạt động | `.mmd` | `13_3-1-1_muc-y-niem-conceptual_flow` | 2542×550 |  |
 | 14 | 3.1.2 Mô hình luận lý | ERD | `.mmd` | `14_3-1-2_a-xac-thuc-va-phan-quyen_erd` | 1710×1660 |  |
 | 15 | 3.1.2 Mô hình luận lý | ERD | `.mmd` | `15_3-1-2_b-cau-truc-kho_erd` | 1214×2006 |  |

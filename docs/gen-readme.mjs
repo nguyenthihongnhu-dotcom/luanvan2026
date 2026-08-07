@@ -65,10 +65,12 @@ const rows = pngs.map((f) => {
   const sectionKey = parts[1];
   const kind = parts[parts.length - 1];
   const [w, h] = pngSize(f);
-  const src = hasDrawio.has(base)
-    ? '`.mmd` + `.drawio`'
-    : kind === 'usecase'
-      ? '`.puml`'
+  // Sơ đồ use case chỉ có .drawio (không sinh từ .mmd), nên phải xét trước
+  // nhánh hasDrawio vốn mặc định là cặp `.mmd` + `.drawio`.
+  const src = kind === 'usecase'
+    ? '`.drawio`'
+    : hasDrawio.has(base)
+      ? '`.mmd` + `.drawio`'
       : '`.mmd`';
   const note = h > 3200 ? 'Cao — đặt trang riêng, nên dùng SVG' : '';
   const section = SECTION[sectionKey] ?? sectionKey;
@@ -119,7 +121,7 @@ Muốn chỉnh tay: mở file \`.drawio\` bằng [draw.io](https://app.diagrams.
 
 ## File và cách chèn vào Word
 
-- Mỗi sơ đồ có 3 file cùng tên: nguồn (\`.mmd\` hoặc \`.puml\`), \`.png\` (raster nền trắng, 2x) và \`.svg\` (vector).
+- Mỗi sơ đồ có 3 file cùng tên: nguồn (\`.mmd\`, hoặc \`.drawio\` với sơ đồ 12), \`.png\` (raster nền trắng, 2x) và \`.svg\` (vector).
 - **Chèn Word nên dùng \`.svg\`**: Insert > Pictures > chọn SVG.
 - Sơ đồ cao trên 3200 px (cột *Ghi chú*) nên đặt riêng một trang.
 
@@ -134,9 +136,9 @@ draw.io --no-sandbox -x -f png -s 2 -b 10 -o <ten-file>.png <ten-file>.drawio
 npx -y @mermaid-js/mermaid-cli -i <ten-file>.mmd -o <ten-file>.svg -b white
 npx -y @mermaid-js/mermaid-cli -i <ten-file>.mmd -o <ten-file>.png -b white -s 2
 
-# Sơ đồ 12 (PlantUML) — cần plantuml.jar và Java
-java -jar plantuml.jar -charset UTF-8 -tsvg 12_2-4-3_so-do-use-case-tong-quat_usecase.puml
-java -jar plantuml.jar -charset UTF-8 -Sdpi=192 -tpng 12_2-4-3_so-do-use-case-tong-quat_usecase.puml
+# Sơ đồ 12 (use case) — nguồn là .drawio, render như các sơ đồ .drawio khác
+draw.io --no-sandbox -x -f svg -b 10 -o 12_2-4-3_so-do-use-case-tong-quat_usecase.svg 12_2-4-3_so-do-use-case-tong-quat_usecase.drawio
+draw.io --no-sandbox -x -f png -s 2 -b 10 -o 12_2-4-3_so-do-use-case-tong-quat_usecase.png 12_2-4-3_so-do-use-case-tong-quat_usecase.drawio
 \`\`\`
 
 Quy trình sửa hàng loạt:
@@ -148,7 +150,7 @@ Quy trình sửa hàng loạt:
 5. \`node docs/check-diagrams.mjs\` — kiểm tra nhánh cụt, cạnh quyết định thiếu nhãn, màu sót lại
 6. \`node docs/gen-readme.mjs\` — sinh lại bảng dưới đây
 
-> **Vì sao sơ đồ 12 dùng PlantUML:** Mermaid không có ký hiệu chuẩn cho use case diagram (không hình người que, không ranh giới hệ thống, không quan hệ tổng quát hóa), vẽ bằng Mermaid sẽ sai notation và dàn thành một hàng rất dài.
+> **Vì sao sơ đồ 12 dùng draw.io:** Mermaid không có ký hiệu chuẩn cho use case diagram (không hình người que, không ranh giới hệ thống, không quan hệ tổng quát hóa). Bản PlantUML trước đó đúng notation nhưng \`linetype ortho\` đẩy các đường đi vòng và cắt nhau, nên chuyển sang draw.io để đặt tọa độ thủ công: ba actor xếp một cột bên trái theo thứ tự kế thừa, khối use case của mỗi actor chiếm một dải y không chồng lấn khối của actor khác, hai mũi tên kế thừa chạy trong hai làn riêng bên trái — nhờ vậy không đường nào cắt nhau. File \`.puml\` cũ vẫn giữ để đối chiếu.
 
 ## Danh sách
 
