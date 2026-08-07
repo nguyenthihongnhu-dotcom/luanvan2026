@@ -627,7 +627,11 @@ flowchart LR
 
 > Sơ đồ vẽ theo đúng notation UML: actor là hình người que đặt ngoài ranh giới hệ thống, use case là hình elip đặt trong khung `Hệ thống Bambi WMS`, đường liên kết (association) là nét liền gấp khúc 90° và không cắt nhau. Quan hệ dùng chung (Đăng nhập, Xem báo cáo) được nêu ở bảng mô tả bên dưới.
 >
-> Sơ đồ này viết bằng **PlantUML** (`docs/diagrams/09_2-4-3_so-do-use-case-tong-quat_flow.puml`) vì Mermaid không có ký hiệu chuẩn cho use case diagram; 53 sơ đồ còn lại vẫn dùng Mermaid.
+> Sơ đồ này viết bằng **PlantUML** (`docs/diagrams/12_2-4-3_so-do-use-case-tong-quat_usecase.puml`) vì Mermaid không có ký hiệu chuẩn cho use case diagram; 67 sơ đồ còn lại vẫn dùng Mermaid.
+>
+> **Lưu ý khi xem:** GitHub và Markdown Preview của VS Code render được Mermaid nhưng **không render PlantUML**, nên khối mã bên dưới sẽ hiện ra dạng chữ chứ không thành hình — đó là lý do không thấy hình người que. Xem bản đã render ngay dưới đây, hoặc mở `docs/diagrams/12_2-4-3_so-do-use-case-tong-quat_usecase.svg` (dùng bản `.svg` khi chèn vào Word).
+
+![Sơ đồ use case tổng quát — 3 actor (Nhân viên kho, Quản lý kho, Quản trị viên) và 19 use case trong ranh giới hệ thống Bambi WMS](docs/diagrams/12_2-4-3_so-do-use-case-tong-quat_usecase.png)
 
 ```plantuml
 @startuml
