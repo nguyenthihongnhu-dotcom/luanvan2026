@@ -139,7 +139,9 @@ export async function countBatchUsage(batchId: number): Promise<{
   stockQuantity: number;
   transactionCount: number;
 }> {
-  const [rows] = await db.query<Array<RowDataPacket & { stock_quantity: number; transaction_count: number }>>({
+  const [rows] = await db.query<
+    Array<RowDataPacket & { stock_quantity: number; transaction_count: number }>
+  >({
     sql: `
       SELECT
         (SELECT COALESCE(SUM(quantity), 0) FROM stock_locations WHERE batch_id = :batchId) AS stock_quantity,

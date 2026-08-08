@@ -5,8 +5,6 @@ import type {
   QueryParams,
 } from './inventory-transactions.model';
 
-const tableName = 'inventory_transactions';
-
 export async function findInventoryTransactions(
   filters: InventoryTransactionsFilters,
 ): Promise<InventoryTransactionsRow[]> {

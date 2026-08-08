@@ -621,7 +621,12 @@ export async function insertGoodsIssue(
         );
     const issueCode =
       input.issueCode ??
-      (await generateDocumentCode(connection, 'goods_issues', 'issue_code', 'PX'));
+      (await generateDocumentCode(
+        connection,
+        'goods_issues',
+        'issue_code',
+        'PX',
+      ));
 
     const [result] = await connection.query<ResultSetHeader>(
       `INSERT INTO goods_issues (issue_code, warehouse_id, status, reference_no, issued_at, note, created_by)

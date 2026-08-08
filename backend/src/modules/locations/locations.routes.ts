@@ -8,6 +8,7 @@ import {
   addZoneController,
   listLocationsController,
   listLocationHistoryController,
+  listShelvesController,
   listZonesController,
   removeLocationLayerController,
   removeShelfLocationsController,
@@ -23,6 +24,8 @@ export const locationsRouter = Router();
 locationsRouter.get('/', asyncHandler(listLocationsController));
 // Phải khai báo trước '/:id/history' để 'zones' không bị bắt nhầm thành :id
 locationsRouter.get('/zones', asyncHandler(listZonesController));
+// Danh sách kệ đọc từ bảng warehouse_shelves, không suy ra từ ô lưu trữ.
+locationsRouter.get('/shelves', asyncHandler(listShelvesController));
 locationsRouter.get(
   '/:id/history',
   asyncHandler(listLocationHistoryController),

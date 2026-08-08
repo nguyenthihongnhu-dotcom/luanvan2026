@@ -10,13 +10,6 @@ import type {
 } from './catalog.model';
 
 type IdRow = RowDataPacket & { id: number };
-type StockLocationRow = RowDataPacket & {
-  id: number;
-  location_id: number;
-  batch_id: number | null;
-  quantity: string | number;
-  reserved_quantity: string | number;
-};
 
 function slugCode(value: string, prefix: string): string {
   return `${prefix}-${value

@@ -82,6 +82,11 @@ export interface ApproveStockCountResult {
     adjustmentCode: string | null;
 }
 
+/** Trả phiếu đã gửi duyệt về trạng thái Đang kiểm kê để nhân viên sửa lại số đếm. */
+export async function rejectStockCount(id: number, rejectionReason: string): Promise<void> {
+    await httpClient.post(`/stock-counts/${id}/reject`, { rejectionReason });
+}
+
 export async function approveStockCount(id: number): Promise<ApproveStockCountResult> {
     const response = await httpClient.post<{ data: ApproveStockCountResult }>(`/stock-counts/${id}/approve`);
     const data = unwrapData(response);
@@ -99,4 +104,5 @@ export const stockCountService = {
     recordStockCountItem,
     submitStockCount,
     approveStockCount,
+    rejectStockCount,
 };

@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { HttpError } from '../../common/http';
 import {
   createLocation,
   createLayer,
@@ -6,6 +7,7 @@ import {
   createZone,
   listLocations,
   listLocationHistory,
+  listShelves,
   listZones,
   removeLocationLayer,
   removeShelfLocations,
@@ -56,6 +58,20 @@ export async function removeShelfLocationsController(
   const shelfId = parseShelfId(req.params.shelfId);
 
   res.json({ data: await removeShelfLocations(shelfId) });
+}
+
+export async function listShelvesController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const filters = parseZoneFilters(req.query);
+  const zoneCode = String(req.query.zoneCode ?? '').trim();
+
+  if (!zoneCode) {
+    throw new HttpError(400, 'zoneCode is required', 'VALIDATION_ERROR');
+  }
+
+  res.json({ data: await listShelves(filters.warehouseId, zoneCode) });
 }
 
 export async function renameZoneController(

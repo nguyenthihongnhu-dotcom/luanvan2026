@@ -7,6 +7,7 @@ import {
   listStockCountItemsController,
   listStockCountsController,
   recordStockCountItemController,
+  rejectStockCountController,
   startStockCountController,
   submitStockCountController,
 } from './stock-counts.controller';
@@ -41,6 +42,13 @@ stockCountsRouter.post(
   asyncHandler(verifyToken),
   requirePermission('stock_counts:submit'),
   asyncHandler(submitStockCountController),
+);
+// Trả phiếu về dùng chung quyền với duyệt: cùng là quyết định của người duyệt.
+stockCountsRouter.post(
+  '/:id/reject',
+  asyncHandler(verifyToken),
+  requirePermission('stock_counts:approve'),
+  asyncHandler(rejectStockCountController),
 );
 stockCountsRouter.post(
   '/:id/approve',

@@ -260,6 +260,27 @@ export default function StockCountsPage() {
     }
 
     /**
+     * Trả phiếu đã gửi duyệt về cho nhân viên đếm lại. Không có bước này thì người
+     * duyệt phát hiện đếm sai chỉ còn hai lựa chọn: duyệt luôn một con số sai, hoặc
+     * bỏ phiếu treo vĩnh viễn ở Chờ duyệt.
+     */
+    async function handleRejectCount(count: StockCount) {
+        const reason = window.prompt(
+            `Trả phiếu ${count.count_code} về cho nhân viên đếm lại. Nêu rõ cần sửa gì:`,
+            "",
+        );
+        if (reason === null) return;
+
+        const trimmed = reason.trim();
+        if (!trimmed) {
+            setError("Phải nêu lý do trả về để nhân viên biết cần sửa gì.");
+            return;
+        }
+
+        await runCountAction(() => stockCountService.rejectStockCount(count.id, trimmed));
+    }
+
+    /**
      * Duyệt phiếu kiểm kê. Bước này KHÔNG trừ tồn: nó sinh ra một phiếu điều chỉnh
      * ở trạng thái chờ xử lý, phải duyệt tiếp phiếu đó tồn mới thay đổi. Giữ hai
      * bước để tách người kiểm đếm khỏi người chốt tồn, nhưng phải chỉ đường rõ
@@ -350,6 +371,7 @@ export default function StockCountsPage() {
                     <button type="button" onClick={() => void openItems(record)} className="btn-action btn-blue">Chi tiết</button>
                     {record.status === "DRAFT" && <button type="button" onClick={() => runCountAction(() => stockCountService.startStockCount(record.id))} className="btn-action btn-green">Bắt đầu</button>}
                     {record.status === "IN_PROGRESS" && <button type="button" onClick={() => runCountAction(() => stockCountService.submitStockCount(record.id))} className="btn-action btn-pink">Gửi duyệt</button>}
+                    {record.status === "SUBMITTED" && <button type="button" onClick={() => void handleRejectCount(record)} className="btn-action btn-red">Trả về sửa</button>}
                     {record.status === "SUBMITTED" && <button type="button" onClick={() => void handleApproveCount(record)} className="btn-action btn-green">Duyệt</button>}
                 </div>
             ),
@@ -611,7 +633,7 @@ export default function StockCountsPage() {
                                         ? `Còn ${uncountedCount}/${items.length} dòng chưa nhập số thực tế.`
                                         : "Đã nhập đủ số thực tế, có thể gửi duyệt."
                                 )}
-                                {selectedCount.status === "SUBMITTED" && "Duyệt sẽ sinh phiếu điều chỉnh tồn cho các dòng lệch."}
+                                {selectedCount.status === "SUBMITTED" && "Duyệt sẽ sinh phiếu điều chỉnh tồn cho các dòng lệch; trả về nếu số đếm cần sửa lại."}
                                 {selectedCount.status === "APPROVED" && "Phiếu đã duyệt, chỉ xem lại."}
                             </p>
                             <div className="flex flex-wrap items-center gap-2">
@@ -643,6 +665,17 @@ export default function StockCountsPage() {
                                         className="rounded-md bg-pink-600 px-4 py-2 text-sm font-semibold text-white hover:bg-pink-700 disabled:opacity-60"
                                     >
                                         {isSaving ? "Đang xử lý" : "Gửi duyệt"}
+                                    </button>
+                                )}
+                                {selectedCount.status === "SUBMITTED" && (
+                                    <button
+                                        type="button"
+                                        disabled={isSaving}
+                                        onClick={() => void handleRejectCount(selectedCount)}
+                                        className="rounded-md border border-red-300 bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:opacity-60"
+                                        title="Trả phiếu về trạng thái Đang kiểm kê để nhân viên sửa lại số đếm"
+                                    >
+                                        Trả về sửa
                                     </button>
                                 )}
                                 {selectedCount.status === "SUBMITTED" && (

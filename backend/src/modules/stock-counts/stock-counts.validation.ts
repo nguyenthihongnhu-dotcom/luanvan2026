@@ -39,6 +39,17 @@ const createStockCountSchema = z
     }
   });
 
+/** Trả phiếu về bắt buộc nêu lý do để nhân viên biết phải sửa gì. */
+const rejectStockCountSchema = z.object({
+  rejectionReason: z.string().trim().min(1).max(500),
+});
+
+export function parseRejectStockCount(input: unknown): {
+  rejectionReason: string;
+} {
+  return validateInput(rejectStockCountSchema, input);
+}
+
 const recordStockCountItemSchema = z.object({
   actualQuantity: z.coerce.number().nonnegative(),
   reasonCode: z.string().trim().min(1).max(100).optional(),

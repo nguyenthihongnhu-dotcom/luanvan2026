@@ -58,7 +58,11 @@ export function useWarehouse() {
         return locations.filter((location) => location.KhuVuc === selectedZone);
     }, [locations, selectedZone]);
 
-    const shelves = useMemo(() => warehouseService.deriveShelves(zoneLocations), [zoneLocations]);
+    // Kệ đọc từ bảng warehouse_shelves. Suy ra từ ô lưu trữ như trước thì kệ vừa
+    // tạo chưa có ô nào, hoặc kệ bị xóa hết tầng, sẽ biến mất khỏi sơ đồ dù vẫn
+    // còn trong CSDL — nhìn như mất dữ liệu.
+    const [zoneShelves, setZoneShelves] = useState<Shelf[]>([]);
+    const shelves = zoneShelves;
     const layers = useMemo(() => warehouseService.deriveLayers(zoneLocations), [zoneLocations]);
 
     const loadLocations = async (whId?: number | null) => {
@@ -74,6 +78,18 @@ export function useWarehouse() {
             ]);
             setLocations(locationResult);
             setZones(zoneResult);
+
+            // Kệ phụ thuộc khu đang chọn nên tải riêng; chưa chọn khu thì để rỗng.
+            if (targetWhId && selectedZone) {
+                const shelfRows = await warehouseService.listShelves(targetWhId, selectedZone);
+                setZoneShelves(shelfRows.map((row) => ({
+                    id: String(row.id),
+                    code: row.code,
+                    name: row.name || `Kệ ${row.code}`,
+                })));
+            } else {
+                setZoneShelves([]);
+            }
         } catch (err) {
             console.error('Failed to load locations from backend:', err);
             setError(getHttpErrorMessage(err, 'Không tải được vị trí kho từ backend'));
@@ -89,10 +105,37 @@ export function useWarehouse() {
         setActiveLocation(null);
         setLocations([]);
         setZones([]);
+        setZoneShelves([]);
         if (selectedWarehouseId !== null) {
             void loadLocations(selectedWarehouseId);
         }
     }, [selectedWarehouseId]);
+
+    // Mở một khu thì tải danh sách kệ của khu đó từ bảng kệ.
+    useEffect(() => {
+        if (selectedWarehouseId === null || !selectedZone) {
+            setZoneShelves([]);
+            return;
+        }
+
+        let isCurrent = true;
+        void warehouseService
+            .listShelves(selectedWarehouseId, selectedZone)
+            .then((rows) => {
+                if (!isCurrent) return;
+                setZoneShelves(rows.map((row) => ({
+                    id: String(row.id),
+                    code: row.code,
+                    name: row.name || `Kệ ${row.code}`,
+                })));
+            })
+            .catch((err) => {
+                console.error('Failed to load shelves:', err);
+                if (isCurrent) setZoneShelves([]);
+            });
+
+        return () => { isCurrent = false; };
+    }, [selectedWarehouseId, selectedZone]);
 
     // Hàng đợi các thao tác ghi. Trước đây dùng `if (isSaving) return` nên thao tác thứ hai
     // gửi lúc thao tác thứ nhất chưa xong sẽ bị bỏ qua im lặng — kéo thả nhanh trên mặt bằng

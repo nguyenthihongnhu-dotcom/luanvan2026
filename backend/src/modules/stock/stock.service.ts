@@ -87,9 +87,10 @@ export async function previewStockAllocation(
   const allocatedQuantity = input.quantity - remainingQuantity;
 
   if (remainingQuantity > 0) {
-    const locDetails = items.length > 0
-      ? ` (Chi tiết các vị trí: ${items.map((i) => `Vị trí ${i.locationCode} chỉ có ${i.quantity}`).join(', ')})`
-      : '';
+    const locDetails =
+      items.length > 0
+        ? ` (Chi tiết các vị trí: ${items.map((i) => `Vị trí ${i.locationCode} chỉ có ${i.quantity}`).join(', ')})`
+        : '';
     throw new HttpError(
       409,
       `Không đủ tồn kho. Yêu cầu ${input.quantity}, tổng tồn khả dụng trong kho chỉ có ${allocatedQuantity}${locDetails}. Còn thiếu ${remainingQuantity} sản phẩm.`,

@@ -205,7 +205,9 @@ export async function softDeleteZoneTransaction(
   try {
     await connection.beginTransaction();
 
-    const [zoneRows] = await connection.query<Array<RowDataPacket & { id: number }>>(
+    const [zoneRows] = await connection.query<
+      Array<RowDataPacket & { id: number }>
+    >(
       'SELECT id FROM warehouse_zones WHERE id = ? AND deleted_at IS NULL LIMIT 1',
       [zoneId],
     );
@@ -214,7 +216,9 @@ export async function softDeleteZoneTransaction(
       throw new Error('ZONE_NOT_FOUND');
     }
 
-    const [stockRows] = await connection.query<Array<RowDataPacket & { total: number }>>(
+    const [stockRows] = await connection.query<
+      Array<RowDataPacket & { total: number }>
+    >(
       `
         SELECT COUNT(DISTINCT wl.id) AS total
         FROM warehouse_locations wl
@@ -401,6 +405,35 @@ async function getActiveShelvesByZone(
   return shelfRows;
 }
 
+/**
+ * Danh sách kệ của một khu, đọc thẳng từ `warehouse_shelves`.
+ *
+ * Trước đây frontend suy ra danh sách kệ từ các ô lưu trữ, nên kệ vừa tạo mà chưa
+ * có ô nào — hoặc kệ bị xóa hết tầng — sẽ biến mất khỏi sơ đồ dù vẫn còn trong CSDL.
+ */
+export async function findShelvesByZone(
+  warehouseId: number,
+  zoneCode: string,
+): Promise<Array<{ id: number; code: string; name: string }>> {
+  const [rows] = await db.query<
+    Array<RowDataPacket & { id: number; code: string; name: string }>
+  >({
+    sql: `
+      SELECT ws.id, ws.code, ws.name
+      FROM warehouse_shelves ws
+      JOIN warehouse_zones wz ON wz.id = ws.zone_id
+      WHERE wz.warehouse_id = :warehouseId
+        AND wz.code = :zoneCode
+        AND wz.deleted_at IS NULL
+        AND ws.deleted_at IS NULL
+      ORDER BY ws.sort_order, ws.code
+    `,
+    values: { warehouseId, zoneCode } satisfies QueryParams,
+  });
+
+  return rows;
+}
+
 /** Tiền tố kho dùng trong mã ô: `KHO-HCM-01` -> `HCM01`. */
 export function warehouseCodePrefix(warehouseCode: string): string {
   return warehouseCode.replace(/^KHO-/i, '').replaceAll('-', '');
@@ -410,7 +443,9 @@ async function getWarehousePrefixByZone(
   connection: PoolConnection,
   zoneId: number,
 ): Promise<string> {
-  const [rows] = await connection.query<Array<RowDataPacket & { code: string }>>(
+  const [rows] = await connection.query<
+    Array<RowDataPacket & { code: string }>
+  >(
     `
       SELECT w.code
       FROM warehouse_zones wz

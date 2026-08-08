@@ -174,6 +174,22 @@ export async function createZone(input: {
     await httpClient.post('/locations/zones', input);
 }
 
+/**
+ * Danh sách kệ của một khu, đọc thẳng từ bảng kệ.
+ *
+ * Trước đây danh sách kệ được suy ra từ các ô lưu trữ, nên kệ vừa tạo mà chưa có
+ * ô nào — hoặc kệ bị xóa hết tầng — sẽ biến mất khỏi sơ đồ dù vẫn còn trong CSDL.
+ */
+export async function listShelves(
+    warehouseId: number,
+    zoneCode: string,
+): Promise<Array<{ id: number; code: string; name: string }>> {
+    const response = await httpClient.get<{ data: Array<{ id: number; code: string; name: string }> }>(
+        `/locations/shelves?warehouseId=${warehouseId}&zoneCode=${encodeURIComponent(zoneCode)}`,
+    );
+    return unwrapData(response) ?? [];
+}
+
 /** Đổi biệt danh của khu. Mã khu (A, B, C) không đổi vì mã ô lưu trữ dựa vào nó. */
 export async function renameZone(zoneId: number, name: string): Promise<void> {
     await httpClient.patch(`/locations/zones/${zoneId}`, { name });
@@ -227,6 +243,7 @@ export const warehouseService = {
     createZone,
     deleteZone,
     renameZone,
+    listShelves,
     updateZoneLayout,
     deleteShelf,
     deleteLayer,

@@ -594,7 +594,9 @@ export async function insertStockAdjustment(
     let targetWarehouseId = input.warehouseId;
     if (!targetWarehouseId && input.items && input.items.length > 0) {
       const firstLocationId = input.items[0].locationId;
-      const [inferredWarehouse] = await connection.query<Array<RowDataPacket & { warehouse_id: number }>>(
+      const [inferredWarehouse] = await connection.query<
+        Array<RowDataPacket & { warehouse_id: number }>
+      >(
         `SELECT wz.warehouse_id
          FROM warehouse_locations wl
          JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
@@ -627,7 +629,12 @@ export async function insertStockAdjustment(
         );
     const adjustmentCode =
       input.adjustmentCode ??
-      (await generateDocumentCode(connection, 'stock_adjustments', 'adjustment_code', 'DC'));
+      (await generateDocumentCode(
+        connection,
+        'stock_adjustments',
+        'adjustment_code',
+        'DC',
+      ));
 
     const [result] = await connection.query<ResultSetHeader>(
       `INSERT INTO stock_adjustments (adjustment_code, warehouse_id, adjustment_type, status, reason_code, note, created_by)

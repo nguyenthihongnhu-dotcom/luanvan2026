@@ -663,6 +663,9 @@ CREATE TABLE stock_counts (
     submitted_at DATETIME(3) NULL,
     approved_by BIGINT UNSIGNED NULL,
     approved_at DATETIME(3) NULL,
+    rejected_by BIGINT UNSIGNED NULL,
+    rejected_at DATETIME(3) NULL,
+    rejection_reason VARCHAR(500) NULL,
     note VARCHAR(500) NULL,
     created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
     updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
@@ -677,6 +680,8 @@ CREATE TABLE stock_counts (
         FOREIGN KEY (submitted_by) REFERENCES users(id),
     CONSTRAINT fk_stock_counts_approved_by
         FOREIGN KEY (approved_by) REFERENCES users(id),
+    CONSTRAINT fk_stock_counts_rejected_by
+        FOREIGN KEY (rejected_by) REFERENCES users(id),
     INDEX idx_stock_counts_warehouse_status (warehouse_id, status)
 ) ENGINE=InnoDB;
 

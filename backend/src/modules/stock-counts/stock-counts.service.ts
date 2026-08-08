@@ -21,6 +21,7 @@ import {
   findStockCounts as findStockCountsRepository,
   recordStockCountItemTransaction,
   startStockCountTransaction,
+  rejectStockCountTransaction,
   submitStockCountTransaction,
 } from './stock-counts.repository';
 
@@ -54,6 +55,11 @@ const stockCountErrorMap: Record<string, HttpError> = {
     409,
     'Chỉ có thể gửi duyệt phiếu kiểm kê ở trạng thái Đang kiểm kê',
     'STOCK_COUNT_NOT_SUBMITTABLE',
+  ),
+  STOCK_COUNT_NOT_REJECTABLE: new HttpError(
+    409,
+    'Chỉ có thể trả về phiếu kiểm kê ở trạng thái Chờ duyệt',
+    'STOCK_COUNT_NOT_REJECTABLE',
   ),
   STOCK_COUNT_NOT_APPROVABLE: new HttpError(
     409,
@@ -127,6 +133,23 @@ export async function submitStockCount(
 ): Promise<SubmitStockCountResult> {
   try {
     return await submitStockCountTransaction(input);
+  } catch (error) {
+    mapStockCountError(error);
+  }
+}
+
+/** Trả phiếu đã gửi duyệt về cho nhân viên đếm lại, kèm lý do. */
+export async function rejectStockCount(input: {
+  stockCountId: number;
+  rejectedBy: number;
+  rejectionReason: string;
+}): Promise<{
+  stockCountId: number;
+  countCode: string;
+  status: 'IN_PROGRESS';
+}> {
+  try {
+    return await rejectStockCountTransaction(input);
   } catch (error) {
     mapStockCountError(error);
   }

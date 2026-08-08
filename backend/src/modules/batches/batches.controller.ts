@@ -1,5 +1,10 @@
 import type { Request, Response } from 'express';
-import { createBatch, deleteBatch, listBatches, updateBatch } from './batches.service';
+import {
+  createBatch,
+  deleteBatch,
+  listBatches,
+  updateBatch,
+} from './batches.service';
 import {
   parseBatchesFilters,
   parseBatchId,

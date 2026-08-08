@@ -4,7 +4,6 @@ import type {
   RowDataPacket,
 } from 'mysql2/promise';
 import { insertAuditLog } from '../../common/audit/audit.repository';
-import { buildUniqueCode } from '../../common/code/code-generator';
 import { generateDocumentCode } from '../../common/code/document-code';
 import { db } from '../../database/db';
 import type {
@@ -269,6 +268,81 @@ async function lockCountItems(
   );
 
   return rows;
+}
+
+/**
+ * Trả phiếu kiểm kê đã gửi duyệt về cho nhân viên đếm lại.
+ *
+ * Phiếu quay lại `IN_PROGRESS` chứ không sang `REJECTED`: mục đích là cho sửa số
+ * rồi gửi lại, không phải đóng phiếu. Thiếu đường này thì người duyệt phát hiện
+ * đếm sai chỉ còn hai lựa chọn — duyệt luôn một con số sai, hoặc bỏ phiếu treo
+ * vĩnh viễn ở trạng thái chờ duyệt.
+ */
+export async function rejectStockCountTransaction(input: {
+  stockCountId: number;
+  rejectedBy: number;
+  rejectionReason: string;
+}): Promise<{
+  stockCountId: number;
+  countCode: string;
+  status: 'IN_PROGRESS';
+}> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const stockCount = await lockCount(connection, input.stockCountId);
+
+    if (!stockCount) {
+      throw new Error('STOCK_COUNT_NOT_FOUND');
+    }
+
+    if (stockCount.status !== 'SUBMITTED') {
+      throw new Error('STOCK_COUNT_NOT_REJECTABLE');
+    }
+
+    await connection.query(
+      `
+        UPDATE stock_counts
+        SET
+          status = 'IN_PROGRESS',
+          rejected_by = ?,
+          rejected_at = CURRENT_TIMESTAMP(3),
+          rejection_reason = ?,
+          submitted_by = NULL,
+          submitted_at = NULL
+        WHERE id = ?
+      `,
+      [input.rejectedBy, input.rejectionReason, stockCount.id],
+    );
+
+    await insertAuditLog(connection, {
+      userId: input.rejectedBy,
+      action: 'REJECT',
+      module: 'stock_counts',
+      entityType: 'STOCK_COUNT',
+      entityId: stockCount.id,
+      oldValues: { status: stockCount.status },
+      newValues: {
+        status: 'IN_PROGRESS',
+        rejectionReason: input.rejectionReason,
+      },
+    });
+
+    await connection.commit();
+
+    return {
+      stockCountId: stockCount.id,
+      countCode: stockCount.count_code,
+      status: 'IN_PROGRESS',
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function createStockCountTransaction(

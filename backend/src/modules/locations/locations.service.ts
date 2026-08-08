@@ -22,6 +22,7 @@ import type {
 import {
   countLayerLocationsWithStock,
   countShelfLocationsWithStock,
+  findShelvesByZone,
   renameZone,
   softDeleteZoneTransaction,
   findLocations as findLocationsRepository,
@@ -220,4 +221,12 @@ export async function listLocationHistory(
   locationId: number,
 ): Promise<LocationHistoryRow[]> {
   return findLocationHistory(locationId);
+}
+
+/** Danh sách kệ của một khu, đọc từ bảng kệ chứ không suy ra từ ô lưu trữ. */
+export async function listShelves(
+  warehouseId: number,
+  zoneCode: string,
+): Promise<Array<{ id: number; code: string; name: string }>> {
+  return findShelvesByZone(warehouseId, zoneCode);
 }

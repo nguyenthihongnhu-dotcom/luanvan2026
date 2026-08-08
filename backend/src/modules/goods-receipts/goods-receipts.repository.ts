@@ -499,7 +499,9 @@ export async function insertGoodsReceipt(
     let targetWarehouseId = input.warehouseId;
     if (!targetWarehouseId && input.items && input.items.length > 0) {
       const firstLocationId = input.items[0].locationId;
-      const [inferredWarehouse] = await connection.query<Array<RowDataPacket & { warehouse_id: number }>>(
+      const [inferredWarehouse] = await connection.query<
+        Array<RowDataPacket & { warehouse_id: number }>
+      >(
         `SELECT wz.warehouse_id
          FROM warehouse_locations wl
          JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
@@ -532,7 +534,12 @@ export async function insertGoodsReceipt(
         );
     const receiptCode =
       input.receiptCode ??
-      (await generateDocumentCode(connection, 'goods_receipts', 'receipt_code', 'PN'));
+      (await generateDocumentCode(
+        connection,
+        'goods_receipts',
+        'receipt_code',
+        'PN',
+      ));
 
     const [result] = await connection.query<ResultSetHeader>(
       `INSERT INTO goods_receipts (receipt_code, warehouse_id, supplier_id, status, reference_no, received_at, note, created_by)

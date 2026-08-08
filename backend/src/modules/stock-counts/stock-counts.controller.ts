@@ -2,6 +2,7 @@ import type { Request, Response } from 'express';
 import { HttpError } from '../../common/http';
 import {
   approveStockCount,
+  rejectStockCount,
   createStockCount,
   listStockCountItems,
   listStockCounts,
@@ -12,6 +13,7 @@ import {
 import {
   parseCreateStockCount,
   parseRecordStockCountItem,
+  parseRejectStockCount,
   parseStockCountId,
   parseStockCountItemId,
   parseStockCountsFilters,
@@ -91,6 +93,23 @@ export async function submitStockCountController(
 
   res.json({
     data: await submitStockCount({ stockCountId, submittedBy: userId }),
+  });
+}
+
+export async function rejectStockCountController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const userId = requireAuthenticatedUser(req);
+  const stockCountId = parseStockCountId(req.params.id);
+  const { rejectionReason } = parseRejectStockCount(req.body);
+
+  res.json({
+    data: await rejectStockCount({
+      stockCountId,
+      rejectedBy: userId,
+      rejectionReason,
+    }),
   });
 }
 
