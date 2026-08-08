@@ -33,6 +33,7 @@ export default function WarehouseMapping() {
         handleReorderShelves,
         handleDeleteShelf,
         handleDeleteZone,
+        handleRenameZone,
         handleDeleteLayer,
     } = useWarehouse();
     const StructureSidebarToggleIcon = isStructureSidebarOpen ? MenuFoldOutlined : MenuUnfoldOutlined;
@@ -62,6 +63,7 @@ export default function WarehouseMapping() {
                         onCreateZone={handleAddZone}
                         onSaveZoneLayout={handleSaveZoneLayout}
                         onDeleteZone={handleDeleteZone}
+                        onRenameZone={handleRenameZone}
                     />
                 ) : (
                     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

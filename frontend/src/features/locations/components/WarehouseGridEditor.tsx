@@ -25,6 +25,7 @@ interface WarehouseGridEditorProps {
         },
     ) => Promise<void>;
     onDeleteZone?: (zone: WarehouseZone) => Promise<void>;
+    onRenameZone?: (zone: WarehouseZone) => Promise<void>;
 }
 
 const MIN_ROWS = 6;
@@ -34,6 +35,21 @@ const PALETTE = ["#3b82f6", "#a855f7", "#10b981", "#f59e0b", "#ef4444", "#06b6d4
 /** Màu gán theo thứ tự khu nên mở lại vẫn giữ nguyên màu. */
 function colorOf(index: number) {
     return PALETTE[index % PALETTE.length];
+}
+
+/**
+ * Biệt danh của khu, rỗng nếu khu chưa được đặt tên riêng.
+ *
+ * Cột `name` mặc định được sinh theo mã (`Khu A`, `Khu vực D`) nên những giá trị
+ * đó không phải biệt danh thật — coi như chưa đặt để mặt bằng chỉ hiện mã.
+ */
+function nicknameOf(zone: WarehouseZone): string {
+    const name = (zone.name ?? "").trim();
+    if (!name) return "";
+
+    const code = zone.code.trim().toUpperCase();
+    const generated = [code, `KHU ${code}`, `KHU VỰC ${code}`, `ZONE ${code}`];
+    return generated.includes(name.toUpperCase()) ? "" : name;
 }
 
 function nextZoneCode(zones: WarehouseZone[]) {
@@ -83,6 +99,7 @@ export default function WarehouseGridEditor({
     onCreateZone,
     onSaveZoneLayout,
     onDeleteZone,
+    onRenameZone,
 }: WarehouseGridEditorProps) {
     const { setExtraContent } = useSidebar();
     const [newZoneName, setNewZoneName] = useState("");
@@ -312,7 +329,10 @@ export default function WarehouseGridEditor({
                     {zone.code}
                 </div>
                 <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-bold text-gray-800">{zone.name}</p>
+                    <p className="truncate text-xs font-bold text-gray-800">
+                        Khu {zone.code}
+                        {nicknameOf(zone) && <span className="font-medium text-gray-500"> · {nicknameOf(zone)}</span>}
+                    </p>
                     <p className="text-[10px] text-gray-400">
                         {zone.shelfCount} kệ · {zone.gridOrientation === "HORIZONTAL" ? "xếp ngang" : "xếp dọc"}
                         {placed ? ` · ô H${(zone.gridRow ?? 0) + 1}-C${(zone.gridCol ?? 0) + 1}` : ""}
@@ -352,6 +372,16 @@ export default function WarehouseGridEditor({
                         Xem
                     </button>
                 )}
+                <button
+                    type="button"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={() => void onRenameZone?.(zone)}
+                    disabled={isSaving}
+                    className="shrink-0 rounded-md border border-gray-200 bg-white px-1.5 py-1 text-[10px] font-semibold text-gray-600 hover:border-pink-200 hover:text-pink-600 disabled:opacity-60"
+                    title={nicknameOf(zone) ? "Đổi biệt danh của khu" : "Đặt biệt danh cho khu, ví dụ Khu sữa bột"}
+                >
+                    {nicknameOf(zone) ? "Đổi tên" : "Đặt tên"}
+                </button>
                 {/* Khu còn hàng thì không cho xóa; nút mờ đi và nói rõ lý do
                     thay vì để người dùng bấm rồi nhận lỗi từ server. */}
                 <button
@@ -442,7 +472,7 @@ export default function WarehouseGridEditor({
         // Danh sách khu và form phụ thuộc các state dưới đây; cố ý không đưa trạng thái kéo
         // vào deps để mỗi lần di chuột không phải dựng lại toàn bộ nội dung sidebar.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [setExtraContent, zones, unplacedZones, placedZones, colorByZoneId, newZoneName, newZoneShelves, newZoneLayers, isSaving, onDeleteZone]);
+    }, [setExtraContent, zones, unplacedZones, placedZones, colorByZoneId, newZoneName, newZoneShelves, newZoneLayers, isSaving, onDeleteZone, onRenameZone]);
 
     return (
         <div className="flex h-[calc(100vh-180px)] flex-1 flex-col overflow-auto rounded-xl border border-gray-200 bg-gray-100 p-6">
@@ -534,14 +564,17 @@ export default function WarehouseGridEditor({
                                     )}
                                     {zone ? (
                                         <div className="pointer-events-none relative px-1 text-center">
-                                            {/* Hiện tên khu do người dùng đặt; mã A/B/C là mã máy sinh,
-                                                chỉ nhắc lại nhỏ bên dưới ở ô neo để còn tra cứu được. */}
-                                            <div className="truncate text-xs font-bold leading-tight" style={{ color }} title={zone.name}>
-                                                {zone.name}
-                                            </div>
+                                            {/* Mã khu (A, B, C) là định danh chính vì mã ô lưu trữ dựa vào nó;
+                                                biệt danh đặt ngay dưới để thủ kho gọi theo tên quen. */}
+                                            <div className="text-base font-bold leading-none" style={{ color }}>{zone.code}</div>
+                                            {nicknameOf(zone) && (
+                                                <div className="mt-0.5 truncate text-[10px] font-medium leading-tight text-gray-600" title={nicknameOf(zone)}>
+                                                    {nicknameOf(zone)}
+                                                </div>
+                                            )}
                                             {isAnchor && (
-                                                <div className="mt-0.5 text-[10px] font-semibold text-gray-500">
-                                                    {zone.code} · {isZoneFull(zone) ? "ĐẦY" : `${zone.shelfCount} kệ`}
+                                                <div className="mt-0.5 text-[10px] text-gray-500">
+                                                    {isZoneFull(zone) ? "ĐẦY" : `${zone.shelfCount} kệ`}
                                                 </div>
                                             )}
                                         </div>

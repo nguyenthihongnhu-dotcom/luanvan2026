@@ -151,6 +151,27 @@ export async function countShelfLocationsWithStock(
   return Number(rows[0]?.total ?? 0);
 }
 
+/**
+ * Đổi biệt danh của khu. Chỉ chạm cột `name` — cột `code` (A, B, C) là mã kỹ
+ * thuật đã nằm trong mã từng ô lưu trữ (HCM01-A-A01-01) nên không đổi được ở đây.
+ */
+export async function renameZone(
+  zoneId: number,
+  name: string,
+): Promise<MutationResult> {
+  const [result] = await db.query<ResultSetHeader>({
+    sql: `
+      UPDATE warehouse_zones
+      SET name = :name
+      WHERE id = :zoneId
+        AND deleted_at IS NULL
+    `,
+    values: { zoneId, name } satisfies QueryParams,
+  });
+
+  return { affectedRows: result.affectedRows };
+}
+
 export async function countZoneLocationsWithStock(
   zoneId: number,
 ): Promise<number> {

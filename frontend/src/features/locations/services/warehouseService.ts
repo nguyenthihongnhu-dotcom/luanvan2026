@@ -174,6 +174,11 @@ export async function createZone(input: {
     await httpClient.post('/locations/zones', input);
 }
 
+/** Đổi biệt danh của khu. Mã khu (A, B, C) không đổi vì mã ô lưu trữ dựa vào nó. */
+export async function renameZone(zoneId: number, name: string): Promise<void> {
+    await httpClient.patch(`/locations/zones/${zoneId}`, { name });
+}
+
 /** Xóa khu. Backend từ chối (409 ZONE_NOT_EMPTY) nếu trong khu còn vị trí có hàng. */
 export async function deleteZone(zoneId: number): Promise<void> {
     await httpClient.delete(`/locations/zones/${zoneId}`);
@@ -221,6 +226,7 @@ export const warehouseService = {
     syncLocationMatrix,
     createZone,
     deleteZone,
+    renameZone,
     updateZoneLayout,
     deleteShelf,
     deleteLayer,

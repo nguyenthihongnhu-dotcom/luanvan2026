@@ -281,6 +281,26 @@ export function useWarehouse() {
         }, 'Không xóa được kệ.');
     };
 
+    /**
+     * Đặt hoặc đổi biệt danh của khu. Mã khu (A, B, C) giữ nguyên vì mã từng ô
+     * lưu trữ đã dựa vào nó; biệt danh chỉ là tên gọi cho dễ nhớ.
+     */
+    const handleRenameZone = async (zone: WarehouseZone) => {
+        const current = zone.name && zone.name.trim().toUpperCase() !== `KHU ${zone.code}`.toUpperCase()
+            ? zone.name
+            : "";
+        const next = window.prompt(
+            `Biệt danh cho khu ${zone.code} (ví dụ: Khu sữa bột). Để trống thì mặt bằng chỉ hiện mã ${zone.code}.`,
+            current,
+        );
+        if (next === null) return;
+
+        const trimmed = next.trim();
+        await runMutation(async () => {
+            await warehouseService.renameZone(zone.id, trimmed || `Khu ${zone.code}`);
+        }, 'Không đổi được biệt danh của khu.');
+    };
+
     /** Xóa khu. Backend chặn nếu khu còn hàng, nên ở đây chỉ cần hỏi lại cho chắc. */
     const handleDeleteZone = async (zone: WarehouseZone) => {
         if (zone.occupiedCount > 0) {
@@ -331,6 +351,7 @@ export function useWarehouse() {
         handleReorderShelves,
         handleDeleteShelf,
         handleDeleteZone,
+        handleRenameZone,
         handleDeleteLayer,
     };
 }

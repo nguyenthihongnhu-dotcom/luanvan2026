@@ -123,6 +123,19 @@ export function parseSyncLocationMatrix(
   return validateInput(syncLocationMatrixSchema, input);
 }
 
+const renameZoneSchema = z.object({
+  zoneId: z.coerce.number().int().positive(),
+  name: z.string().trim().min(1).max(100),
+});
+
+/** Đổi biệt danh của khu; mã khu (A, B, C) giữ nguyên vì mã ô lưu trữ dựa vào nó. */
+export function parseRenameZone(input: unknown): {
+  zoneId: number;
+  name: string;
+} {
+  return validateInput(renameZoneSchema, input);
+}
+
 export function parseCreateZone(input: unknown): CreateZoneInput {
   return validateInput(createZoneSchema, input);
 }

@@ -10,6 +10,7 @@ import {
   removeLocationLayer,
   removeShelfLocations,
   removeZone,
+  renameZoneName,
   reorderShelves,
   syncLocationMatrix,
   updateZoneLayout,
@@ -21,6 +22,7 @@ import {
   parseCreateZone,
   parseLayerDeleteQuery,
   parseLocationFilters,
+  parseRenameZone,
   parseShelfId,
   parseReorderShelves,
   parseSyncLocationMatrix,
@@ -54,6 +56,18 @@ export async function removeShelfLocationsController(
   const shelfId = parseShelfId(req.params.shelfId);
 
   res.json({ data: await removeShelfLocations(shelfId) });
+}
+
+export async function renameZoneController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const input = parseRenameZone({
+    ...(req.body as Record<string, unknown>),
+    zoneId: req.params.id,
+  });
+
+  res.json({ data: await renameZoneName(input.zoneId, input.name) });
 }
 
 export async function removeZoneController(

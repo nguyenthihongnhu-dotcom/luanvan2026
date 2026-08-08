@@ -25,6 +25,7 @@ Module `locations` mô tả layout kho vật lý để frontend vẽ sơ đồ v
 | POST | `/locations/layers` | Tạo tầng mới cho toàn khu và lấp các ô kệ/tầng còn thiếu |
 | POST | `/locations/sync-matrix` | Lấp lại các ô kệ/tầng còn thiếu trong khu hiện tại |
 | PATCH | `/locations/shelves/reorder` | Cập nhật thứ tự hiển thị các kệ |
+| PATCH | `/locations/zones/:id` | Đổi biệt danh của khu (chỉ cột `name`, mã khu giữ nguyên) |
 | DELETE | `/locations/zones/:id` | Soft delete cả khu (ô, kệ, khu) nếu trong khu không còn hàng |
 | DELETE | `/locations/shelf/:shelfId` | Soft delete các location thuộc shelf nếu không còn hàng |
 | DELETE | `/locations/layer?shelfId=1&layerNo=2` | Soft delete một layer nếu không còn hàng |
@@ -117,7 +118,8 @@ DELETE /locations/layer?shelfId=&layerNo=
 
 - Không hard delete location/kệ/khu đã có lịch sử tồn.
 - Không cho xóa kệ/tầng nếu còn tồn thực tế hoặc tồn đã giữ chỗ.
-- Khi sinh code location, phải giữ format dễ đọc: `ZONE-SHELF-LAYER`, ví dụ `A-01-03`.
+- Khi sinh code location, phải giữ format `KHO-KHU-KE-TANG`, ví dụ `HCM01-A-01-03`. Thiếu tiền tố kho sẽ đụng mã vì cột `code` UNIQUE toàn bảng.
+- Mã khu (`code`) là định danh kỹ thuật nằm trong mã ô, không đổi được; muốn gọi tên khác thì đặt biệt danh ở cột `name`.
 - Khi thêm kệ hoặc tầng, backend phải đảm bảo ma trận `shelf x layer` không bị lỗ trống; không để frontend tự loop từng ô.
 - Nếu thêm warehouse multi-tenant, mọi query location phải lọc theo warehouse/user permission.
 - Nếu frontend hiển thị sai sơ đồ, kiểm tra `GET /locations` trước rồi mới kiểm tra UI.

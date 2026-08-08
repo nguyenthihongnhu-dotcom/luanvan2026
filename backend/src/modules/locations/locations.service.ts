@@ -22,6 +22,7 @@ import type {
 import {
   countLayerLocationsWithStock,
   countShelfLocationsWithStock,
+  renameZone,
   softDeleteZoneTransaction,
   findLocations as findLocationsRepository,
   findLocationHistory,
@@ -99,6 +100,20 @@ export async function removeShelfLocations(
   }
 
   return softDeleteLocationsByShelfId(shelfId);
+}
+
+/** Đổi biệt danh của khu để thủ kho gọi theo tên quen thay vì mã A, B, C. */
+export async function renameZoneName(
+  zoneId: number,
+  name: string,
+): Promise<MutationResult> {
+  const result = await renameZone(zoneId, name);
+
+  if (result.affectedRows === 0) {
+    throw new HttpError(404, 'Zone not found', 'ZONE_NOT_FOUND');
+  }
+
+  return result;
 }
 
 /**
