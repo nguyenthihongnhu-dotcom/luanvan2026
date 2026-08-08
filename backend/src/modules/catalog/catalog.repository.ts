@@ -185,40 +185,10 @@ export async function insertProduct(
         input.expiryDate ? true : false,
       ],
     );
-    if ((input.stock ?? 0) > 0) {
-      if (!input.locationId) {
-        throw new Error('LOCATION_REQUIRED');
-      }
-
-      const [locationRows] = await connection.query<IdRow[]>(
-        `SELECT id FROM warehouse_locations WHERE id = ? AND deleted_at IS NULL AND status = 'ACTIVE' LIMIT 1`,
-        [input.locationId],
-      );
-      const locationId = locationRows[0]?.id;
-
-      if (!locationId) {
-        throw new Error('LOCATION_NOT_FOUND');
-      }
-
-      {
-        let batchId: number | null = null;
-        if (input.expiryDate) {
-          const [batchResult] = await connection.query<ResultSetHeader>(
-            `INSERT INTO product_batches (product_variant_id, lot_number, expiry_date, received_date, status) VALUES (?, ?, ?, CURRENT_DATE, 'ACTIVE')`,
-            [
-              variantResult.insertId,
-              `LOT-${input.sku}-${Date.now()}`,
-              input.expiryDate,
-            ],
-          );
-          batchId = batchResult.insertId;
-        }
-        await connection.query(
-          `INSERT INTO stock_locations (product_variant_id, location_id, batch_id, quantity) VALUES (?, ?, ?, ?)`,
-          [variantResult.insertId, locationId, batchId, input.stock ?? 0],
-        );
-      }
-    }
+    // Khai báo sản phẩm không sinh tồn kho. Sản phẩm mới luôn bắt đầu ở 0 và chỉ
+    // tăng khi có phiếu nhập kho được xác nhận — nhờ vậy mọi thay đổi tồn đều
+    // truy ngược được về một chứng từ, không có đường nào cộng tồn lặng lẽ.
+    // Vị trí và hạn dùng cũng thuộc về phiếu nhập và lô hàng, không phải danh mục.
     await connection.commit();
     return { id: variantResult.insertId };
   } catch (error) {
@@ -246,94 +216,8 @@ export async function updateProduct(
       [input.sku, input.name, input.minStock ?? 0, input.name, categoryId, id],
     );
 
-    if (input.stock !== undefined) {
-      const [stockRows] = await connection.query<StockLocationRow[]>(
-        `
-          SELECT id, location_id, batch_id, quantity, reserved_quantity
-          FROM stock_locations
-          WHERE product_variant_id = ?
-          ORDER BY quantity DESC, id
-          FOR UPDATE
-        `,
-        [id],
-      );
-      const currentTotal = stockRows.reduce(
-        (sum, row) => sum + Number(row.quantity ?? 0),
-        0,
-      );
-      const delta = input.stock - currentTotal;
-
-      if (stockRows[0]) {
-        const target = stockRows[0];
-
-        if (delta > 0) {
-          await connection.query(
-            `UPDATE stock_locations SET quantity = quantity + ?, version = version + 1 WHERE id = ?`,
-            [delta, target.id],
-          );
-        } else if (delta < 0) {
-          let remainingReduction = Math.abs(delta);
-
-          for (const row of stockRows) {
-            if (remainingReduction <= 0) break;
-
-            const quantity = Number(row.quantity ?? 0);
-            const reservedQuantity = Number(row.reserved_quantity ?? 0);
-            const reducibleQuantity = Math.max(quantity - reservedQuantity, 0);
-            const reduction = Math.min(reducibleQuantity, remainingReduction);
-
-            if (reduction > 0) {
-              await connection.query(
-                `UPDATE stock_locations SET quantity = quantity - ?, version = version + 1 WHERE id = ?`,
-                [reduction, row.id],
-              );
-              remainingReduction -= reduction;
-            }
-          }
-
-          if (remainingReduction > 0) {
-            throw new Error('STOCK_BELOW_RESERVED');
-          }
-        }
-
-        if (input.expiryDate && target.batch_id) {
-          await connection.query(
-            `UPDATE product_batches SET expiry_date = ? WHERE id = ?`,
-            [input.expiryDate, target.batch_id],
-          );
-        }
-      } else if (input.stock > 0) {
-        if (!input.locationId) {
-          throw new Error('LOCATION_REQUIRED');
-        }
-
-        const [locationRows] = await connection.query<IdRow[]>(
-          `SELECT id FROM warehouse_locations WHERE id = ? AND deleted_at IS NULL AND status = 'ACTIVE' LIMIT 1`,
-          [input.locationId],
-        );
-        const locationId = locationRows[0]?.id;
-
-        if (!locationId) {
-          throw new Error('LOCATION_NOT_FOUND');
-        }
-
-        {
-          let batchId: number | null = null;
-          if (input.expiryDate) {
-            const [batchResult] = await connection.query<ResultSetHeader>(
-              `INSERT INTO product_batches (product_variant_id, lot_number, expiry_date, received_date, status) VALUES (?, ?, ?, CURRENT_DATE, 'ACTIVE')`,
-              [id, `LOT-${input.sku}-${Date.now()}`, input.expiryDate],
-            );
-            batchId = batchResult.insertId;
-          }
-
-          await connection.query(
-            `INSERT INTO stock_locations (product_variant_id, location_id, batch_id, quantity) VALUES (?, ?, ?, ?)`,
-            [id, locationId, batchId, input.stock],
-          );
-        }
-      }
-    }
+    // Tồn kho không sửa được từ màn danh mục: mọi thay đổi số lượng phải đi qua
+    // phiếu nhập, xuất, chuyển hoặc điều chỉnh để còn truy vết được bằng chứng từ.
 
     await connection.commit();
     return { affectedRows: result.affectedRows };
@@ -343,6 +227,42 @@ export async function updateProduct(
   } finally {
     connection.release();
   }
+}
+
+/**
+ * Đếm số chứng từ kho đã tham chiếu tới sản phẩm. Xóa sản phẩm đã từng đi qua
+ * phiếu nhập/xuất/điều chỉnh sẽ làm hỏng nhật ký kho: các phiếu cũ mất đối tượng
+ * tham chiếu và báo cáo lịch sử không dựng lại được.
+ */
+export async function countProductDocumentReferences(
+  id: number,
+): Promise<number> {
+  const [rows] = await db.query<Array<RowDataPacket & { total: number }>>(
+    `
+      SELECT
+        (SELECT COUNT(*) FROM goods_receipt_items WHERE product_variant_id = ?)
+        + (SELECT COUNT(*) FROM goods_issue_items WHERE product_variant_id = ?)
+        + (SELECT COUNT(*) FROM stock_adjustment_items WHERE product_variant_id = ?)
+        AS total
+    `,
+    [id, id, id],
+  );
+
+  return Number(rows[0]?.total ?? 0);
+}
+
+/** Số vị trí còn giữ hàng của sản phẩm. */
+export async function countProductStock(id: number): Promise<number> {
+  const [rows] = await db.query<Array<RowDataPacket & { total: number }>>(
+    `
+      SELECT COALESCE(SUM(quantity), 0) AS total
+      FROM stock_locations
+      WHERE product_variant_id = ?
+    `,
+    [id],
+  );
+
+  return Number(rows[0]?.total ?? 0);
 }
 
 export async function softDeleteProduct(id: number): Promise<MutationResult> {

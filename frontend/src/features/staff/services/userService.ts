@@ -66,6 +66,18 @@ export async function listUsers(): Promise<User[]> {
     }));
 }
 
+/**
+ * Sinh mã đặt lại mật khẩu cho nhân viên. Quản trị viên không xem hay đặt hộ mật
+ * khẩu: hệ thống chỉ cấp một mã dùng một lần, nhân viên tự nhập mật khẩu mới.
+ */
+export async function requestPasswordReset(email: string): Promise<string | null> {
+    const response = await httpClient.post<{ data: { accepted: boolean; resetToken?: string } }>(
+        '/auth/password-reset/request',
+        { email },
+    );
+    return unwrapData(response)?.resetToken ?? null;
+}
+
 export async function createUser(input: CreateUserInput): Promise<void> {
     await httpClient.post('/auth/users', {
         email: input.email,
@@ -92,4 +104,4 @@ export async function updateUser(id: number, input: UpdateUserInput): Promise<vo
 export async function deleteUser(id: number): Promise<void> {
     await httpClient.delete(`/auth/users/${id}`);
 }
-export const userService = { listUsers, createUser, updateUser, deleteUser };
+export const userService = { listUsers, createUser, updateUser, deleteUser, requestPasswordReset };

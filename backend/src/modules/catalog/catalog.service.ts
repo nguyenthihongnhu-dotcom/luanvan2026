@@ -1,3 +1,4 @@
+import { HttpError } from '../../common/http';
 import type {
   CatalogFilters,
   CatalogRow,
@@ -6,6 +7,8 @@ import type {
   ProductInput,
 } from './catalog.model';
 import {
+  countProductDocumentReferences,
+  countProductStock,
   findCatalog as findCatalogRepository,
   findCategories,
   findProducts,
@@ -66,5 +69,23 @@ export async function updateProduct(
 }
 
 export async function deleteProduct(id: number): Promise<MutationResult> {
+  const documentCount = await countProductDocumentReferences(id);
+  if (documentCount > 0) {
+    throw new HttpError(
+      409,
+      `Cannot delete product because ${documentCount} inventory document line(s) reference it`,
+      'PRODUCT_HAS_DOCUMENTS',
+    );
+  }
+
+  const stock = await countProductStock(id);
+  if (stock > 0) {
+    throw new HttpError(
+      409,
+      `Cannot delete product because ${stock} unit(s) are still in stock`,
+      'PRODUCT_HAS_STOCK',
+    );
+  }
+
   return softDeleteProduct(id);
 }

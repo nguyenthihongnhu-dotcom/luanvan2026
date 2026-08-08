@@ -22,7 +22,6 @@ export default function ProductsPage() {
 
     const {
         products,
-        locationOptions,
         categoryOptions,
         showModal,
         setShowModal,
@@ -133,7 +132,17 @@ export default function ProductsPage() {
         { key: "category", title: "Danh mục", render: (value) => getProductCategoryLabel(value) },
         { key: "stock", title: "Số lượng tồn kho", render: (value) => formatNumber(value as number) },
         { key: "minStock", title: "Tồn kho tối thiểu", render: (value) => formatNumber(value as number) },
-        { key: "expiryDate", title: "Hạn sử dụng", render: (value) => formatDate(value as string) },
+        {
+            // Backend trả MIN(product_batches.expiry_date): sản phẩm có nhiều lô,
+            // mỗi lô một hạn, đây là lô sắp hết hạn sớm nhất.
+            key: "expiryDate",
+            title: "Hạn dùng gần nhất",
+            render: (value) => (
+                <span title="Hạn sử dụng của lô sắp hết hạn sớm nhất đang còn trong kho">
+                    {formatDate(value as string)}
+                </span>
+            ),
+        },
         {
             key: "status",
             title: "Trạng thái",
@@ -279,7 +288,7 @@ export default function ProductsPage() {
                                                 <div className="font-semibold text-slate-800">{formatNumber(product.minStock)}</div>
                                             </div>
                                             <div className="col-span-2">
-                                                <div className="text-xs font-semibold uppercase text-slate-400">Hạn sử dụng</div>
+                                                <div className="text-xs font-semibold uppercase text-slate-400">Hạn dùng gần nhất</div>
                                                 <div className="font-semibold text-slate-800">{formatDate(product.expiryDate)}</div>
                                             </div>
                                         </div>
@@ -324,7 +333,6 @@ export default function ProductsPage() {
                 <ProductModal
                     editingProduct={editingProduct}
                     formData={formData}
-                    locationOptions={locationOptions}
                     categoryOptions={categoryOptions}
                     handleInputChange={handleInputChange}
                     handleSubmit={handleSubmit}

@@ -1,28 +1,17 @@
 import React from "react";
 import type { ProductItem } from "@/features/products/hooks/useProducts";
-import type { LocationOption } from "@/features/products/services/productService";
 import { productCategoryOptions } from "@/features/products/utils/productDisplay";
 
 interface ProductModalProps {
     editingProduct: ProductItem | null;
-    formData: { sku: string; name: string; category: string; stock: string; minStock: string; expiryDate: string; warehouseId: string; locationId: string; };
-    locationOptions: LocationOption[];
+    formData: { sku: string; name: string; category: string; minStock: string };
     categoryOptions?: string[];
     handleInputChange: (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => void;
     handleSubmit: (e: React.FormEvent) => void;
     onClose: () => void;
 }
 
-export default function ProductModal({ editingProduct, formData, locationOptions, categoryOptions, handleInputChange, handleSubmit, onClose }: ProductModalProps) {
-    const stockValue = Number(formData.stock || 0);
-    const hasExistingLocation = Boolean(editingProduct?.locations);
-    const warehouseOptions = Array.from(
-        new Map(locationOptions.map((location) => [location.warehouseId, location.warehouseLabel])).entries(),
-    ).map(([id, label]) => ({ id, label }));
-    const filteredLocationOptions = formData.warehouseId
-        ? locationOptions.filter((location) => String(location.warehouseId) === formData.warehouseId)
-        : [];
-    const shouldRequireStockPlace = stockValue > 0 && !hasExistingLocation;
+export default function ProductModal({ editingProduct, formData, categoryOptions, handleInputChange, handleSubmit, onClose }: ProductModalProps) {
     const categoriesToRender = categoryOptions && categoryOptions.length > 0 ? categoryOptions : productCategoryOptions;
 
     return (
@@ -48,34 +37,39 @@ export default function ProductModal({ editingProduct, formData, locationOptions
                             {categoriesToRender.map((category) => <option key={category} value={category}>{category}</option>)}
                         </select>
                     </div>
-                    <div className="grid grid-cols-2 gap-4">
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700">Số lượng</label>
-                            <input type="number" name="stock" required min="0" value={formData.stock} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                    <div>
+                        <label className="mb-1 block text-sm font-medium text-gray-700">Tồn kho tối thiểu</label>
+                        <input type="number" name="minStock" required min="0" value={formData.minStock} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                        <p className="mt-1 text-xs text-gray-500">Ngưỡng để hệ thống cảnh báo sắp hết hàng.</p>
+                    </div>
+
+                    {/* Danh mục chỉ khai báo sản phẩm. Số lượng, vị trí và hạn dùng
+                        đều sinh ra từ phiếu nhập kho và lô hàng, không nhập ở đây. */}
+                    {editingProduct ? (
+                        <div className="rounded-md border border-gray-200 bg-gray-50 p-3 text-sm">
+                            <div className="flex items-center justify-between">
+                                <span className="text-gray-600">Tồn hiện tại</span>
+                                <span className="font-semibold text-gray-900">{editingProduct.stock.toLocaleString("vi-VN")}</span>
+                            </div>
+                            <div className="mt-1.5 flex items-center justify-between">
+                                <span className="text-gray-600">Hạn dùng gần nhất</span>
+                                <span className="font-semibold text-gray-900">
+                                    {editingProduct.expiryDate
+                                        ? new Intl.DateTimeFormat("vi-VN").format(new Date(editingProduct.expiryDate))
+                                        : "Không theo hạn dùng"}
+                                </span>
+                            </div>
+                            <p className="mt-2 text-xs text-gray-500">
+                                Hai giá trị này chỉ để xem. Tồn thay đổi qua phiếu nhập, xuất, chuyển hoặc điều chỉnh;
+                                hạn dùng lấy theo lô hết hạn sớm nhất còn trong kho.
+                            </p>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700">Tồn kho tối thiểu</label>
-                            <input type="number" name="minStock" required min="0" value={formData.minStock} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                    ) : (
+                        <div className="rounded-md border border-blue-200 bg-blue-50 p-3 text-xs text-blue-900">
+                            Sản phẩm mới bắt đầu với tồn kho <strong>0</strong>. Số lượng, vị trí lưu và hạn sử dụng sẽ có
+                            khi bạn lập <strong>phiếu nhập kho</strong> cho sản phẩm này.
                         </div>
-                    </div>
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-gray-700">Kho nhập ban đầu</label>
-                        <select name="warehouseId" required={shouldRequireStockPlace} disabled={hasExistingLocation || warehouseOptions.length === 0} value={formData.warehouseId} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500 disabled:bg-gray-100 disabled:text-gray-500">
-                            <option value="">Chọn kho</option>
-                            {warehouseOptions.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouse.label}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-gray-700">Vị trí nhập ban đầu</label>
-                        <select name="locationId" required={shouldRequireStockPlace} disabled={hasExistingLocation || !formData.warehouseId || filteredLocationOptions.length === 0} value={formData.locationId} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500 disabled:bg-gray-100 disabled:text-gray-500">
-                            <option value="">Chọn vị trí</option>
-                            {filteredLocationOptions.map((location) => <option key={location.id} value={location.id}>{location.label}</option>)}
-                        </select>
-                    </div>
-                    <div>
-                        <label className="mb-1 block text-sm font-medium text-gray-700">Hạn sử dụng</label>
-                        <input type="date" name="expiryDate" value={formData.expiryDate} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
-                    </div>
+                    )}
                     <div className="flex gap-3 pt-4">
                         <button type="button" onClick={onClose} className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Hủy</button>
                         <button type="submit" className="flex-1 rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700">Lưu sản phẩm</button>

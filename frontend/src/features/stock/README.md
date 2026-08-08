@@ -1,4 +1,4 @@
-﻿# Stock Feature
+# Stock Feature
 
 ## Muc tieu nghiep vu
 
@@ -19,3 +19,5 @@ Module `stock` theo doi ton kho hien tai chi tiet theo vi tri/lo hang va ho tro 
 ## Luu y
 
 - Ton kho thay doi thuc te chi khi cac chung tu (Receipt/Issue/Transfer/Adjustment) duoc Confirm/Approve.
+- Chi tiet giai thich giao dien va nghiep vu ton kho xem tai: [docs_giai_thich_trang_stock.md](../../../docs/docs_giai_thich_trang_stock.md)
+

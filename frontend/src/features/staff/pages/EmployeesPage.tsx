@@ -34,6 +34,8 @@ export default function EmployeesPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
+    // Mã đặt lại mật khẩu vừa cấp, hiện một lần để quản trị viên chuyển cho nhân viên.
+    const [resetInfo, setResetInfo] = useState<{ name: string; email: string; token: string } | null>(null);
     const [formData, setFormData] = useState(initialFormState);
 
     /**
@@ -117,14 +119,42 @@ export default function EmployeesPage() {
     };
 
     /**
-     * Xóa tài khoản nhân viên sau khi xác nhận.
-     * Yêu cầu quyền `users:delete`.
-     * @param user - Bản ghi nhân viên cần xóa.
+     * Bật/tắt tài khoản nhân viên. Không xóa tài khoản: mọi phiếu nhập, xuất,
+     * điều chỉnh và dòng audit_logs đều trỏ tới người tạo/người duyệt, xóa đi là
+     * nhật ký kho mất người chịu trách nhiệm. Ngưng hoạt động thì tài khoản
+     * không đăng nhập được nữa nhưng lịch sử vẫn nguyên vẹn.
      */
-    const handleDelete = async (user: User) => {
-        if (!window.confirm(`Bạn có chắc muốn xóa nhân viên ${user.HoTen}?`)) return;
-        await userService.deleteUser(user.MaNguoiDung);
+    const handleToggleStatus = async (user: User) => {
+        const isActive = user.TrangThai === "HoatDong";
+        const action = isActive ? "Ngưng hoạt động" : "Cho hoạt động lại";
+        if (!window.confirm(`${action} tài khoản ${user.HoTen}?${isActive ? " Nhân viên sẽ không đăng nhập được nữa, lịch sử thao tác vẫn được giữ." : ""}`)) return;
+
+        await userService.updateUser(user.MaNguoiDung, {
+            email: user.Email,
+            fullName: user.HoTen,
+            phone: user.SoDienThoai || undefined,
+            employeeCode: user.MaNhanVien || undefined,
+            roleCode: user.roleCode,
+            status: isActive ? "INACTIVE" : "ACTIVE",
+        });
         await loadUsers();
+    };
+
+    /**
+     * Cấp mã đặt lại mật khẩu cho nhân viên quên mật khẩu. Quản trị viên không
+     * đặt hộ mật khẩu — hệ thống sinh mã dùng một lần, nhân viên tự nhập mật khẩu
+     * mới, nên không ai ngoài chính họ biết mật khẩu.
+     */
+    const handleResetPassword = async (user: User) => {
+        if (!window.confirm(`Cấp mã đặt lại mật khẩu cho ${user.HoTen} (${user.Email})?`)) return;
+
+        try {
+            const token = await userService.requestPasswordReset(user.Email);
+            setResetInfo(token ? { name: user.HoTen, email: user.Email, token } : null);
+        } catch (err) {
+            console.error(err);
+            window.alert("Không cấp được mã đặt lại mật khẩu. Thử lại sau.");
+        }
     };
 
     const columns: ColumnProps<User>[] = [
@@ -136,18 +166,47 @@ export default function EmployeesPage() {
         {
             key: "TrangThai",
             title: "Trạng thái",
-            render: (val) => <span className="px-2.5 py-0.5 rounded-full text-xs font-medium border bg-green-50 text-green-700 border-green-200">{val === "HoatDong" ? "Đang hoạt động" : "Tạm khóa"}</span>,
+            render: (val) => {
+                const isActive = val === "HoatDong";
+                return (
+                    <span className={`px-2.5 py-0.5 rounded-full text-xs font-medium border ${isActive
+                        ? "bg-green-50 text-green-700 border-green-200"
+                        : "bg-gray-100 text-gray-600 border-gray-300"}`}>
+                        {isActive ? "Đang hoạt động" : "Ngưng hoạt động"}
+                    </span>
+                );
+            },
         },
         {
             key: "actions",
             title: "Thao tác",
-            width: "120px",
-            render: (_, record) => (
-                <div className="flex gap-1">
-                    <button type="button" onClick={() => openEditModal(record)} className="btn-action btn-blue">Sửa</button>
-                    <button type="button" onClick={() => handleDelete(record)} className="btn-action btn-red">Xóa</button>
-                </div>
-            ),
+            width: "230px",
+            render: (_, record) => {
+                const isActive = record.TrangThai === "HoatDong";
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        <button type="button" onClick={() => openEditModal(record)} className="btn-action btn-blue">Sửa</button>
+                        <button
+                            type="button"
+                            onClick={() => void handleResetPassword(record)}
+                            className="btn-action btn-blue"
+                            title="Đặt lại mật khẩu và gửi hướng dẫn tới email của nhân viên"
+                        >
+                            Đặt lại mật khẩu
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => void handleToggleStatus(record)}
+                            className={`btn-action ${isActive ? "btn-red" : "btn-green"}`}
+                            title={isActive
+                                ? "Ngưng hoạt động: nhân viên không đăng nhập được nữa, lịch sử thao tác vẫn giữ nguyên"
+                                : "Cho tài khoản hoạt động trở lại"}
+                        >
+                            {isActive ? "Ngưng" : "Bật lại"}
+                        </button>
+                    </div>
+                );
+            },
         },
     ];
 
@@ -165,6 +224,34 @@ export default function EmployeesPage() {
                     <button type="button" onClick={openCreateModal} className="rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700">+ Thêm nhân viên</button>
                 </div>
                 {error && <div className="text-sm text-red-600">{error}</div>}
+                {resetInfo && (
+                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
+                        <p className="font-semibold">Đã cấp mã đặt lại mật khẩu cho {resetInfo.name}</p>
+                        <p className="mt-1 text-xs">
+                            Gửi mã này cho nhân viên ({resetInfo.email}) để họ tự đặt mật khẩu mới. Mã chỉ dùng được
+                            một lần và sẽ hết hạn sau ít phút — bạn không xem được mật khẩu của nhân viên, và cũng không cần biết.
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-center gap-2">
+                            <code className="select-all break-all rounded border border-blue-300 bg-white px-2 py-1 font-mono text-xs">
+                                {resetInfo.token}
+                            </code>
+                            <button
+                                type="button"
+                                onClick={() => void navigator.clipboard?.writeText(resetInfo.token)}
+                                className="rounded-md border border-blue-300 bg-white px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100"
+                            >
+                                Sao chép
+                            </button>
+                            <button
+                                type="button"
+                                onClick={() => setResetInfo(null)}
+                                className="rounded-md border border-blue-300 bg-white px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100"
+                            >
+                                Đóng
+                            </button>
+                        </div>
+                    </div>
+                )}
                 <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
                     <input type="text" placeholder="Tìm theo tên, email hoặc mã nhân viên..." className="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-pink-500 outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>

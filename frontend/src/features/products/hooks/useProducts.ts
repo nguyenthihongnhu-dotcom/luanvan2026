@@ -33,15 +33,13 @@ export const calculateStatus = (stock: number, minStock: number): ProductItem["s
     return "IN_STOCK";
 };
 
+// Danh mục chỉ khai báo sản phẩm: tồn, vị trí và hạn dùng thuộc về phiếu nhập
+// kho và lô hàng nên không nằm trong form này.
 const initialFormState = {
     sku: "",
     name: "",
     category: "",
-    stock: "",
     minStock: "",
-    expiryDate: "",
-    warehouseId: "",
-    locationId: "",
 };
 
 const fallbackProducts: ProductItem[] = [];
@@ -106,18 +104,15 @@ export function useProducts() {
     }, [categories, products]);
 
     const handleProductInputChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-        const { name, value } = e.target;
-        if (name === "warehouseId") {
-            setFormData((prev) => ({ ...prev, warehouseId: value, locationId: "" }));
-            return;
-        }
         handleInputChange(e);
     };
 
     const handleSubmit = async (e: FormEvent) => {
         e.preventDefault();
 
-        const stockNum = parseInt(formData.stock) || 0;
+        // Sản phẩm mới bắt đầu ở 0; khi sửa thì giữ nguyên tồn đang có, form này
+        // không phải nơi đổi số lượng.
+        const stockNum = editingProduct?.stock ?? 0;
         const minStockNum = parseInt(formData.minStock) || 0;
         const productData: ProductItem = {
             id: editingProduct?.id ?? 0,
@@ -126,9 +121,9 @@ export function useProducts() {
             category: formData.category,
             stock: stockNum,
             minStock: minStockNum,
-            expiryDate: formData.expiryDate,
-            warehouseId: formData.warehouseId,
-            locationId: formData.locationId,
+            expiryDate: editingProduct?.expiryDate ?? "",
+            warehouseId: editingProduct?.warehouseId ?? "",
+            locationId: editingProduct?.locationId ?? "",
             locations: editingProduct?.locations ?? "",
             status: calculateStatus(stockNum, minStockNum),
             // Form sản phẩm hiện chưa cho chỉnh hai cờ này, giữ nguyên giá trị cũ khi sửa.
@@ -154,11 +149,7 @@ export function useProducts() {
             sku: product.sku,
             name: getProductNameLabel(product.name),
             category: getProductCategoryLabel(product.category),
-            stock: product.stock.toString(),
             minStock: product.minStock?.toString() || "",
-            expiryDate: product.expiryDate || "",
-            warehouseId: product.warehouseId || "",
-            locationId: product.locationId || "",
         });
         setShowModal(true);
     };

@@ -1,3 +1,27 @@
+/**
+ * StockPage.tsx - Giao diện Quản lý Tồn kho (/stock)
+ * 
+ * PHÂN HỆ THÔNG BÁO (NOTIFICATIONS):
+ * 1. Warehouse Context Badge (màu hồng): Thông báo kho hiện tại đang chọn tra cứu.
+ * 2. Loading State Feedback: Nút bấm "Đang tải" / "Đang xem" & hiệu ứng AG-Grid skeleton.
+ * 3. Allocation Results: Bảng viền xanh hiển thị vị trí/lô được phân bổ xuất hoặc "Không có tồn khả dụng".
+ * 4. Header Bell Icon: Thông báo sự kiện mới toàn hệ thống (phiếu mới, yêu cầu duyệt...).
+ * 
+ * PHÂN HỆ CẢNH BÁO (WARNINGS & ALERTS):
+ * 1. Near-Expiry Warning Table: Cảnh báo danh sách lô hàng cận date (cột "Còn lại" x ngày) để ưu tiên xuất FEFO.
+ * 2. Shortage Warning Badge (màu đỏ): Cảnh báo "Không đủ tồn" khi số lượng cần xuất > khả dụng.
+ * 3. Error Banner Alert (khung đỏ): Cảnh báo lỗi thiếu dữ liệu, sai định dạng hoặc lỗi HTTP Backend.
+ * 
+ * Ý NGHĨA CÁC FIELD DỮ LIỆU TỒN KHO:
+ * - quantity (Tồn): Tổng số lượng vật lý thực tế đang nằm tại vị trí kệ/ô trong kho.
+ * - reserved_quantity (Đã giữ): Số lượng hàng đã được giữ chỗ cho các đơn hàng/phiếu xuất chưa hoàn tất.
+ * - available_quantity (Khả dụng): Số lượng thực tế rảnh rỗi có thể tiếp tục bán hoặc phân bổ (Khả dụng = Tồn - Đã giữ).
+ * 
+ * API CLIENT SERVICE:
+ * - stockService.listCurrentStock: GET /stock/current
+ * - stockService.listNearExpiryStock: GET /stock/near-expiry
+ * - stockService.previewAllocation: GET /stock/allocation
+ */
 import { useEffect, useMemo, useState } from "react";
 import type { ColDef } from "ag-grid-community";
 import DashboardLayout from "@/layouts/dashboard/DashboardLayout";
@@ -288,33 +312,64 @@ export default function StockPage() {
                         <button type="button" onClick={() => setAllocationPreview(null)} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Xóa preview</button>
                     </div>
                     {allocationPreview && (
-                        <div className="mt-4 overflow-x-auto rounded-lg border border-green-100">
-                            <table className="min-w-full text-left text-xs">
-                                <thead className="bg-green-50 text-green-900">
-                                    <tr>
-                                        <th className="px-3 py-2 font-semibold">Vị trí</th>
-                                        <th className="px-3 py-2 font-semibold">Batch ID</th>
-                                        <th className="px-3 py-2 font-semibold">Lô</th>
-                                        <th className="px-3 py-2 font-semibold">Hạn sử dụng</th>
-                                        <th className="px-3 py-2 font-semibold">Ngày nhập</th>
-                                        <th className="px-3 py-2 text-right font-semibold">Số lượng</th>
-                                    </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-100 text-gray-700">
-                                    {allocationPreview.items.length === 0 ? (
-                                        <tr><td colSpan={6} className="px-3 py-4 text-center text-gray-500">Không có tồn khả dụng.</td></tr>
-                                    ) : allocationPreview.items.map((item) => (
-                                        <tr key={item.stockLocationId}>
-                                            <td className="px-3 py-2 font-semibold text-gray-900">{item.locationCode}</td>
-                                            <td className="px-3 py-2">{item.batchId ?? "Không có"}</td>
-                                            <td className="px-3 py-2">{item.lotNumber ?? "Không có"}</td>
-                                            <td className="px-3 py-2">{formatDate(item.expiryDate)}</td>
-                                            <td className="px-3 py-2">{formatDate(item.receivedDate)}</td>
-                                            <td className="px-3 py-2 text-right font-semibold">{formatNumber(item.quantity)}</td>
+                        <div className="mt-4 space-y-3">
+                            {allocationShortage ? (
+                                <div className="rounded-md border border-red-200 bg-red-50 p-3 text-xs text-red-800">
+                                    <div className="font-semibold text-red-900 mb-1">⚠️ CẢNH BÁO THIẾU HỤT TỒN KHO:</div>
+                                    <p>
+                                        Yêu cầu xuất <strong>{formatNumber(allocationPreview.requestedQuantity)}</strong> sản phẩm, nhưng tổng tồn khả dụng trong kho chỉ có <strong>{formatNumber(allocationPreview.allocatedQuantity)}</strong> sản phẩm.
+                                        Còn thiếu <strong className="text-red-700">{formatNumber(allocationPreview.requestedQuantity - allocationPreview.allocatedQuantity)}</strong> sản phẩm.
+                                    </p>
+                                    {allocationPreview.items.length > 0 && (
+                                        <div className="mt-2 pt-2 border-t border-red-200 text-red-900">
+                                            <strong>Chi tiết số lượng tại từng vị trí:</strong>
+                                            <ul className="mt-1 list-disc pl-4 space-y-0.5">
+                                                {allocationPreview.items.map((item) => (
+                                                    <li key={item.stockLocationId}>
+                                                        Vị trí <strong>{item.locationCode}</strong>: chỉ có <strong>{formatNumber(item.quantity)}</strong> sản phẩm khả dụng {item.lotNumber ? `(Lô: ${item.lotNumber})` : ""}
+                                                    </li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <div className="rounded-md border border-green-200 bg-green-50 p-3 text-xs text-green-800">
+                                    <div className="font-semibold text-green-900 mb-1">📢 THÔNG BÁO PHÂN BỔ ĐỦ SỐ LƯỢNG:</div>
+                                    <p>
+                                        Đã tìm thấy đủ <strong>{formatNumber(allocationPreview.requestedQuantity)}</strong> sản phẩm từ <strong>{allocationPreview.items.length}</strong> vị trí trong kho theo chiến lược <strong>{allocationPreview.strategy}</strong>.
+                                    </p>
+                                </div>
+                            )}
+
+                            <div className="overflow-x-auto rounded-lg border border-green-100">
+                                <table className="min-w-full text-left text-xs">
+                                    <thead className="bg-green-50 text-green-900">
+                                        <tr>
+                                            <th className="px-3 py-2 font-semibold">Vị trí</th>
+                                            <th className="px-3 py-2 font-semibold">Batch ID</th>
+                                            <th className="px-3 py-2 font-semibold">Lô</th>
+                                            <th className="px-3 py-2 font-semibold">Hạn sử dụng</th>
+                                            <th className="px-3 py-2 font-semibold">Ngày nhập</th>
+                                            <th className="px-3 py-2 text-right font-semibold">Số lượng khả dụng trích xuất</th>
                                         </tr>
-                                    ))}
-                                </tbody>
-                            </table>
+                                    </thead>
+                                    <tbody className="divide-y divide-gray-100 text-gray-700">
+                                        {allocationPreview.items.length === 0 ? (
+                                            <tr><td colSpan={6} className="px-3 py-4 text-center text-gray-500">Không có tồn khả dụng.</td></tr>
+                                        ) : allocationPreview.items.map((item) => (
+                                            <tr key={item.stockLocationId}>
+                                                <td className="px-3 py-2 font-semibold text-gray-900">{item.locationCode}</td>
+                                                <td className="px-3 py-2">{item.batchId ?? "Không có"}</td>
+                                                <td className="px-3 py-2">{item.lotNumber ?? "Không có"}</td>
+                                                <td className="px-3 py-2">{formatDate(item.expiryDate)}</td>
+                                                <td className="px-3 py-2">{formatDate(item.receivedDate)}</td>
+                                                <td className="px-3 py-2 text-right font-semibold text-green-700">{formatNumber(item.quantity)}</td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
                         </div>
                     )}
                 </div>

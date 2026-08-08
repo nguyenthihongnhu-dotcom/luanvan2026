@@ -10,6 +10,39 @@ function permissionsOf(role: AuthorizationRole): string[] {
     return role.permissions ? role.permissions.split(',').filter(Boolean) : [];
 }
 
+/**
+ * Tên nhóm quyền và tên vai trò hiển thị bằng tiếng Việt. Mã (`module`, `code`)
+ * giữ nguyên tiếng Anh vì backend dùng chúng làm khóa trong requirePermission().
+ */
+const MODULE_LABELS: Record<string, string> = {
+    alerts: 'Cảnh báo tồn kho',
+    auth: 'Tài khoản nhân viên',
+    authorization: 'Phân quyền',
+    goods_issues: 'Phiếu xuất kho',
+    goods_receipts: 'Phiếu nhập kho',
+    notifications: 'Thông báo',
+    settings: 'Tham số hệ thống',
+    stock_adjustments: 'Phiếu điều chỉnh tồn',
+    stock_counts: 'Phiếu kiểm kê',
+    stock_transfers: 'Phiếu chuyển kho',
+    warehouses: 'Kho hàng',
+};
+
+const ROLE_LABELS: Record<string, string> = {
+    ADMIN: 'Quản trị viên',
+    WAREHOUSE_MANAGER: 'Quản lý kho',
+    STAFF: 'Nhân viên kho',
+    AUDITOR: 'Kiểm soát viên',
+};
+
+function moduleLabel(moduleName: string): string {
+    return MODULE_LABELS[moduleName] ?? moduleName;
+}
+
+function roleLabel(code: string, fallback: string): string {
+    return ROLE_LABELS[code] ?? fallback;
+}
+
 export default function AuthorizationPage() {
     const [roles, setRoles] = useState<AuthorizationRole[]>([]);
     const [allPermissions, setAllPermissions] = useState<PermissionItem[]>([]);
@@ -130,7 +163,7 @@ export default function AuthorizationPage() {
 
     const columns: ColumnProps<AuthorizationRole>[] = [
         { key: 'code', title: 'Mã vai trò', className: 'font-semibold text-gray-900' },
-        { key: 'name', title: 'Tên vai trò' },
+        { key: 'name', title: 'Tên vai trò', render: (value, record) => roleLabel(record.code, String(value ?? '')) },
         { key: 'description', title: 'Mô tả', render: (value) => String(value || '-') },
         { key: 'is_system', title: 'Loại', render: (value) => value ? 'Hệ thống' : 'Tùy chỉnh' },
         {
@@ -251,7 +284,7 @@ export default function AuthorizationPage() {
                                             <div key={moduleName} className="rounded-md border border-gray-200 bg-gray-50/50 p-3">
                                                 <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
                                                     <span className="text-xs font-bold uppercase tracking-wider text-pink-700">
-                                                        Module: {moduleName}
+                                                        {moduleLabel(moduleName)}
                                                     </span>
                                                     <button
                                                         type="button"
