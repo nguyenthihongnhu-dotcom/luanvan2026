@@ -29,6 +29,9 @@ import DataGridLayout from "@/shared/ui/DataGrid/DataGridLayout";
 import { warehouseService } from "@/features/warehouses/services/warehouseService";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import { stockService } from "@/features/stock/services/stockService";
+import SkuPicker from "@/features/stock/components/SkuPicker";
+import { productService } from "@/features/products/services/productService";
+import type { ProductItem } from "@/features/products/hooks/useProducts";
 import type { CurrentStockItem, NearExpiryStockItem } from "@/features/stock/services/stockService";
 import type { AllocationPreviewResult, AllocationStrategy } from "@/features/transactions/services/transactionService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
@@ -63,6 +66,7 @@ export default function StockPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [isPreviewing, setIsPreviewing] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [products, setProducts] = useState<ProductItem[]>([]);
 
     const selectedWarehouse = useMemo(
         () => warehouses.find((warehouse) => String(warehouse.id) === selectedWarehouseId),
@@ -101,8 +105,12 @@ export default function StockPage() {
             setIsLoading(true);
             setError(null);
             try {
-                const warehouseRows = await warehouseService.listWarehouses();
+                const [warehouseRows, productRows] = await Promise.all([
+                    warehouseService.listWarehouses(),
+                    productService.listProducts().catch(() => [] as ProductItem[]),
+                ]);
                 if (!isMounted) return;
+                setProducts(productRows);
                 const defaultWarehouseId = warehouseRows[0] ? String(warehouseRows[0].id) : "";
                 setWarehouses(warehouseRows);
                 setSelectedWarehouseId(defaultWarehouseId);
@@ -138,7 +146,7 @@ export default function StockPage() {
         }
 
         if (!Number.isFinite(variantId) || variantId <= 0 || !Number.isFinite(quantity) || quantity <= 0) {
-            setError("Nhập Variant ID và số lượng hợp lệ trước khi xem phân bổ.");
+            setError("Chọn mã SKU và nhập số lượng hợp lệ trước khi xem phân bổ.");
             return;
         }
 
@@ -261,6 +269,25 @@ export default function StockPage() {
 
     const allocationShortage = allocationPreview ? allocationPreview.allocatedQuantity < allocationPreview.requestedQuantity : false;
 
+    // Tồn khả dụng của SKU đang chọn trong kho đang xem, tính từ bảng tồn đã tải sẵn.
+    // Nhờ vậy cảnh báo vượt tồn hiện ngay lúc gõ, không phải đợi bấm "Xem phân bổ"
+    // rồi mới biết là nhập quá.
+    const availableForSelected = useMemo(() => {
+        if (!productVariantId) return null;
+        const rows = currentStock.filter((row) => String(row.product_variant_id) === productVariantId);
+        if (rows.length === 0) return 0;
+        return rows.reduce((sum, row) => sum + toNumber(row.available_quantity), 0);
+    }, [currentStock, productVariantId]);
+
+    const requestedQuantity = Number(allocationQuantity);
+    const exceedsAvailable =
+        availableForSelected !== null &&
+        Number.isFinite(requestedQuantity) &&
+        requestedQuantity > 0 &&
+        requestedQuantity > availableForSelected;
+
+    const selectedProduct = products.find((product) => String(product.id) === productVariantId) ?? null;
+
     return (
         <DashboardLayout>
             <div className="flex flex-col space-y-4">
@@ -283,15 +310,19 @@ export default function StockPage() {
                                 {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouseLabel(warehouse)}</option>)}
                             </select>
                         </div>
-                        <div>
-                            <label className="mb-1 block text-xs font-semibold uppercase text-gray-500">Variant ID</label>
-                            <input type="number" min="1" value={productVariantId} onChange={(event) => setProductVariantId(event.target.value)} placeholder="Lọc theo variant" className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
-                        </div>
+                        <SkuPicker
+                            id="stock-filter-sku"
+                            label="Mã SKU"
+                            products={products}
+                            value={productVariantId}
+                            onChange={setProductVariantId}
+                            placeholder="Gõ mã SKU để lọc"
+                        />
                         <div className="flex items-end">
                             <button type="button" onClick={() => void loadStock()} disabled={isLoading} className="w-full rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700 disabled:opacity-60">{isLoading ? "Đang tải" : "Lọc tồn kho"}</button>
                         </div>
                         <div className="flex items-end">
-                            <button type="button" onClick={() => { setProductVariantId(""); setAllocationPreview(null); void loadStock(selectedWarehouseId, ""); }} className="w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Xóa lọc variant</button>
+                            <button type="button" onClick={() => { setProductVariantId(""); setAllocationPreview(null); void loadStock(selectedWarehouseId, ""); }} className="w-full rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Xóa lọc SKU</button>
                         </div>
                     </div>
                 </div>
@@ -301,16 +332,55 @@ export default function StockPage() {
                         <h2 className="text-base font-semibold text-gray-800">Preview phân bổ xuất kho</h2>
                         {allocationShortage && <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">Không đủ tồn</span>}
                     </div>
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
-                        <input type="number" min="1" value={productVariantId} onChange={(event) => setProductVariantId(event.target.value)} placeholder="Variant ID" className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
-                        <input type="number" min="0.001" step="0.001" value={allocationQuantity} onChange={(event) => setAllocationQuantity(event.target.value)} placeholder="Số lượng cần xuất" className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                    <div className="grid grid-cols-1 items-start gap-3 md:grid-cols-5">
+                        <SkuPicker
+                            id="allocation-sku"
+                            products={products}
+                            value={productVariantId}
+                            onChange={setProductVariantId}
+                            placeholder="Mã SKU cần xuất"
+                        />
+                        <div>
+                            <input
+                                type="number"
+                                min="0.001"
+                                step="0.001"
+                                value={allocationQuantity}
+                                onChange={(event) => setAllocationQuantity(event.target.value)}
+                                placeholder="Số lượng cần xuất"
+                                aria-invalid={exceedsAvailable}
+                                className={`w-full rounded-md border px-3 py-2 text-sm outline-none focus:ring-2 ${exceedsAvailable
+                                    ? "border-red-400 bg-red-50 text-red-800 focus:ring-red-300"
+                                    : "border-gray-300 focus:ring-pink-500"}`}
+                            />
+                            {availableForSelected !== null && !exceedsAvailable && (
+                                <p className="mt-1 text-xs text-gray-500">
+                                    Khả dụng trong kho: <strong>{formatNumber(availableForSelected)}</strong>
+                                </p>
+                            )}
+                        </div>
                         <select value={allocationStrategy} onChange={(event) => setAllocationStrategy(event.target.value as AllocationStrategy)} className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
                             <option value="FEFO">FEFO</option>
                             <option value="FIFO">FIFO</option>
                         </select>
-                        <button type="button" onClick={() => void handlePreviewAllocation()} disabled={isPreviewing} className="rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-60">{isPreviewing ? "Đang xem" : "Xem phân bổ"}</button>
-                        <button type="button" onClick={() => setAllocationPreview(null)} className="rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Xóa preview</button>
+                        <button type="button" onClick={() => void handlePreviewAllocation()} disabled={isPreviewing || exceedsAvailable} className="h-[42px] rounded-md bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:cursor-not-allowed disabled:opacity-60">{isPreviewing ? "Đang xem" : "Xem phân bổ"}</button>
+                        <button type="button" onClick={() => setAllocationPreview(null)} className="h-[42px] rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Xóa preview</button>
                     </div>
+
+                    {/* Báo vượt tồn ngay lúc gõ, không bắt bấm rồi mới biết. */}
+                    {exceedsAvailable && availableForSelected !== null && (
+                        <div className="mt-3 rounded-md border border-red-200 bg-red-50 p-3 text-sm text-red-800">
+                            <p className="font-semibold text-red-900">Số lượng nhập vượt quá tồn khả dụng</p>
+                            <p className="mt-1 text-xs">
+                                {selectedProduct ? <><strong>{selectedProduct.sku}</strong> — </> : null}
+                                kho {selectedWarehouse ? warehouseLabel(selectedWarehouse) : "đang chọn"} chỉ còn{" "}
+                                <strong>{formatNumber(availableForSelected)}</strong> khả dụng, bạn đang yêu cầu{" "}
+                                <strong>{formatNumber(requestedQuantity)}</strong> — thừa{" "}
+                                <strong>{formatNumber(requestedQuantity - availableForSelected)}</strong>.
+                                {availableForSelected === 0 && " Sản phẩm này chưa có tồn khả dụng trong kho đang chọn."}
+                            </p>
+                        </div>
+                    )}
                     {allocationPreview && (
                         <div className="mt-4 space-y-3">
                             {allocationShortage ? (
