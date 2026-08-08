@@ -65,14 +65,24 @@ Quản lý danh mục hàng hóa và sản phẩm (SKU). Mỗi sản phẩm có 
 
 | Thao tác | Mô tả |
 |---|---|
-| Xem danh sách | Hiển thị tên, SKU, danh mục, vị trí lưu trữ, tồn kho |
-| Thêm sản phẩm | Nhấn `+ Thêm sản phẩm`, điền thông tin và chọn kho/vị trí |
-| Sửa | Cập nhật thông tin sản phẩm |
-| Xóa | Xóa sản phẩm khỏi danh mục |
+| Xem danh sách | Hiển thị SKU, tên, danh mục, tồn hiện tại, hạn dùng gần nhất, vị trí đang chứa hàng |
+| Thêm sản phẩm | Nhấn `+ Thêm sản phẩm`, khai báo **SKU, tên, danh mục, tồn tối thiểu** |
+| Sửa | Cập nhật SKU, tên, danh mục, tồn tối thiểu |
+| Xóa | Chỉ xóa được sản phẩm chưa từng xuất hiện trên chứng từ nào và không còn tồn |
 
 ### Lưu ý
 
-- Sản phẩm cần gắn với ít nhất 1 **vị trí kho** để tham gia nhập/xuất.
+- **Sản phẩm mới luôn bắt đầu với tồn kho 0.** Màn danh mục chỉ *khai báo* sản phẩm;
+  số lượng chỉ tăng khi có **phiếu nhập kho được xác nhận**. Nhờ vậy mọi thay đổi tồn
+  đều truy ngược được về một chứng từ, không có đường nào cộng tồn lặng lẽ.
+- **Không khai vị trí và hạn dùng ở đây.** Vị trí thuộc về dòng hàng của phiếu nhập,
+  hạn dùng thuộc về lô hàng — mỗi lô một hạn khác nhau.
+- Cột **Hạn dùng gần nhất** là hạn của lô sắp hết hạn sớm nhất còn trong kho, không
+  phải một hạn cố định của sản phẩm.
+- **Không xóa được sản phẩm đã có phiếu.** Hệ thống trả lỗi `PRODUCT_HAS_DOCUMENTS`
+  nếu sản phẩm được tham chiếu ở bất kỳ dòng phiếu nhập/xuất/điều chỉnh nào, và
+  `PRODUCT_HAS_STOCK` nếu còn tồn. Xóa đi thì các phiếu cũ mất đối tượng tham chiếu
+  và nhật ký kho không dựng lại được.
 - Mỗi biến thể sản phẩm có **SKU** riêng biệt dùng trong tất cả chứng từ.
 
 ---
@@ -97,11 +107,23 @@ Kho (Warehouse)
 
 | Chức năng | Mô tả |
 |---|---|
-| Sơ đồ mặt bằng | Hiển thị grid khu vực kho dạng bản đồ 2D |
-| Thêm khu | Thêm khu mới vào kho, đặt tên và vị trí trên grid |
+| Sơ đồ mặt bằng | Hiển thị mặt bằng kho dạng bản đồ 2D |
+| Thêm khu | Thêm khu mới vào kho, đặt số kệ và số tầng mỗi kệ |
+| Đặt biệt danh khu | Nút `Đặt tên` trên thẻ khu — đặt tên gọi quen như "Khu sữa bột" |
+| Kéo thả khu | Giữ chuột kéo khu từ sidebar thả vào mặt bằng; đang kéo bấm `F` xoay ngang/dọc, `Esc` hủy |
+| Xóa khu | Nút `Xóa` trên thẻ khu; chỉ xóa được khi trong khu **không còn vị trí nào có hàng** |
 | Thêm kệ | Thêm kệ vào khu, chỉ định số tầng |
 | Xem vị trí | Click vào ô kệ trên sơ đồ để xem chi tiết vị trí và lịch sử tồn |
 | Lịch sử vị trí | Mỗi vị trí hiển thị lịch sử biến động tồn |
+
+### Cách đọc mặt bằng
+
+- **Khoảng trắng là lối đi**, không phải ô trống chờ đặt khu. Lưới ô nét đứt chỉ hiện
+  khi bạn đang kéo một khu — đúng lúc cần ngắm chỗ thả.
+- Mỗi khu hiện **mã khu** (A, B, C) in đậm; nếu đã đặt biệt danh thì biệt danh nằm ngay dưới.
+- Khu hết chỗ được phủ vệt gạch chéo đỏ và ghi `ĐẦY`.
+- **Mã khu không đổi được** vì nó nằm trong mã của từng ô lưu trữ
+  (`HCM01-A-A01-01` = Kho HCM01, khu A, kệ A01, tầng 01). Muốn gọi tên khác thì đặt biệt danh.
 
 ### Trạng thái vị trí
 
@@ -127,14 +149,31 @@ Xem danh sách lô hàng được tạo tự động khi **Xác nhận phiếu n
 | Sản phẩm | SKU + Tên sản phẩm |
 | Nhà cung cấp | Tên nhà cung cấp |
 | Số lượng | Số lượng của lô |
-| Hạn sử dụng | Ngày hết hạn (nếu có) |
-| Ngày nhập | Ngày ghi nhận lô vào kho |
+| Ngày sản xuất | Ngày nhà sản xuất đóng lô, in trên bao bì |
+| Ngày nhập kho | Ngày lô được nhập vào kho — dùng để xuất theo FIFO |
+| Hạn sử dụng | Ngày hết hạn — dùng để xuất theo FEFO và cảnh báo cận hạn |
 
 ### Lưu ý
 
 - Lô hàng **không tự tạo thủ công** — tạo bằng cách **Xác nhận phiếu nhập**.
 - 1 đơn hàng (phiếu nhập) có thể nhập **nhiều lần**, mỗi lần tạo 1 lô riêng.
 - Hệ thống xuất kho theo nguyên tắc **FEFO** (First Expired, First Out).
+
+### Ràng buộc khi nhập hàng theo lô
+
+Khi xác nhận phiếu nhập, hệ thống từ chối nếu:
+
+| Lỗi | Nguyên nhân |
+|---|---|
+| `BATCH_REQUIRED` | Sản phẩm bật theo dõi lô nhưng dòng hàng chưa chọn lô |
+| `EXPIRY_DATE_REQUIRED` | Sản phẩm bật theo dõi hạn nhưng lô chưa có hạn sử dụng |
+| `BATCH_VARIANT_MISMATCH` | Lô gắn vào dòng hàng **thuộc sản phẩm khác** |
+| `BATCH_EXPIRED` | Lô đã quá hạn sử dụng |
+| `BATCH_NOT_RECEIVABLE` | Lô đang ở trạng thái `EXPIRED` hoặc `BLOCKED` |
+
+> Kiểm tra lô đúng sản phẩm là bắt buộc: khóa ngoại chỉ bảo đảm lô **tồn tại**, không
+> bảo đảm lô **thuộc đúng sản phẩm**. Gắn nhầm thì tồn kho mang hạn dùng của sản phẩm
+> khác, kéo theo FEFO và cảnh báo cận hạn chạy sai.
 
 ---
 
@@ -149,13 +188,26 @@ Xem số lượng tồn hiện tại của từng sản phẩm theo vị trí kh
 | Chức năng | Mô tả |
 |---|---|
 | Lọc theo kho | Chọn kho để xem tồn kho của kho đó |
-| Lọc theo SKU | Tìm kiếm tồn kho của 1 sản phẩm cụ thể |
-| Phân bổ xuất kho | Nhập SKU và số lượng để xem hệ thống sẽ lấy hàng từ vị trí nào (FEFO) |
+| Lọc theo SKU | Gõ mã SKU, hệ thống **gợi ý** theo mã và tên sản phẩm |
+| Phân bổ xuất kho | Chọn SKU và số lượng để xem hệ thống sẽ lấy hàng từ lô/vị trí nào (FEFO hoặc FIFO) |
+
+### Ý nghĩa ba cột số lượng
+
+| Cột | Ý nghĩa |
+|---|---|
+| **Tồn** | Số lượng vật lý thực tế đang nằm tại vị trí đó |
+| **Đã giữ** | Số lượng đã giữ chỗ cho phiếu xuất chưa hoàn tất |
+| **Khả dụng** | Số còn có thể xuất được — bằng *Tồn* trừ *Đã giữ* |
 
 ### Lưu ý
 
 - Tồn kho thay đổi **ngay sau khi** xác nhận phiếu nhập/xuất/chuyển kho/điều chỉnh.
-- Cảnh báo **"Không đủ tồn"** xuất hiện khi số lượng muốn phân bổ vượt quá available.
+- Ô số lượng **chuyển đỏ ngay khi gõ quá** tồn khả dụng, kèm câu nói rõ kho còn bao
+  nhiêu và đang thừa bao nhiêu; nút `Xem phân bổ` bị khóa cho tới khi số hợp lệ.
+- Cột **Lô** hiện kèm id lô (`#8 - LOT-MOONY-M-202607`) vì số lô của nhà sản xuất có
+  thể trùng nhau giữa các lần nhập.
+- **FEFO** ưu tiên lô hết hạn sớm nhất, **FIFO** ưu tiên lô nhập vào sớm nhất. Lô đã
+  hết hạn hoặc bị khóa không được đưa vào phân bổ.
 
 ---
 
@@ -192,9 +244,18 @@ Tạo (DRAFT)  →  Chờ duyệt (PENDING_APPROVAL)  →  Duyệt / Từ chối
 
 ### Tạo phiếu điều chỉnh
 
-1. Chọn loại **Điều chỉnh**, nhập vị trí, SKU và số lượng điều chỉnh.
-2. Ghi rõ lý do. Phiếu vào trạng thái **Chờ duyệt**.
-3. MANAGER/ADMIN phê duyệt để áp dụng.
+1. Chọn loại **Điều chỉnh** và chọn kho.
+2. Chọn sản phẩm, rồi chọn **kiểu điều chỉnh**:
+   - **Sửa số lượng** — hàng vẫn ở chỗ cũ, chỉ đổi số
+   - **Chuyển vị trí** — chuyển nguyên số lượng sang ô khác
+   - **Cả hai** — vừa chuyển chỗ vừa đổi số
+3. Chọn nơi đang có hàng từ danh sách tồn thực có (hiện sẵn tồn từng ô và từng lô).
+   Thanh tóm tắt cho biết tồn hiện tại và tồn **sau điều chỉnh** sẽ là bao nhiêu.
+4. Ghi rõ lý do rồi lưu. Phiếu tạo tay vào trạng thái **Nháp**.
+5. Người có quyền `stock_adjustments:approve` bấm **Duyệt phiếu** thì tồn mới đổi.
+
+> Phiếu điều chỉnh **chưa duyệt thì không tác động gì tới tồn kho**. Duyệt được cả
+> phiếu ở trạng thái Nháp lẫn Chờ duyệt.
 
 ### Trạng thái chứng từ
 
@@ -274,16 +335,29 @@ Thực hiện kiểm kê (đếm thực tế) tồn kho và đối chiếu với
 ### Quy trình kiểm kê
 
 ```
-Tạo phiếu (DRAFT)
+Tạo phiếu (DRAFT) — hệ thống chốt số liệu tồn tại thời điểm tạo
     ↓
 Bắt đầu kiểm kê (IN_PROGRESS) — nhân viên đếm thực tế từng dòng
     ↓
-Nộp kiểm kê (SUBMITTED) — gửi kết quả lên cho quản lý
+Gửi duyệt (SUBMITTED) — khóa lại, không sửa số được nữa
+    ↓                          ↘ Trả về sửa → quay lại IN_PROGRESS
+Duyệt (APPROVED) — sinh PHIẾU ĐIỀU CHỈNH cho các dòng lệch
     ↓
-Duyệt (APPROVED) / Từ chối (REJECTED)
-    ↓
-Hoàn tất (COMPLETED) — tồn kho điều chỉnh theo số thực đếm
+Duyệt tiếp phiếu điều chỉnh đó thì TỒN KHO mới thay đổi
 ```
+
+> **Duyệt phiếu kiểm kê chưa trừ tồn.** Nó chỉ sinh ra một phiếu điều chỉnh ở trạng
+> thái *Chờ xử lý*. Phải vào **Chứng từ → Giao dịch** duyệt tiếp phiếu đó thì tồn mới
+> đổi. Sau khi duyệt kiểm kê, màn hình hiện luôn mã phiếu điều chỉnh vừa sinh kèm nút
+> đi thẳng tới đó.
+
+### Quy tắc sửa số đếm
+
+- **Chưa gửi duyệt** (đang IN_PROGRESS): sửa lại bao nhiêu lần cũng được, kể cả dòng
+  đã lưu. Dòng đã lưu được đánh dấu `✓ Đã đếm`, nút đổi thành `Lưu lại`.
+- **Đã gửi duyệt**: khóa, không nhập được nữa. Muốn sửa thì người duyệt bấm
+  **Trả về sửa** kèm lý do, phiếu quay lại *Đang kiểm kê* cho nhân viên đếm lại.
+- Ô **Lý do** chỉ mở khi dòng đó thực sự lệch; khớp số thì không cần giải thích.
 
 ### Cột THAO TÁC
 
@@ -291,8 +365,11 @@ Hoàn tất (COMPLETED) — tồn kho điều chỉnh theo số thực đếm
 |---|---|
 | Chi tiết | Luôn hiển thị — xem và nhập số lượng thực đếm |
 | Bắt đầu | Trạng thái DRAFT |
-| Nộp | Trạng thái IN_PROGRESS |
+| Gửi duyệt | Trạng thái IN_PROGRESS |
+| Trả về sửa | Trạng thái SUBMITTED — đưa phiếu về cho nhân viên đếm lại, bắt buộc nêu lý do |
 | Duyệt | Trạng thái SUBMITTED |
+
+Các nút này cũng nằm ngay trong màn **Chi tiết kiểm kê** nên không phải đóng ra đóng vào.
 
 ---
 
@@ -344,8 +421,23 @@ Quản lý tài khoản nhân viên trong hệ thống.
 | MANAGER | Duyệt chứng từ, xem báo cáo, quản lý nhân viên |
 | STAFF | Tạo chứng từ, nhập hàng, kiểm kê |
 
+### Cột THAO TÁC
+
+| Nút | Mô tả |
+|---|---|
+| Sửa | Cập nhật họ tên, email, số điện thoại, vai trò |
+| Đặt lại mật khẩu | Cấp một **mã dùng một lần** để nhân viên tự đặt mật khẩu mới |
+| Ngưng / Bật lại | Bật tắt tài khoản |
+
 ### Lưu ý
 
+- **Không xóa được tài khoản nhân viên.** Mọi phiếu nhập, xuất, điều chỉnh và dòng
+  `audit_logs` đều ghi ai tạo và ai duyệt; xóa tài khoản là nhật ký kho mất người
+  chịu trách nhiệm. Thay vào đó dùng **Ngưng hoạt động** — tài khoản không đăng nhập
+  được nữa nhưng toàn bộ lịch sử thao tác vẫn nguyên vẹn.
+- **Quản trị viên không xem và không đặt hộ mật khẩu.** Nút *Đặt lại mật khẩu* sinh
+  một mã dùng một lần, có hạn vài phút; đưa mã đó cho nhân viên để họ tự nhập mật
+  khẩu mới. Nhờ vậy không ai ngoài chính nhân viên biết mật khẩu của họ.
 - Đăng ký công khai luôn tạo tài khoản **STAFF**.
 - Để tạo tài khoản MANAGER/ADMIN, dùng chức năng **Thêm nhân viên** ở màn này.
 
@@ -367,9 +459,12 @@ Xem và cấu hình quyền cho từng vai trò. ADMIN có thể bật/tắt t�
 | `stock_transfers:confirm` | Xác nhận chuyển kho |
 | `stock_transfers:reverse` | Đảo phiếu chuyển kho |
 | `stock_adjustments:approve` | Duyệt phiếu điều chỉnh |
-| `stock_counts:approve` | Duyệt kiểm kê |
-| `users:create` / `users:delete` | Tạo / Xóa nhân viên |
+| `stock_counts:approve` | Duyệt kiểm kê, và trả phiếu về cho nhân viên đếm lại |
+| `users:create` / `users:update` | Thêm / Sửa nhân viên |
 | `settings:update` | Thay đổi cài đặt hệ thống |
+
+Tên quyền và tên nhóm hiển thị bằng tiếng Việt; phần mã (`stock_adjustments:approve`)
+giữ tiếng Anh vì backend dùng nó làm khóa kiểm tra quyền.
 
 ### Cách cập nhật
 

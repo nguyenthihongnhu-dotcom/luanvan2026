@@ -123,6 +123,19 @@ export function parseSyncLocationMatrix(
   return validateInput(syncLocationMatrixSchema, input);
 }
 
+const shelvesQuerySchema = z.object({
+  warehouseId: z.coerce.number().int().positive(),
+  zoneCode: z.string().trim().min(1).max(30),
+});
+
+/** Query của `GET /locations/shelves`: bắt buộc có kho và mã khu. */
+export function parseShelvesQuery(input: unknown): {
+  warehouseId: number;
+  zoneCode: string;
+} {
+  return validateInput(shelvesQuerySchema, input);
+}
+
 const renameZoneSchema = z.object({
   zoneId: z.coerce.number().int().positive(),
   name: z.string().trim().min(1).max(100),

@@ -143,8 +143,24 @@ export default function BatchesPage() {
         { key: "lot_number", title: "Số lô", className: "font-semibold text-gray-900" },
         { key: "product_variant_id", title: "Sản phẩm / Variant", render: (value) => variantMap.get(Number(value)) || `#${String(value)}` },
         { key: "supplier_id", title: "Nhà cung cấp", render: (value) => value ? (supplierMap.get(Number(value)) || `NCC #${String(value)}`) : "Không có" },
-        { key: "manufacture_date", title: "Ngày sản xuất", render: (value) => formatDate(value as string | null) },
-        { key: "received_date", title: "Ngày nhập", render: (value) => formatDate(value as string | null) },
+        {
+            key: "manufacture_date",
+            title: "Ngày sản xuất",
+            render: (value) => (
+                <span title="Ngày nhà sản xuất đóng lô hàng này, in trên bao bì">
+                    {formatDate(value as string | null)}
+                </span>
+            ),
+        },
+        {
+            key: "received_date",
+            title: "Ngày nhập kho",
+            render: (value) => (
+                <span title="Ngày lô hàng này được nhập vào kho, dùng để xuất theo FIFO">
+                    {formatDate(value as string | null)}
+                </span>
+            ),
+        },
         {
             key: "expiry_date", title: "Hạn sử dụng", render: (value) => (
                 <div>

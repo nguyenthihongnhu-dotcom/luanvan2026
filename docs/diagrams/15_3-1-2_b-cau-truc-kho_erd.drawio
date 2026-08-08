@@ -1,0 +1,145 @@
+<mxfile host="app.diagrams.net" type="device">
+  <diagram id="15_3-1-2_b-cau-truc-kho_erd" name="15_3-1-2_b-cau-truc-kho_erd">
+    <mxGraphModel dx="1200" dy="900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="640" pageHeight="980" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="warehouses" value="warehouses" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;columnLines=0;html=1;whiteSpace=wrap;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="40" width="250" height="126" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouses-r0" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouses">
+          <mxGeometry y="30" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouses-r0-c" value="id  (PK)  ·  bigint" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouses-r0">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouses-r1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouses">
+          <mxGeometry y="54" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouses-r1-c" value="code  ·  string" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouses-r1">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouses-r2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouses">
+          <mxGeometry y="78" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouses-r2-c" value="name  ·  string" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouses-r2">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouses-r3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouses">
+          <mxGeometry y="102" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouses-r3-c" value="status  ·  enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouses-r3">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_zones" value="warehouse_zones" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;columnLines=0;html=1;whiteSpace=wrap;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="40" y="276" width="250" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_zones-r0" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_zones">
+          <mxGeometry y="30" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_zones-r0-c" value="id  (PK)  ·  bigint" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_zones-r0">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_zones-r1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_zones">
+          <mxGeometry y="54" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_zones-r1-c" value="warehouse_id  (FK)  ·  bigint" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_zones-r1">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_zones-r2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_zones">
+          <mxGeometry y="78" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_zones-r2-c" value="code  ·  string" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_zones-r2">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_shelves" value="warehouse_shelves" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;columnLines=0;html=1;whiteSpace=wrap;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="195" y="488" width="250" height="102" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_shelves-r0" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_shelves">
+          <mxGeometry y="30" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_shelves-r0-c" value="id  (PK)  ·  bigint" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_shelves-r0">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_shelves-r1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_shelves">
+          <mxGeometry y="54" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_shelves-r1-c" value="zone_id  (FK)  ·  bigint" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_shelves-r1">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_shelves-r2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_shelves">
+          <mxGeometry y="78" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_shelves-r2-c" value="code  ·  string" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_shelves-r2">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations" value="warehouse_locations" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;columnLines=0;html=1;whiteSpace=wrap;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="195" y="700" width="250" height="150" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations-r0" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_locations">
+          <mxGeometry y="30" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations-r0-c" value="id  (PK)  ·  bigint" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_locations-r0">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations-r1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_locations">
+          <mxGeometry y="54" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations-r1-c" value="shelf_id  (FK)  ·  bigint" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_locations-r1">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations-r2" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_locations">
+          <mxGeometry y="78" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations-r2-c" value="code  ·  string" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_locations-r2">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations-r3" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_locations">
+          <mxGeometry y="102" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations-r3-c" value="qr_code_value  ·  string" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_locations-r3">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations-r4" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="warehouse_locations">
+          <mxGeometry y="126" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="warehouse_locations-r4-c" value="status  ·  enum" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="warehouse_locations-r4">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="user_warehouses" value="user_warehouses" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;columnLines=0;html=1;whiteSpace=wrap;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="350" y="276" width="250" height="78" as="geometry" />
+        </mxCell>
+        <mxCell id="user_warehouses-r0" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="user_warehouses">
+          <mxGeometry y="30" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="user_warehouses-r0-c" value="user_id  (FK)  ·  bigint" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="user_warehouses-r0">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="user_warehouses-r1" value="" style="shape=tableRow;horizontal=0;startSize=0;swimlaneHead=0;swimlaneBody=0;strokeColor=#000000;top=0;left=0;right=0;bottom=0;collapsible=0;dropTarget=0;fillColor=none;points=[[0,0.5],[1,0.5]];portConstraint=eastwest;" vertex="1" parent="user_warehouses">
+          <mxGeometry y="54" width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="user_warehouses-r1-c" value="warehouse_id  (FK)  ·  bigint" style="shape=partialRectangle;connectable=0;fillColor=none;top=0;left=0;bottom=0;right=0;align=left;spacingLeft=8;overflow=hidden;html=1;fontSize=11;fontStyle=0;fontColor=#000000;strokeColor=none;" vertex="1" parent="user_warehouses-r1">
+          <mxGeometry width="250" height="24" as="geometry" />
+        </mxCell>
+        <mxCell id="users" value="users" style="shape=table;startSize=30;container=1;collapsible=0;childLayout=tableLayout;fixedRows=1;rowLines=1;columnLines=0;html=1;whiteSpace=wrap;fillColor=#ffffff;strokeColor=#000000;fontColor=#000000;fontSize=12;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="350" y="40" width="250" height="54" as="geometry" />
+        </mxCell>
+        <mxCell id="rel0" value="warehouse_id" style="edgeStyle=entityRelationEdgeStyle;rounded=0;html=1;strokeColor=#000000;fontSize=11;fontColor=#000000;startArrow=ERmandOne;startFill=0;endArrow=ERzeroToMany;endFill=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="warehouses" target="warehouse_zones">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel1" value="zone_id" style="edgeStyle=entityRelationEdgeStyle;rounded=0;html=1;strokeColor=#000000;fontSize=11;fontColor=#000000;startArrow=ERmandOne;startFill=0;endArrow=ERzeroToMany;endFill=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="warehouse_zones" target="warehouse_shelves">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel2" value="shelf_id" style="edgeStyle=entityRelationEdgeStyle;rounded=0;html=1;strokeColor=#000000;fontSize=11;fontColor=#000000;startArrow=ERmandOne;startFill=0;endArrow=ERzeroToMany;endFill=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="warehouse_shelves" target="warehouse_locations">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel3" value="warehouse_id" style="edgeStyle=entityRelationEdgeStyle;rounded=0;html=1;strokeColor=#000000;fontSize=11;fontColor=#000000;startArrow=ERmandOne;startFill=0;endArrow=ERzeroToMany;endFill=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="warehouses" target="user_warehouses">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel4" value="user_id" style="edgeStyle=entityRelationEdgeStyle;rounded=0;html=1;strokeColor=#000000;fontSize=11;fontColor=#000000;startArrow=ERmandOne;startFill=0;endArrow=ERzeroToMany;endFill=0;exitX=0.5;exitY=1;entryX=0.5;entryY=0;" edge="1" parent="1" source="users" target="user_warehouses">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
