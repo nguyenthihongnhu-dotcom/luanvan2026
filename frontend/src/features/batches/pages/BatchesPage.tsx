@@ -139,40 +139,47 @@ export default function BatchesPage() {
     }, [batches]);
 
     const columns: ColumnProps<ProductBatch>[] = [
+        { key: "id", title: "ID", className: "font-semibold text-gray-900" },
         { key: "lot_number", title: "Số lô", className: "font-semibold text-gray-900" },
         { key: "product_variant_id", title: "Sản phẩm / Variant", render: (value) => variantMap.get(Number(value)) || `#${String(value)}` },
         { key: "supplier_id", title: "Nhà cung cấp", render: (value) => value ? (supplierMap.get(Number(value)) || `NCC #${String(value)}`) : "Không có" },
         { key: "manufacture_date", title: "Ngày sản xuất", render: (value) => formatDate(value as string | null) },
         { key: "received_date", title: "Ngày nhập", render: (value) => formatDate(value as string | null) },
-        { key: "expiry_date", title: "Hạn sử dụng", render: (value) => (
-            <div>
-                <div className="font-medium text-gray-900">{formatDate(value as string | null)}</div>
-                <div className="text-xs text-gray-500">{expiryLabel(value as string | null)}</div>
-            </div>
-        ) },
-        { key: "status", title: "Trạng thái", render: (value) => {
-            const status = value as BatchStatus;
-            return <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${statusClass(status)}`}>{statusLabel(status)}</span>;
-        } },
+        {
+            key: "expiry_date", title: "Hạn sử dụng", render: (value) => (
+                <div>
+                    <div className="font-medium text-gray-900">{formatDate(value as string | null)}</div>
+                    <div className="text-xs text-gray-500">{expiryLabel(value as string | null)}</div>
+                </div>
+            )
+        },
+        {
+            key: "status", title: "Trạng thái", render: (value) => {
+                const status = value as BatchStatus;
+                return <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${statusClass(status)}`}>{statusLabel(status)}</span>;
+            }
+        },
         { key: "notes", title: "Ghi chú", render: (value) => String(value || "-") },
-        { key: "id", title: "Thao tác", render: (_value, record) => (
-            <div className="flex gap-2">
-                <button
-                    type="button"
-                    onClick={() => { setEditingBatch(record); setIsModalOpen(true); }}
-                    className="rounded border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-600 hover:border-pink-300 hover:text-pink-600"
-                >
-                    Sửa
-                </button>
-                <button
-                    type="button"
-                    onClick={() => void handleDelete(record)}
-                    className="rounded border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-600 hover:border-red-300 hover:text-red-600"
-                >
-                    Xóa
-                </button>
-            </div>
-        ) },
+        {
+            key: "id", title: "Thao tác", render: (_value, record) => (
+                <div className="flex gap-2">
+                    <button
+                        type="button"
+                        onClick={() => { setEditingBatch(record); setIsModalOpen(true); }}
+                        className="rounded border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-600 hover:border-pink-300 hover:text-pink-600"
+                    >
+                        Sửa
+                    </button>
+                    <button
+                        type="button"
+                        onClick={() => void handleDelete(record)}
+                        className="rounded border border-gray-200 bg-white px-2 py-1 text-xs font-semibold text-gray-600 hover:border-red-300 hover:text-red-600"
+                    >
+                        Xóa
+                    </button>
+                </div>
+            )
+        },
     ];
 
     return (
