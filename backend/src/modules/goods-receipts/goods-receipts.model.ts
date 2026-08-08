@@ -34,6 +34,15 @@ export type GoodsReceiptItemRow = RowDataPacket & {
   requires_lot_tracking: 0 | 1;
   requires_expiry_tracking: 0 | 1;
   expiry_date: Date | null;
+  /** Sản phẩm mà lô thực sự thuộc về; null khi dòng hàng không gắn lô. */
+  batch_variant_id: number | null;
+  batch_status:
+    | 'ACTIVE'
+    | 'NEAR_EXPIRY'
+    | 'EXPIRED'
+    | 'BLOCKED'
+    | 'DEPLETED'
+    | null;
 };
 
 export type ConfirmGoodsReceiptInput = {

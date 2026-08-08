@@ -55,14 +55,10 @@ sequenceDiagram
     Repo->>DB: BEGIN TRANSACTION
     Repo->>DB: SELECT stock_adjustments FOR UPDATE
     DB-->>Repo: phiếu kèm status và created_by
-    alt Trạng thái không phải PENDING
+    alt Trạng thái không phải DRAFT hoặc PENDING
         Repo->>DB: ROLLBACK
         Repo-->>S: STOCK_ADJUSTMENT_NOT_APPROVABLE
         S-->>B: 409 STOCK_ADJUSTMENT_NOT_APPROVABLE
-    else Người duyệt trùng người tạo
-        Repo->>DB: ROLLBACK
-        Repo-->>S: SELF_APPROVAL_NOT_ALLOWED
-        S-->>B: 403 SELF_APPROVAL_NOT_ALLOWED
     else Hợp lệ
         loop Mỗi dòng điều chỉnh
             Repo->>DB: SELECT stock_locations FOR UPDATE

@@ -166,18 +166,20 @@ async function lockAdjustmentItems(
   const [rows] = await connection.query<StockAdjustmentItemRow[]>(
     `
       SELECT
-        id,
-        stock_adjustment_id,
-        product_variant_id,
-        batch_id,
-        location_id,
-        adjustment_direction,
-        quantity,
-        reason_code,
-        note
-      FROM stock_adjustment_items
-      WHERE stock_adjustment_id = ?
-      ORDER BY id
+        sai.id,
+        sai.stock_adjustment_id,
+        sai.product_variant_id,
+        sai.batch_id,
+        sai.location_id,
+        sai.adjustment_direction,
+        sai.quantity,
+        sai.reason_code,
+        sai.note,
+        pb.product_variant_id AS batch_variant_id
+      FROM stock_adjustment_items sai
+      LEFT JOIN product_batches pb ON pb.id = sai.batch_id
+      WHERE sai.stock_adjustment_id = ?
+      ORDER BY sai.id
       FOR UPDATE
     `,
     [adjustmentId],
@@ -287,6 +289,12 @@ export async function approveStockAdjustmentTransaction(
     let transactionCount = 0;
 
     for (const item of items) {
+      // Khóa ngoại chỉ bảo đảm lô tồn tại, không bảo đảm lô thuộc đúng sản phẩm
+      // của dòng hàng; thiếu kiểm tra này thì tồn kho mang hạn dùng của sản phẩm khác.
+      if (item.batch_id && item.batch_variant_id !== item.product_variant_id) {
+        throw new Error('BATCH_VARIANT_MISMATCH');
+      }
+
       await assertLocationInWarehouse(
         connection,
         item.location_id,

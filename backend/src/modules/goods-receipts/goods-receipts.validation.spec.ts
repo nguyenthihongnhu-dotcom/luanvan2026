@@ -106,9 +106,15 @@ describe('goods-receipts.validation parseCreateGoodsReceipt', () => {
     expect(result.receivedAt).toBeUndefined();
   });
 
-  it('rejects missing receiptCode', () => {
-    expect(() => parseCreateGoodsReceipt({ items: [validItem] })).toThrow(
-      HttpError,
-    );
+  it('accepts missing receiptCode so the code can be generated later', () => {
+    const result = parseCreateGoodsReceipt({ items: [validItem] });
+
+    expect(result.receiptCode).toBeUndefined();
+  });
+
+  it('rejects blank receiptCode', () => {
+    expect(() =>
+      parseCreateGoodsReceipt({ receiptCode: '   ', items: [validItem] }),
+    ).toThrow(HttpError);
   });
 });

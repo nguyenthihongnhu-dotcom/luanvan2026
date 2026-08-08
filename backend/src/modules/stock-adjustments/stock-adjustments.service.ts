@@ -35,6 +35,11 @@ const approveErrorMap: Record<string, HttpError> = {
     'Stock adjustment has no items',
     'STOCK_ADJUSTMENT_HAS_NO_ITEMS',
   ),
+  BATCH_VARIANT_MISMATCH: new HttpError(
+    422,
+    'Batch belongs to a different product variant than the adjustment item',
+    'BATCH_VARIANT_MISMATCH',
+  ),
   STOCK_LOCATION_NOT_FOUND: new HttpError(
     409,
     'Stock location not found for OUT adjustment',

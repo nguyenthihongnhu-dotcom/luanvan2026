@@ -42,6 +42,21 @@ const confirmErrorMap: Record<string, HttpError> = {
     'Expiry-tracked products require expiry_date before receiving',
     'EXPIRY_DATE_REQUIRED',
   ),
+  BATCH_VARIANT_MISMATCH: new HttpError(
+    422,
+    'Batch belongs to a different product variant than the receipt item',
+    'BATCH_VARIANT_MISMATCH',
+  ),
+  BATCH_EXPIRED: new HttpError(
+    422,
+    'Cannot receive a batch that is already past its expiry date',
+    'BATCH_EXPIRED',
+  ),
+  BATCH_NOT_RECEIVABLE: new HttpError(
+    422,
+    'Cannot receive a batch marked EXPIRED or BLOCKED',
+    'BATCH_NOT_RECEIVABLE',
+  ),
   LOCATION_WAREHOUSE_MISMATCH: new HttpError(
     422,
     'Receipt item location does not belong to receipt warehouse',

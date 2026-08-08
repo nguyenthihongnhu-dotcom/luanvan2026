@@ -142,10 +142,16 @@ flowchart TD
     S6 --> S7{"Người xác nhận có quyền goods_receipts:confirm?"}
     S7 -->|Không| S8["Trả 403 FORBIDDEN"]
     S8 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
-    S7 -->|Có| S9{"Dòng cần lô đã có batch_id?"}
-    S9 -->|Chưa có| S10["ROLLBACK, trả 422 BATCH_REQUIRED"]
+    S7 -->|Có| S9{"Dòng cần lô đã có batch_id và hạn dùng?"}
+    S9 -->|Chưa có| S10["ROLLBACK, trả 422 BATCH_REQUIRED hoặc EXPIRY_DATE_REQUIRED"]
     S10 --> S2
-    S9 -->|Đã có| S11{"Vị trí nhập thuộc đúng kho của phiếu?"}
+    S9 -->|Đã có| S9b{"Lô thuộc đúng sản phẩm của dòng hàng?"}
+    S9b -->|Sai sản phẩm| S9c["ROLLBACK, trả 422 BATCH_VARIANT_MISMATCH"]
+    S9c --> S2
+    S9b -->|Đúng| S9d{"Lô còn hạn và không bị khóa?"}
+    S9d -->|Quá hạn hoặc bị khóa| S9e["ROLLBACK, trả 422 BATCH_EXPIRED hoặc BATCH_NOT_RECEIVABLE"]
+    S9e --> S2
+    S9d -->|Còn hạn| S11{"Vị trí nhập thuộc đúng kho của phiếu?"}
     S11 -->|Không| S12["ROLLBACK, trả LOCATION_WAREHOUSE_MISMATCH"]
     S12 --> S2
     S11 -->|Đúng| S13["Tạo mới hoặc khớp bản ghi product_batches"]
@@ -216,8 +222,10 @@ add('06_2-4-1_5-quy-trinh-dieu-chinh-ton-stock-adjustment', 'state', `
 stateDiagram-v2
     [*] --> DRAFT: POST /stock-adjustments, điều chỉnh thủ công
     [*] --> PENDING: sinh tự động khi duyệt phiếu kiểm kê
+    DRAFT --> APPROVED: POST /:id/approve
+    DRAFT --> REJECTED: POST /:id/reject
     DRAFT --> CANCELLED: POST /:id/cancel
-    PENDING --> APPROVED: POST /:id/approve, người duyệt khác người tạo
+    PENDING --> APPROVED: POST /:id/approve
     PENDING --> REJECTED: POST /:id/reject
     PENDING --> CANCELLED: POST /:id/cancel
     APPROVED --> [*]
@@ -913,14 +921,10 @@ sequenceDiagram
         Repo->>DB: BEGIN TRANSACTION
         Repo->>DB: SELECT stock_adjustments FOR UPDATE
         DB-->>Repo: phiếu kèm status, created_by, adjustment_type
-        alt Trạng thái không phải PENDING
+        alt Trạng thái không phải DRAFT hoặc PENDING
             Repo->>DB: ROLLBACK
             Repo-->>S: STOCK_ADJUSTMENT_NOT_APPROVABLE
             S-->>M: 409 STOCK_ADJUSTMENT_NOT_APPROVABLE
-        else Người duyệt trùng người tạo
-            Repo->>DB: ROLLBACK
-            Repo-->>S: SELF_APPROVAL_NOT_ALLOWED
-            S-->>M: 403 SELF_APPROVAL_NOT_ALLOWED
         else Hợp lệ
             loop Mỗi dòng điều chỉnh
                 Repo->>DB: SELECT stock_locations FOR UPDATE
@@ -1286,7 +1290,10 @@ flowchart TD
     J -->|Có| K{"Dòng cần lô đã có batch_id và vị trí đúng kho?"}
     K -->|Không| K1["ROLLBACK, trả BATCH_REQUIRED hoặc LOCATION_WAREHOUSE_MISMATCH"]
     K1 --> C
-    K -->|Có| L["Tạo hoặc khớp bản ghi product_batches"]
+    K -->|Có| Kb{"Lô đúng sản phẩm, còn hạn và không bị khóa?"}
+    Kb -->|Không| Kc["ROLLBACK, trả BATCH_VARIANT_MISMATCH, BATCH_EXPIRED hoặc BATCH_NOT_RECEIVABLE"]
+    Kc --> C
+    Kb -->|Có| L["Tạo hoặc khớp bản ghi product_batches"]
     L --> Mn["UPSERT stock_locations, cộng quantity, tăng version"]
     Mn --> N["Ghi inventory_transactions loại RECEIPT"]
     N --> O["Đổi trạng thái CONFIRMED, ghi audit_logs, COMMIT"]
@@ -1569,14 +1576,10 @@ sequenceDiagram
     Repo->>DB: BEGIN TRANSACTION
     Repo->>DB: SELECT stock_adjustments FOR UPDATE
     DB-->>Repo: phiếu kèm status và created_by
-    alt Trạng thái không phải PENDING
+    alt Trạng thái không phải DRAFT hoặc PENDING
         Repo->>DB: ROLLBACK
         Repo-->>S: STOCK_ADJUSTMENT_NOT_APPROVABLE
         S-->>B: 409 STOCK_ADJUSTMENT_NOT_APPROVABLE
-    else Người duyệt trùng người tạo
-        Repo->>DB: ROLLBACK
-        Repo-->>S: SELF_APPROVAL_NOT_ALLOWED
-        S-->>B: 403 SELF_APPROVAL_NOT_ALLOWED
     else Hợp lệ
         loop Mỗi dòng điều chỉnh
             Repo->>DB: SELECT stock_locations FOR UPDATE
@@ -1601,23 +1604,16 @@ flowchart TD
     Start(["Bắt đầu"]) --> A{"Phiếu điều chỉnh đến từ đâu?"}
     A -->|Người dùng tạo tay| B["POST /stock-adjustments, phiếu ở DRAFT"]
     A -->|Sinh từ duyệt kiểm kê| C["Phiếu loại COUNT được tạo sẵn ở PENDING"]
-    B --> Dn{"Người duyệt xử lý phiếu DRAFT thế nào?"}
-    Dn -->|Hủy phiếu nháp| D1["POST /:id/cancel từ trạng thái DRAFT"]
-    D1 --> End1(["Kết thúc: Phiếu đã hủy"])
-    Dn -->|Chưa có API chuyển sang PENDING| D2["Phiếu nằm chờ ở DRAFT"]
-    D2 --> End2(["Kết thúc: Chưa duyệt được, xem Phụ lục C"])
-    C --> E{"Quyết định của người duyệt"}
+    B --> E{"Quyết định của người duyệt"}
+    C --> E
     E -->|Từ chối| E1["POST /:id/reject, chuyển REJECTED"]
     E1 --> End3(["Kết thúc: Phiếu bị từ chối, tồn không đổi"])
-    E -->|Hủy phiếu chờ duyệt| E2["POST /:id/cancel từ trạng thái PENDING"]
-    E2 --> End1
-    E -->|Duyệt| F{"Người duyệt trùng người tạo?"}
-    F -->|Trùng| F1["Trả 403 SELF_APPROVAL_NOT_ALLOWED"]
-    F1 --> End4(["Kết thúc: Phiếu giữ nguyên PENDING"])
-    F -->|Khác| G["BEGIN TRANSACTION, khóa tồn FOR UPDATE"]
+    E -->|Hủy phiếu| E2["POST /:id/cancel từ DRAFT hoặc PENDING"]
+    E2 --> End1(["Kết thúc: Phiếu đã hủy"])
+    E -->|Duyệt| G["BEGIN TRANSACTION, khóa tồn FOR UPDATE"]
     G --> H{"Dòng chiều OUT có đủ tồn?"}
     H -->|Không đủ| H1["ROLLBACK, trả INSUFFICIENT_STOCK"]
-    H1 --> End4
+    H1 --> End4(["Kết thúc: Phiếu giữ nguyên trạng thái cũ"])
     H -->|Đủ| I["Cập nhật quantity trong stock_locations"]
     I --> J["Ghi MANUAL_ADJUSTMENT hoặc COUNT_ADJUSTMENT theo adjustment_type"]
     J --> K["Chuyển APPROVED, COMMIT"]
@@ -1628,6 +1624,8 @@ add('47_3-3-5_chuc-nang-dieu-chinh-ton-stock-adjustment', 'state', `
 stateDiagram-v2
     [*] --> DRAFT: POST /stock-adjustments, loại MANUAL
     [*] --> PENDING: sinh khi duyệt kiểm kê, loại COUNT
+    DRAFT --> APPROVED: POST /:id/approve
+    DRAFT --> REJECTED: POST /:id/reject
     DRAFT --> CANCELLED: POST /:id/cancel
     PENDING --> APPROVED: POST /:id/approve
     PENDING --> REJECTED: POST /:id/reject

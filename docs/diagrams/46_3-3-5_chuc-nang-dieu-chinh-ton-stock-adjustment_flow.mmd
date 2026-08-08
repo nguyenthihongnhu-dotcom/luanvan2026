@@ -25,23 +25,16 @@ flowchart TD
     Start(["Bắt đầu"]) --> A{"Phiếu điều chỉnh đến từ đâu?"}
     A -->|Người dùng tạo tay| B["POST /stock-adjustments, phiếu ở DRAFT"]
     A -->|Sinh từ duyệt kiểm kê| C["Phiếu loại COUNT được tạo sẵn ở PENDING"]
-    B --> Dn{"Người duyệt xử lý phiếu DRAFT thế nào?"}
-    Dn -->|Hủy phiếu nháp| D1["POST /:id/cancel từ trạng thái DRAFT"]
-    D1 --> End1(["Kết thúc: Phiếu đã hủy"])
-    Dn -->|Chưa có API chuyển sang PENDING| D2["Phiếu nằm chờ ở DRAFT"]
-    D2 --> End2(["Kết thúc: Chưa duyệt được, xem Phụ lục C"])
-    C --> E{"Quyết định của người duyệt"}
+    B --> E{"Quyết định của người duyệt"}
+    C --> E
     E -->|Từ chối| E1["POST /:id/reject, chuyển REJECTED"]
     E1 --> End3(["Kết thúc: Phiếu bị từ chối, tồn không đổi"])
-    E -->|Hủy phiếu chờ duyệt| E2["POST /:id/cancel từ trạng thái PENDING"]
-    E2 --> End1
-    E -->|Duyệt| F{"Người duyệt trùng người tạo?"}
-    F -->|Trùng| F1["Trả 403 SELF_APPROVAL_NOT_ALLOWED"]
-    F1 --> End4(["Kết thúc: Phiếu giữ nguyên PENDING"])
-    F -->|Khác| G["BEGIN TRANSACTION, khóa tồn FOR UPDATE"]
+    E -->|Hủy phiếu| E2["POST /:id/cancel từ DRAFT hoặc PENDING"]
+    E2 --> End1(["Kết thúc: Phiếu đã hủy"])
+    E -->|Duyệt| G["BEGIN TRANSACTION, khóa tồn FOR UPDATE"]
     G --> H{"Dòng chiều OUT có đủ tồn?"}
     H -->|Không đủ| H1["ROLLBACK, trả INSUFFICIENT_STOCK"]
-    H1 --> End4
+    H1 --> End4(["Kết thúc: Phiếu giữ nguyên trạng thái cũ"])
     H -->|Đủ| I["Cập nhật quantity trong stock_locations"]
     I --> J["Ghi MANUAL_ADJUSTMENT hoặc COUNT_ADJUSTMENT theo adjustment_type"]
     J --> K["Chuyển APPROVED, COMMIT"]

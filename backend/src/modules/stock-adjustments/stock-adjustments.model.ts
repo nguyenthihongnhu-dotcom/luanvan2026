@@ -36,6 +36,8 @@ export type StockAdjustmentItemRow = RowDataPacket & {
   quantity: number;
   reason_code: string;
   note: string | null;
+  /** Sản phẩm mà lô thực sự thuộc về; null khi dòng hàng không gắn lô. */
+  batch_variant_id: number | null;
 };
 
 export type ApproveStockAdjustmentInput = {

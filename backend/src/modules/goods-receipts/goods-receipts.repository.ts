@@ -121,6 +121,12 @@ export async function findGoodsReceiptDetail(
 
   return { header, items };
 }
+/** Mốc 00:00 hôm nay: lô hết hạn đúng hôm nay vẫn được coi là còn hạn. */
+function startOfToday(): Date {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
 async function lockReceipt(
   connection: PoolConnection,
   receiptId: number,
@@ -154,7 +160,9 @@ async function lockReceiptItems(
         gri.note,
         pv.requires_lot_tracking,
         pv.requires_expiry_tracking,
-        pb.expiry_date
+        pb.expiry_date,
+        pb.product_variant_id AS batch_variant_id,
+        pb.status AS batch_status
       FROM goods_receipt_items gri
       JOIN product_variants pv ON pv.id = gri.product_variant_id
       LEFT JOIN product_batches pb ON pb.id = gri.batch_id
@@ -265,6 +273,24 @@ export async function confirmGoodsReceiptTransaction(
 
       if (item.requires_expiry_tracking === 1 && !item.expiry_date) {
         throw new Error('EXPIRY_DATE_REQUIRED');
+      }
+
+      // Khóa ngoại chỉ bảo đảm lô tồn tại, không bảo đảm lô thuộc đúng sản phẩm
+      // của dòng hàng. Thiếu kiểm tra này thì tồn kho sẽ mang hạn dùng của một
+      // sản phẩm khác, kéo theo FEFO và cảnh báo cận hạn chạy sai.
+      if (item.batch_id && item.batch_variant_id !== item.product_variant_id) {
+        throw new Error('BATCH_VARIANT_MISMATCH');
+      }
+
+      // Không cho nhập hàng đã quá hạn, hoặc lô đang bị khóa/đã đánh dấu hết hạn.
+      // Luồng xuất kho đã loại các lô này khi phân bổ, nhập kho phải chặn ngay
+      // từ đầu thay vì để hàng không xuất được nằm lại trong tồn.
+      if (item.expiry_date && new Date(item.expiry_date) < startOfToday()) {
+        throw new Error('BATCH_EXPIRED');
+      }
+
+      if (item.batch_status === 'EXPIRED' || item.batch_status === 'BLOCKED') {
+        throw new Error('BATCH_NOT_RECEIVABLE');
       }
 
       await assertLocationInWarehouse(

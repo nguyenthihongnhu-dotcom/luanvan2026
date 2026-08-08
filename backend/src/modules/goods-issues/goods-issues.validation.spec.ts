@@ -94,9 +94,15 @@ describe('goods-issues.validation parseCreateGoodsIssue', () => {
     ).toThrow(HttpError);
   });
 
-  it('rejects missing issueCode', () => {
-    expect(() => parseCreateGoodsIssue({ items: [validItem] })).toThrow(
-      HttpError,
-    );
+  it('accepts missing issueCode so the code can be generated later', () => {
+    const result = parseCreateGoodsIssue({ items: [validItem] });
+
+    expect(result.issueCode).toBeUndefined();
+  });
+
+  it('rejects blank issueCode', () => {
+    expect(() =>
+      parseCreateGoodsIssue({ issueCode: '   ', items: [validItem] }),
+    ).toThrow(HttpError);
   });
 });

@@ -32,10 +32,16 @@ flowchart TD
     S6 --> S7{"Người xác nhận có quyền goods_receipts:confirm?"}
     S7 -->|Không| S8["Trả 403 FORBIDDEN"]
     S8 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
-    S7 -->|Có| S9{"Dòng cần lô đã có batch_id?"}
-    S9 -->|Chưa có| S10["ROLLBACK, trả 422 BATCH_REQUIRED"]
+    S7 -->|Có| S9{"Dòng cần lô đã có batch_id và hạn dùng?"}
+    S9 -->|Chưa có| S10["ROLLBACK, trả 422 BATCH_REQUIRED hoặc EXPIRY_DATE_REQUIRED"]
     S10 --> S2
-    S9 -->|Đã có| S11{"Vị trí nhập thuộc đúng kho của phiếu?"}
+    S9 -->|Đã có| S9b{"Lô thuộc đúng sản phẩm của dòng hàng?"}
+    S9b -->|Sai sản phẩm| S9c["ROLLBACK, trả 422 BATCH_VARIANT_MISMATCH"]
+    S9c --> S2
+    S9b -->|Đúng| S9d{"Lô còn hạn và không bị khóa?"}
+    S9d -->|Quá hạn hoặc bị khóa| S9e["ROLLBACK, trả 422 BATCH_EXPIRED hoặc BATCH_NOT_RECEIVABLE"]
+    S9e --> S2
+    S9d -->|Còn hạn| S11{"Vị trí nhập thuộc đúng kho của phiếu?"}
     S11 -->|Không| S12["ROLLBACK, trả LOCATION_WAREHOUSE_MISMATCH"]
     S12 --> S2
     S11 -->|Đúng| S13["Tạo mới hoặc khớp bản ghi product_batches"]

@@ -26,6 +26,8 @@
 stateDiagram-v2
     [*] --> DRAFT: POST /stock-adjustments, loại MANUAL
     [*] --> PENDING: sinh khi duyệt kiểm kê, loại COUNT
+    DRAFT --> APPROVED: POST /:id/approve
+    DRAFT --> REJECTED: POST /:id/reject
     DRAFT --> CANCELLED: POST /:id/cancel
     PENDING --> APPROVED: POST /:id/approve
     PENDING --> REJECTED: POST /:id/reject
