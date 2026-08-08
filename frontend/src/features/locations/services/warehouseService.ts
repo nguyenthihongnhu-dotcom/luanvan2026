@@ -174,6 +174,11 @@ export async function createZone(input: {
     await httpClient.post('/locations/zones', input);
 }
 
+/** Xóa khu. Backend từ chối (409 ZONE_NOT_EMPTY) nếu trong khu còn vị trí có hàng. */
+export async function deleteZone(zoneId: number): Promise<void> {
+    await httpClient.delete(`/locations/zones/${zoneId}`);
+}
+
 export async function updateZoneLayout(
     zoneId: number,
     layout: {
@@ -215,6 +220,7 @@ export const warehouseService = {
     createLayer,
     syncLocationMatrix,
     createZone,
+    deleteZone,
     updateZoneLayout,
     deleteShelf,
     deleteLayer,

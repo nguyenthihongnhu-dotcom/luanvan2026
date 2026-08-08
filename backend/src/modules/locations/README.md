@@ -25,6 +25,7 @@ Module `locations` mô tả layout kho vật lý để frontend vẽ sơ đồ v
 | POST | `/locations/layers` | Tạo tầng mới cho toàn khu và lấp các ô kệ/tầng còn thiếu |
 | POST | `/locations/sync-matrix` | Lấp lại các ô kệ/tầng còn thiếu trong khu hiện tại |
 | PATCH | `/locations/shelves/reorder` | Cập nhật thứ tự hiển thị các kệ |
+| DELETE | `/locations/zones/:id` | Soft delete cả khu (ô, kệ, khu) nếu trong khu không còn hàng |
 | DELETE | `/locations/shelf/:shelfId` | Soft delete các location thuộc shelf nếu không còn hàng |
 | DELETE | `/locations/layer?shelfId=1&layerNo=2` | Soft delete một layer nếu không còn hàng |
 
@@ -92,9 +93,15 @@ POST /locations/sync-matrix
       -> trả createdLocationCount
 ```
 
-## Luồng xóa kệ/tầng
+## Luồng xóa khu/kệ/tầng
 
 ```text
+DELETE /locations/zones/:id
+  -> mở transaction, khóa các ô còn hàng trong khu bằng FOR UPDATE
+  -> nếu còn stock_locations.quantity > 0 hoặc reserved_quantity > 0: 409 ZONE_NOT_EMPTY
+  -> soft delete warehouse_locations -> warehouse_shelves -> warehouse_zones
+  (kiểm tra và xóa nằm chung transaction để không ai kịp nhập hàng vào giữa hai bước)
+
 DELETE /locations/shelf/:shelfId
   -> countShelfLocationsWithStock
   -> nếu còn stock_locations.quantity > 0 hoặc reserved_quantity > 0: 409 LOCATION_HAS_STOCK

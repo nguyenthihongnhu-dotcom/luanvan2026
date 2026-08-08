@@ -151,6 +151,111 @@ export async function countShelfLocationsWithStock(
   return Number(rows[0]?.total ?? 0);
 }
 
+export async function countZoneLocationsWithStock(
+  zoneId: number,
+): Promise<number> {
+  const [rows] = await db.query<Array<RowDataPacket & { total: number }>>({
+    sql: `
+      SELECT COUNT(DISTINCT wl.id) AS total
+      FROM warehouse_locations wl
+      JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+      JOIN stock_locations sl ON sl.location_id = wl.id
+      WHERE ws.zone_id = :zoneId
+        AND ws.deleted_at IS NULL
+        AND wl.deleted_at IS NULL
+        AND (sl.quantity > 0 OR sl.reserved_quantity > 0)
+    `,
+    values: { zoneId } satisfies QueryParams,
+  });
+
+  return Number(rows[0]?.total ?? 0);
+}
+
+/**
+ * Xóa mềm cả khu: ô lưu trữ, rồi kệ, rồi khu. Chỉ gọi sau khi đã xác nhận khu
+ * không còn tồn — kiểm tra và xóa nằm chung một transaction để không có ai kịp
+ * nhập hàng vào giữa hai bước.
+ */
+export async function softDeleteZoneTransaction(
+  zoneId: number,
+): Promise<{ deletedShelves: number; deletedLocations: number }> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    const [zoneRows] = await connection.query<Array<RowDataPacket & { id: number }>>(
+      'SELECT id FROM warehouse_zones WHERE id = ? AND deleted_at IS NULL LIMIT 1',
+      [zoneId],
+    );
+
+    if (!zoneRows[0]) {
+      throw new Error('ZONE_NOT_FOUND');
+    }
+
+    const [stockRows] = await connection.query<Array<RowDataPacket & { total: number }>>(
+      `
+        SELECT COUNT(DISTINCT wl.id) AS total
+        FROM warehouse_locations wl
+        JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+        JOIN stock_locations sl ON sl.location_id = wl.id
+        WHERE ws.zone_id = ?
+          AND ws.deleted_at IS NULL
+          AND wl.deleted_at IS NULL
+          AND (sl.quantity > 0 OR sl.reserved_quantity > 0)
+        FOR UPDATE
+      `,
+      [zoneId],
+    );
+
+    if (Number(stockRows[0]?.total ?? 0) > 0) {
+      throw new Error('ZONE_NOT_EMPTY');
+    }
+
+    const [locationResult] = await connection.query<ResultSetHeader>(
+      `
+        UPDATE warehouse_locations wl
+        JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+        SET wl.deleted_at = CURRENT_TIMESTAMP(3), wl.status = 'INACTIVE'
+        WHERE ws.zone_id = ?
+          AND wl.deleted_at IS NULL
+      `,
+      [zoneId],
+    );
+
+    const [shelfResult] = await connection.query<ResultSetHeader>(
+      `
+        UPDATE warehouse_shelves
+        SET deleted_at = CURRENT_TIMESTAMP(3), status = 'INACTIVE'
+        WHERE zone_id = ?
+          AND deleted_at IS NULL
+      `,
+      [zoneId],
+    );
+
+    await connection.query(
+      `
+        UPDATE warehouse_zones
+        SET deleted_at = CURRENT_TIMESTAMP(3), status = 'INACTIVE'
+        WHERE id = ?
+      `,
+      [zoneId],
+    );
+
+    await connection.commit();
+
+    return {
+      deletedShelves: shelfResult.affectedRows,
+      deletedLocations: locationResult.affectedRows,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
+}
+
 export async function countLayerLocationsWithStock(
   shelfId: number,
   layerNo: number,

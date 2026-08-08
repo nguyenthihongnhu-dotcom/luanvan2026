@@ -11,6 +11,7 @@ import {
   listZonesController,
   removeLocationLayerController,
   removeShelfLocationsController,
+  removeZoneController,
   reorderShelvesController,
   syncLocationMatrixController,
   updateZoneLayoutController,
@@ -61,6 +62,11 @@ locationsRouter.put(
   '/zones/:id/layout',
   asyncHandler(verifyToken),
   asyncHandler(updateZoneLayoutController),
+);
+locationsRouter.delete(
+  '/zones/:id',
+  asyncHandler(verifyToken),
+  asyncHandler(removeZoneController),
 );
 locationsRouter.delete(
   '/shelf/:shelfId',

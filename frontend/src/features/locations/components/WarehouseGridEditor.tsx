@@ -24,6 +24,7 @@ interface WarehouseGridEditorProps {
             gridOrientation?: ZoneOrientation;
         },
     ) => Promise<void>;
+    onDeleteZone?: (zone: WarehouseZone) => Promise<void>;
 }
 
 const MIN_ROWS = 6;
@@ -81,6 +82,7 @@ export default function WarehouseGridEditor({
     onSelectZone,
     onCreateZone,
     onSaveZoneLayout,
+    onDeleteZone,
 }: WarehouseGridEditorProps) {
     const { setExtraContent } = useSidebar();
     const [newZoneName, setNewZoneName] = useState("");
@@ -350,6 +352,22 @@ export default function WarehouseGridEditor({
                         Xem
                     </button>
                 )}
+                {/* Khu còn hàng thì không cho xóa; nút mờ đi và nói rõ lý do
+                    thay vì để người dùng bấm rồi nhận lỗi từ server. */}
+                <button
+                    type="button"
+                    onPointerDown={(event) => event.stopPropagation()}
+                    onClick={() => void onDeleteZone?.(zone)}
+                    disabled={isSaving || zone.occupiedCount > 0}
+                    className="shrink-0 rounded-md border border-gray-200 bg-white px-1.5 py-1 text-[10px] font-semibold text-gray-600 hover:border-red-300 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
+                    title={
+                        zone.occupiedCount > 0
+                            ? `Không xóa được: khu còn ${zone.occupiedCount} vị trí đang có hàng`
+                            : `Xóa khu ${zone.name} cùng toàn bộ kệ và ô lưu trữ bên trong`
+                    }
+                >
+                    Xóa
+                </button>
             </div>
         );
 
@@ -424,7 +442,7 @@ export default function WarehouseGridEditor({
         // Danh sách khu và form phụ thuộc các state dưới đây; cố ý không đưa trạng thái kéo
         // vào deps để mỗi lần di chuột không phải dựng lại toàn bộ nội dung sidebar.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [setExtraContent, zones, unplacedZones, placedZones, colorByZoneId, newZoneName, newZoneShelves, newZoneLayers, isSaving]);
+    }, [setExtraContent, zones, unplacedZones, placedZones, colorByZoneId, newZoneName, newZoneShelves, newZoneLayers, isSaving, onDeleteZone]);
 
     return (
         <div className="flex h-[calc(100vh-180px)] flex-1 flex-col overflow-auto rounded-xl border border-gray-200 bg-gray-100 p-6">
@@ -435,6 +453,16 @@ export default function WarehouseGridEditor({
                 <p className="text-xs text-gray-500">
                     Kéo khu từ sidebar bên trái thả vào ô để đặt lên mặt bằng, vị trí và hướng xếp kệ được lưu xuống cơ sở dữ liệu.
                     Đang kéo bấm <b>F</b> để xoay ngang/dọc, <b>Esc</b> để hủy. Bấm vào khu đã đặt để xem sơ đồ kệ và tầng bên trong.
+                </p>
+                <p className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-gray-500">
+                    <span className="inline-flex items-center gap-1.5">
+                        <span aria-hidden className="h-3.5 w-3.5 rounded border border-gray-300 bg-white" />
+                        Khoảng trắng là <b>lối đi</b>, không phải chỗ trống chờ đặt khu
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                        <span aria-hidden className="h-3.5 w-3.5 rounded border-2 border-dashed border-gray-300" />
+                        Lưới ô chỉ hiện khi đang kéo khu
+                    </span>
                 </p>
             </div>
 
@@ -472,7 +500,14 @@ export default function WarehouseGridEditor({
                                         if (suppressClick.current || !zone) return;
                                         onSelectZone?.(zone.code);
                                     }}
-                                    className={`relative flex h-16 items-center justify-center overflow-hidden rounded-2xl border-2 text-sm transition-colors ${zone ? "cursor-grab border-transparent shadow-sm active:cursor-grabbing" : "border-dashed border-gray-300"
+                                    className={`relative flex h-16 items-center justify-center overflow-hidden rounded-2xl border-2 text-sm transition-colors ${zone
+                                        ? "cursor-grab border-transparent shadow-sm active:cursor-grabbing"
+                                        // Ô trống là lối đi, không phải chỗ chờ điền: để trắng hẳn cho
+                                        // mặt bằng đọc ra hình khối kho. Lưới chấm chỉ hiện lúc đang
+                                        // kéo khu, đủ để ngắm chỗ đặt rồi biến mất.
+                                        : drag
+                                            ? "border-dashed border-gray-300"
+                                            : "border-transparent"
                                         } ${isPreview
                                             ? previewBlocked
                                                 ? "border-red-400 bg-red-100"
@@ -483,7 +518,7 @@ export default function WarehouseGridEditor({
                                     title={
                                         zone
                                             ? `${zone.name} - ${zone.shelfCount} kệ, ${zone.occupiedCount}/${zone.locationCount} vị trí đang có hàng${isZoneFull(zone) ? " (ĐẦY, không còn ô trống)" : ""}`
-                                            : `Ô trống H${row + 1}-C${col + 1}`
+                                            : `Lối đi H${row + 1}-C${col + 1}`
                                     }
                                 >
                                     {/* Khu hết chỗ: phủ vệt gạch chéo đỏ để nhìn phát là biết */}
@@ -498,16 +533,21 @@ export default function WarehouseGridEditor({
                                         />
                                     )}
                                     {zone ? (
-                                        <div className="pointer-events-none relative text-center">
-                                            <div className="font-bold" style={{ color }}>{zone.code}</div>
+                                        <div className="pointer-events-none relative px-1 text-center">
+                                            {/* Hiện tên khu do người dùng đặt; mã A/B/C là mã máy sinh,
+                                                chỉ nhắc lại nhỏ bên dưới ở ô neo để còn tra cứu được. */}
+                                            <div className="truncate text-xs font-bold leading-tight" style={{ color }} title={zone.name}>
+                                                {zone.name}
+                                            </div>
                                             {isAnchor && (
-                                                <div className="mt-0.5 text-[10px] font-semibold text-gray-600">
-                                                    {isZoneFull(zone) ? "ĐẦY" : `${zone.shelfCount} kệ`}
+                                                <div className="mt-0.5 text-[10px] font-semibold text-gray-500">
+                                                    {zone.code} · {isZoneFull(zone) ? "ĐẦY" : `${zone.shelfCount} kệ`}
                                                 </div>
                                             )}
                                         </div>
                                     ) : (
-                                        <span className="pointer-events-none text-[10px] text-gray-300">H{row + 1}-C{col + 1}</span>
+                                        // Lối đi: để trống hoàn toàn, chỉ đánh dấu tọa độ mờ khi đang kéo.
+                                        drag && <span className="pointer-events-none text-[10px] text-gray-300">H{row + 1}-C{col + 1}</span>
                                     )}
                                 </div>
                             );

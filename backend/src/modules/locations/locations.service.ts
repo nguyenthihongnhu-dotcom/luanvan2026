@@ -22,6 +22,7 @@ import type {
 import {
   countLayerLocationsWithStock,
   countShelfLocationsWithStock,
+  softDeleteZoneTransaction,
   findLocations as findLocationsRepository,
   findLocationHistory,
   findZonesByWarehouse,
@@ -98,6 +99,32 @@ export async function removeShelfLocations(
   }
 
   return softDeleteLocationsByShelfId(shelfId);
+}
+
+/**
+ * Xóa khu. Chỉ cho xóa khi không còn vị trí nào trong khu còn hàng — kiểm tra
+ * thật sự nằm trong transaction ở repository, hàm này chỉ dịch lỗi sang HTTP.
+ */
+export async function removeZone(
+  zoneId: number,
+): Promise<{ deletedShelves: number; deletedLocations: number }> {
+  try {
+    return await softDeleteZoneTransaction(zoneId);
+  } catch (error) {
+    if (error instanceof Error && error.message === 'ZONE_NOT_EMPTY') {
+      throw new HttpError(
+        409,
+        'Cannot delete zone because it still contains stock',
+        'ZONE_NOT_EMPTY',
+      );
+    }
+
+    if (error instanceof Error && error.message === 'ZONE_NOT_FOUND') {
+      throw new HttpError(404, 'Zone not found', 'ZONE_NOT_FOUND');
+    }
+
+    throw error;
+  }
 }
 
 export async function removeLocationLayer(

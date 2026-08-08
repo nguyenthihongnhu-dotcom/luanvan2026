@@ -9,6 +9,7 @@ import {
   listZones,
   removeLocationLayer,
   removeShelfLocations,
+  removeZone,
   reorderShelves,
   syncLocationMatrix,
   updateZoneLayout,
@@ -53,6 +54,15 @@ export async function removeShelfLocationsController(
   const shelfId = parseShelfId(req.params.shelfId);
 
   res.json({ data: await removeShelfLocations(shelfId) });
+}
+
+export async function removeZoneController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const zoneId = parseShelfId(req.params.id);
+
+  res.json({ data: await removeZone(zoneId) });
 }
 
 export async function removeLocationLayerController(

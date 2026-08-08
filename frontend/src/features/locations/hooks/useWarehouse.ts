@@ -281,6 +281,21 @@ export function useWarehouse() {
         }, 'Không xóa được kệ.');
     };
 
+    /** Xóa khu. Backend chặn nếu khu còn hàng, nên ở đây chỉ cần hỏi lại cho chắc. */
+    const handleDeleteZone = async (zone: WarehouseZone) => {
+        if (zone.occupiedCount > 0) {
+            setError(`Khu ${zone.name} còn ${zone.occupiedCount} vị trí đang có hàng, phải chuyển hết hàng đi trước khi xóa.`);
+            return;
+        }
+        if (!window.confirm(`Xóa khu ${zone.name}? Toàn bộ ${zone.shelfCount} kệ và ${zone.locationCount} ô lưu trữ trong khu sẽ bị xóa theo.`)) return;
+
+        await runMutation(async () => {
+            await warehouseService.deleteZone(zone.id);
+            setActiveLocation(null);
+            setSelectedZone((current) => (current === zone.code ? null : current));
+        }, 'Không xóa được khu.');
+    };
+
     const handleDeleteLayer = async (_layerId: string, layerCode: string) => {
         if (!window.confirm(`Bạn có chắc muốn xóa tầng ${layerCode}?`)) return;
         await runMutation(async () => {
@@ -315,6 +330,7 @@ export function useWarehouse() {
         handleSyncMatrix,
         handleReorderShelves,
         handleDeleteShelf,
+        handleDeleteZone,
         handleDeleteLayer,
     };
 }
