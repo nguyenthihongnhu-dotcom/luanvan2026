@@ -134,6 +134,13 @@ export async function quickReceiveStock(
           'PERFORMED_BY_NOT_FOUND',
         );
       }
+      if (error.message === 'EXPIRY_DATE_REQUIRED') {
+        throw new HttpError(
+          422,
+          'Sản phẩm theo dõi hạn dùng nên phải khai hạn sử dụng khi nhận nhanh',
+          'EXPIRY_DATE_REQUIRED',
+        );
+      }
     }
 
     throw error;

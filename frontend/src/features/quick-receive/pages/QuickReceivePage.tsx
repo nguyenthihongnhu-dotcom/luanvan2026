@@ -76,9 +76,10 @@ async function createCatalogProduct(input: CreateProductForm): Promise<void> {
         sku: input.sku,
         name: input.name,
         category: input.category,
-        stock: 0,
         minStock: Number(input.minStock || 0),
-        expiryDate: input.expiryDate || undefined,
+        requiresLotTracking: true,
+        // Đang nhận nhanh có khai hạn dùng thì coi như sản phẩm theo dõi hạn.
+        requiresExpiryTracking: Boolean(input.expiryDate),
     });
 }
 

@@ -17,6 +17,8 @@ type QuickProductRow = RowDataPacket & {
   sku: string;
   variant_name: string;
   product_name: string;
+  requires_lot_tracking: 0 | 1;
+  requires_expiry_tracking: 0 | 1;
 };
 
 type QuickLocationRow = RowDataPacket & {
@@ -182,7 +184,8 @@ export async function quickReceiveStock(
 
     const [productRows] = await connection.query<QuickProductRow[]>(
       `
-        SELECT pv.id, pv.sku, pv.variant_name, p.name AS product_name
+        SELECT pv.id, pv.sku, pv.variant_name, p.name AS product_name,
+               pv.requires_lot_tracking, pv.requires_expiry_tracking
         FROM product_variants pv
         JOIN products p ON p.id = pv.product_id
         WHERE pv.deleted_at IS NULL
@@ -229,9 +232,21 @@ export async function quickReceiveStock(
       throw new Error('PERFORMED_BY_NOT_FOUND');
     }
 
+    // Nhận nhanh phải theo đúng luật lô/hạn như xác nhận phiếu nhập, nếu không sẽ
+    // sinh ra tồn không gắn lô cho hàng bắt buộc theo lô — FEFO và cảnh báo cận hạn
+    // không lần được. Sản phẩm cần lô thì tự sinh số lô; cần hạn thì bắt buộc khai.
+    if (product.requires_expiry_tracking === 1 && !input.expiryDate) {
+      throw new Error('EXPIRY_DATE_REQUIRED');
+    }
+
     let batchId: number | null = null;
     let finalLotNumber: string | null = null;
-    const shouldUseBatch = Boolean(input.lotNumber || input.expiryDate);
+    const shouldUseBatch = Boolean(
+      product.requires_lot_tracking === 1 ||
+      product.requires_expiry_tracking === 1 ||
+      input.lotNumber ||
+      input.expiryDate,
+    );
 
     if (shouldUseBatch) {
       const lotNumber =
