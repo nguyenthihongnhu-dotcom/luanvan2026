@@ -23,10 +23,9 @@ const productSchema = z.object({
   sku: z.string().trim().min(1).max(100),
   name: z.string().trim().min(1).max(200),
   category: z.string().trim().min(1).max(150),
-  stock: z.coerce.number().nonnegative().optional(),
   minStock: z.coerce.number().nonnegative().optional(),
-  expiryDate: z.string().trim().min(1).max(20).optional(),
-  locationId: z.coerce.number().int().positive().optional(),
+  requiresLotTracking: z.coerce.boolean().optional(),
+  requiresExpiryTracking: z.coerce.boolean().optional(),
 });
 
 export function parseCatalogFilters(input: unknown): CatalogFilters {

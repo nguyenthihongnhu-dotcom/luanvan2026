@@ -53,10 +53,6 @@ function calculateStatus(stock: number, minStock: number): ProductItem['status']
     return 'IN_STOCK';
 }
 
-function toOptionalNumber(value: string): number | undefined {
-    const numberValue = Number(value);
-    return Number.isFinite(numberValue) && numberValue > 0 ? numberValue : undefined;
-}
 
 export async function listProducts(): Promise<ProductItem[]> {
     const response = await httpClient.get<{ data: CatalogProductRow[] }>('/catalog/products');
@@ -105,10 +101,9 @@ export async function createProduct(input: ProductItem): Promise<void> {
         sku: input.sku,
         name: input.name,
         category: input.category,
-        stock: input.stock,
         minStock: input.minStock,
-        expiryDate: input.expiryDate || undefined,
-        locationId: toOptionalNumber(input.locationId),
+        requiresLotTracking: input.requiresLotTracking,
+        requiresExpiryTracking: input.requiresExpiryTracking,
     });
 }
 
@@ -117,10 +112,9 @@ export async function updateProduct(id: number, input: ProductItem): Promise<voi
         sku: input.sku,
         name: input.name,
         category: input.category,
-        stock: input.stock,
         minStock: input.minStock,
-        expiryDate: input.expiryDate || undefined,
-        locationId: toOptionalNumber(input.locationId),
+        requiresLotTracking: input.requiresLotTracking,
+        requiresExpiryTracking: input.requiresExpiryTracking,
     });
 }
 

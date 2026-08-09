@@ -19,10 +19,11 @@ export type ProductInput = {
   sku: string;
   name: string;
   category: string;
-  stock?: number;
   minStock?: number;
-  expiryDate?: string;
-  locationId?: number;
+  /** Sản phẩm phải khai lô khi nhập kho (mặc định bật cho hàng Mẹ & Bé). */
+  requiresLotTracking?: boolean;
+  /** Sản phẩm phải khai hạn sử dụng khi nhập kho (sữa, bột, thực phẩm). */
+  requiresExpiryTracking?: boolean;
 };
 
 export type CatalogRow = RowDataPacket & Record<string, unknown>;

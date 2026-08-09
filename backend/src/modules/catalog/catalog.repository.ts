@@ -168,14 +168,16 @@ export async function insertProduct(
     const unitId = unitRows[0]?.id;
     const [variantResult] = await connection.query<ResultSetHeader>(
       `INSERT INTO product_variants (product_id, unit_id, sku, variant_name, min_stock_level, requires_lot_tracking, requires_expiry_tracking, status)
-       VALUES (?, ?, ?, ?, ?, TRUE, ?, 'ACTIVE')`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 'ACTIVE')`,
       [
         productResult.insertId,
         unitId,
         input.sku,
         input.name,
         input.minStock ?? 0,
-        input.expiryDate ? true : false,
+        // Mặc định bật theo dõi lô cho hàng Mẹ & Bé; hạn dùng chỉ bật khi khai báo.
+        input.requiresLotTracking ?? true,
+        input.requiresExpiryTracking ?? false,
       ],
     );
     // Khai báo sản phẩm không sinh tồn kho. Sản phẩm mới luôn bắt đầu ở 0 và chỉ
@@ -202,11 +204,24 @@ export async function updateProduct(
   try {
     await connection.beginTransaction();
 
+    // Chỉ đổi cờ theo dõi khi client gửi lên; bỏ trống thì giữ nguyên giá trị cũ.
     const [result] = await connection.query<ResultSetHeader>(
       `UPDATE product_variants pv JOIN products p ON p.id = pv.product_id
-       SET pv.sku = ?, pv.variant_name = ?, pv.min_stock_level = ?, p.name = ?, p.category_id = ?
+       SET pv.sku = ?, pv.variant_name = ?, pv.min_stock_level = ?,
+           pv.requires_lot_tracking = COALESCE(?, pv.requires_lot_tracking),
+           pv.requires_expiry_tracking = COALESCE(?, pv.requires_expiry_tracking),
+           p.name = ?, p.category_id = ?
        WHERE pv.id = ? AND pv.deleted_at IS NULL`,
-      [input.sku, input.name, input.minStock ?? 0, input.name, categoryId, id],
+      [
+        input.sku,
+        input.name,
+        input.minStock ?? 0,
+        input.requiresLotTracking ?? null,
+        input.requiresExpiryTracking ?? null,
+        input.name,
+        categoryId,
+        id,
+      ],
     );
 
     // Tồn kho không sửa được từ màn danh mục: mọi thay đổi số lượng phải đi qua

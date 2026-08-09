@@ -40,6 +40,9 @@ const initialFormState = {
     name: "",
     category: "",
     minStock: "",
+    // Hàng Mẹ & Bé mặc định theo dõi lô; hạn dùng do người dùng bật cho sữa/bột/thực phẩm.
+    requiresLotTracking: true,
+    requiresExpiryTracking: false,
 };
 
 const fallbackProducts: ProductItem[] = [];
@@ -126,9 +129,8 @@ export function useProducts() {
             locationId: editingProduct?.locationId ?? "",
             locations: editingProduct?.locations ?? "",
             status: calculateStatus(stockNum, minStockNum),
-            // Form sản phẩm hiện chưa cho chỉnh hai cờ này, giữ nguyên giá trị cũ khi sửa.
-            requiresLotTracking: editingProduct?.requiresLotTracking ?? false,
-            requiresExpiryTracking: editingProduct?.requiresExpiryTracking ?? false,
+            requiresLotTracking: Boolean(formData.requiresLotTracking),
+            requiresExpiryTracking: Boolean(formData.requiresExpiryTracking),
         };
 
         if (editingProduct) {
@@ -150,6 +152,8 @@ export function useProducts() {
             name: getProductNameLabel(product.name),
             category: getProductCategoryLabel(product.category),
             minStock: product.minStock?.toString() || "",
+            requiresLotTracking: product.requiresLotTracking ?? true,
+            requiresExpiryTracking: product.requiresExpiryTracking ?? false,
         });
         setShowModal(true);
     };

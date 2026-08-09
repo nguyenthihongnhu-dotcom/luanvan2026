@@ -17,10 +17,15 @@ export function useForm<T>(initialState: T) {
     const handleInputChange = useCallback((
         e: ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>
     ) => {
-        const { name, value } = e.target;
+        const target = e.target;
+        // Checkbox mang giá trị ở thuộc tính `checked`, không phải `value`.
+        const nextValue =
+            target instanceof HTMLInputElement && target.type === "checkbox"
+                ? target.checked
+                : target.value;
         setFormData((prev) => ({
             ...prev,
-            [name]: value, // Ghi đè hoặc thêm mới giá trị tương ứng với tên trường input
+            [target.name]: nextValue, // Ghi đè hoặc thêm mới giá trị tương ứng với tên trường input
         }));
     }, []);
 

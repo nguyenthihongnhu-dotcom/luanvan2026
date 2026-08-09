@@ -63,6 +63,9 @@ export function useWarehouse() {
     // còn trong CSDL — nhìn như mất dữ liệu.
     const [zoneShelves, setZoneShelves] = useState<Shelf[]>([]);
     const shelves = zoneShelves;
+    // Tăng sau mỗi thao tác ghi để danh sách kệ tải lại kể cả khi khu đang chọn
+    // không đổi (thêm/xóa kệ, thêm/xóa tầng, đồng bộ ma trận).
+    const [shelfReloadKey, setShelfReloadKey] = useState(0);
     const layers = useMemo(() => warehouseService.deriveLayers(zoneLocations), [zoneLocations]);
 
     const loadLocations = async (whId?: number | null) => {
@@ -78,18 +81,8 @@ export function useWarehouse() {
             ]);
             setLocations(locationResult);
             setZones(zoneResult);
-
-            // Kệ phụ thuộc khu đang chọn nên tải riêng; chưa chọn khu thì để rỗng.
-            if (targetWhId && selectedZone) {
-                const shelfRows = await warehouseService.listShelves(targetWhId, selectedZone);
-                setZoneShelves(shelfRows.map((row) => ({
-                    id: String(row.id),
-                    code: row.code,
-                    name: row.name || `Kệ ${row.code}`,
-                })));
-            } else {
-                setZoneShelves([]);
-            }
+            // Kệ do useEffect theo [selectedWarehouseId, selectedZone] lo, không tải ở đây
+            // để tránh gọi API kệ hai lần và tránh ghi đè kết quả mới bằng kết quả cũ.
         } catch (err) {
             console.error('Failed to load locations from backend:', err);
             setError(getHttpErrorMessage(err, 'Không tải được vị trí kho từ backend'));
@@ -135,7 +128,7 @@ export function useWarehouse() {
             });
 
         return () => { isCurrent = false; };
-    }, [selectedWarehouseId, selectedZone]);
+    }, [selectedWarehouseId, selectedZone, shelfReloadKey]);
 
     // Hàng đợi các thao tác ghi. Trước đây dùng `if (isSaving) return` nên thao tác thứ hai
     // gửi lúc thao tác thứ nhất chưa xong sẽ bị bỏ qua im lặng — kéo thả nhanh trên mặt bằng
@@ -159,6 +152,8 @@ export function useWarehouse() {
             try {
                 await operation();
                 await loadLocations(warehouseIdRef.current);
+                // Tải lại kệ dù khu đang chọn không đổi (thêm/xóa kệ, tầng...).
+                setShelfReloadKey((key) => key + 1);
             } catch (err) {
                 // Không dùng window.alert: nó chặn luồng nên các thao tác còn lại trong hàng đợi
                 // phải chờ người dùng bấm OK, và nhiều thao tác cùng lỗi sẽ bung một loạt hộp thoại.

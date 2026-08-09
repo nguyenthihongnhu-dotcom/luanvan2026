@@ -275,7 +275,10 @@ export default function StockPage() {
     const availableForSelected = useMemo(() => {
         if (!productVariantId) return null;
         const rows = currentStock.filter((row) => String(row.product_variant_id) === productVariantId);
-        if (rows.length === 0) return 0;
+        // Không có dòng nào cho SKU này trong bảng đã tải: có thể vì bảng đang lọc
+        // theo SKU khác, không chắc là hết hàng. Trả null (chưa biết) để không cảnh
+        // báo nhầm; backend vẫn là chốt chặn cuối khi bấm Xem phân bổ.
+        if (rows.length === 0) return null;
         return rows.reduce((sum, row) => sum + toNumber(row.available_quantity), 0);
     }, [currentStock, productVariantId]);
 

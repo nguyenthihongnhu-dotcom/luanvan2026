@@ -244,10 +244,11 @@ export default function StockCountsPage() {
         try {
             await action();
             const freshCounts = await loadCounts();
-            // Phải mở lại modal bằng bản vừa tải chứ không phải `selectedCount` cũ:
-            // giữ bản cũ thì sau khi Gửi duyệt, modal vẫn tưởng phiếu đang ở trạng thái
-            // Đang kiểm kê và tiếp tục hiện nút Lưu đếm, bấm vào là 409 NOT_COUNTABLE.
-            if (selectedCount) {
+            // Chỉ mở lại modal khi nó đang thật sự mở. Trước đây chỉ kiểm `selectedCount`,
+            // mà đóng modal không xóa `selectedCount`, nên thao tác từ danh sách (Bắt đầu,
+            // Gửi duyệt, Trả về sửa) lại bật lên modal của phiếu đã xem trước đó.
+            // Phải mở bằng bản vừa tải để trạng thái/nút hiển thị đúng, không phải bản cũ.
+            if (showItemsModal && selectedCount) {
                 const fresh = freshCounts.find((count) => count.id === selectedCount.id);
                 if (fresh) await openItems(fresh);
             }
