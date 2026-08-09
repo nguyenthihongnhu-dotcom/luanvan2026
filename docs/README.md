@@ -36,6 +36,8 @@ Dưới đây là **Bộ 5 Tài Liệu Giảng Dạy & Phản Biện Cấp Tốc
 ## 📁 CÁC TÀI LIỆU KỸ THUẬT VẬN HÀNH VÀ THIẾT KẾ KHIÊN KHÁC
 
 - [User Guide](file:///c:/source/lv-nhu/luanvan2026/docs/USER_GUIDE.md) - Hướng dẫn sử dụng chi tiết hệ thống cho người dùng cuối.
+- [Giải thích các trang](file:///c:/source/lv-nhu/luanvan2026/docs/GIAI-THICH-CAC-TRANG.md) - Giải thích từng màn hình: chức năng, thông báo/cảnh báo, ý nghĩa dữ liệu, API kết nối.
+- [Giải thích trang Tồn kho](file:///c:/source/lv-nhu/luanvan2026/docs/docs_giai_thich_trang_stock.md) - Bản chi tiết riêng cho màn Tồn kho.
 - [Plan Fix Commit](file:///c:/source/lv-nhu/luanvan2026/docs/PLAN-fix-commit-7528b12.md) - Kế hoạch sửa lỗi và bảo trì mã nguồn.
 - [Thiết kế Hệ thống (Docx)](file:///c:/source/lv-nhu/luanvan2026/THIET_KE_HE_THONG.md) - Tài liệu phân tích thiết kế chi tiết đồ án.
 - [Backend Documentation](file:///c:/source/lv-nhu/luanvan2026/backend/docs/README.md) - Hướng dẫn kỹ thuật riêng dành cho phần Backend Node.js Express.
