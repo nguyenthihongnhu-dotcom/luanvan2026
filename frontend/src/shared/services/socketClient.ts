@@ -1,5 +1,6 @@
 import { io, type Socket } from 'socket.io-client';
 import { getAccessToken } from './httpClient';
+import { env } from '../config/env';
 
 let socketInstance: Socket | null = null;
 let socketToken: string | null = null;
@@ -20,8 +21,7 @@ export function getNotificationSocket(): Socket | null {
   }
 
   if (!socketInstance) {
-    const rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    const serverUrl = rawUrl.replace(/\/api\/?$/, '');
+    const serverUrl = env.apiBaseUrl.replace(/\/api\/?$/, '');
 
     socketToken = token;
     socketInstance = io(serverUrl, {

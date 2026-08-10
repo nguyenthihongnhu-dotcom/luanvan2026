@@ -9,6 +9,8 @@ Repo gồm hai phần chính:
 
 ## Đọc docs ở đâu
 
+- [Hướng dẫn cài đặt chi tiết](docs/HUONG_DAN_CAI_DAT.md) — hướng dẫn từng bước cho máy mới, gồm cả xử lý lỗi thường gặp. Phần "Chạy backend/frontend" bên dưới chỉ là bản tóm tắt lệnh.
+
 Backend:
 
 - [Backend README](backend/README.md)
