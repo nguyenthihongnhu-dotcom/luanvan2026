@@ -1,0 +1,49 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu"]) --> B["Tạo phiếu: chọn kho và nhà cung cấp"]
+    B --> C["Thêm dòng hàng: SKU, số lượng, vị trí nhập"]
+    C --> Dq{"SKU bật requires_lot_tracking?"}
+    Dq -->|Có| E["Nhập số lô và hạn sử dụng"]
+    Dq -->|Không| F["Bỏ qua thông tin lô"]
+    E --> G["POST /goods-receipts, phiếu lưu ở DRAFT"]
+    F --> G
+    G --> H{"Người xác nhận có quyền goods_receipts:confirm?"}
+    H -->|Không| H1["Trả 403 FORBIDDEN"]
+    H1 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    H -->|Có| I["BEGIN TRANSACTION, khóa phiếu FOR UPDATE"]
+    I --> J{"Phiếu có dòng hàng?"}
+    J -->|Không| J1["ROLLBACK, trả GOODS_RECEIPT_HAS_NO_ITEMS"]
+    J1 --> C
+    J -->|Có| K{"Dòng cần lô đã có batch_id và vị trí đúng kho?"}
+    K -->|Không| K1["ROLLBACK, trả BATCH_REQUIRED hoặc LOCATION_WAREHOUSE_MISMATCH"]
+    K1 --> C
+    K -->|Có| Kb{"Lô đúng sản phẩm, còn hạn và không bị khóa?"}
+    Kb -->|Không| Kc["ROLLBACK, trả BATCH_VARIANT_MISMATCH, BATCH_EXPIRED hoặc BATCH_NOT_RECEIVABLE"]
+    Kc --> C
+    Kb -->|Có| L["Tạo hoặc khớp bản ghi product_batches"]
+    L --> Mn["UPSERT stock_locations, cộng quantity, tăng version"]
+    Mn --> N["Ghi inventory_transactions loại RECEIPT"]
+    N --> O["Đổi trạng thái CONFIRMED, ghi audit_logs, COMMIT"]
+    O --> End2(["Kết thúc: Nhập kho thành công"])

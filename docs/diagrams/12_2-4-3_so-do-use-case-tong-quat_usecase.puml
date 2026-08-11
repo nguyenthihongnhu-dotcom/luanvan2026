@@ -1,0 +1,86 @@
+@startuml
+' Sơ đồ use case tổng quát - vẽ theo bộ quyền thực tế trong warehouse_management_mysql.sql
+skinparam shadowing false
+skinparam linetype ortho
+skinparam defaultFontSize 13
+skinparam padding 6
+skinparam roundcorner 6
+skinparam backgroundColor #ffffff
+skinparam ArrowColor #000000
+skinparam nodesep 20
+skinparam ranksep 70
+skinparam usecase {
+  BackgroundColor #ffffff
+  BorderColor #000000
+  FontColor #000000
+}
+skinparam actor {
+  BackgroundColor #ffffff
+  BorderColor #000000
+  FontColor #000000
+}
+skinparam rectangle {
+  BackgroundColor #ffffff
+  BorderColor #000000
+  FontColor #000000
+}
+skinparam note {
+  BackgroundColor #ffffff
+  BorderColor #000000
+  FontColor #000000
+}
+left to right direction
+
+actor "Nhân viên kho\nSTAFF" as Staff
+actor "Quản lý kho\nWAREHOUSE_MANAGER" as Manager
+actor "Quản trị viên\nADMIN" as Admin
+
+rectangle "Hệ thống Bambi WMS" {
+  usecase "Đăng nhập và\nlàm mới phiên" as UC01
+  usecase "Xem tồn kho\nvà hàng cận hạn" as UC02
+  usecase "Soạn phiếu nhập,\nxuất, chuyển" as UC03
+  usecase "Nhận nhanh\nbằng QR" as UC04
+  usecase "Ghi số đếm\nkiểm kê" as UC05
+  usecase "Nộp kết quả\nkiểm kê" as UC06
+  usecase "Xem báo cáo\nvà nhật ký" as UC07
+
+  usecase "Xác nhận\nchứng từ kho" as UC08
+  usecase "Đảo chứng từ\nđã xác nhận" as UC09
+  usecase "Tạo và bắt đầu\nphiếu kiểm kê" as UC10
+  usecase "Duyệt phiếu\nkiểm kê" as UC11
+  usecase "Duyệt, từ chối, hủy\nphiếu điều chỉnh" as UC12
+  usecase "Sinh và xử lý\ncảnh báo" as UC13
+  usecase "Sinh và đọc\nthông báo" as UC14
+
+  usecase "Quản lý danh mục\nvà sản phẩm" as UC15
+  usecase "Quản lý kho\nvà vị trí" as UC16
+  usecase "Quản lý\nngười dùng" as UC17
+  usecase "Phân quyền\ncho vai trò" as UC18
+  usecase "Cấu hình\ntham số hệ thống" as UC19
+}
+
+Staff -- UC01
+Staff -- UC02
+Staff -- UC03
+Staff -- UC04
+Staff -- UC05
+Staff -- UC06
+Staff -- UC07
+
+Manager -- UC08
+Manager -- UC09
+Manager -- UC10
+Manager -- UC11
+Manager -- UC12
+Manager -- UC13
+Manager -- UC14
+
+Admin -- UC15
+Admin -- UC16
+Admin -- UC17
+Admin -- UC18
+Admin -- UC19
+
+Manager --|> Staff
+Admin --|> Manager
+@enduml

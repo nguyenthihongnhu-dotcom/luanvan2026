@@ -1,0 +1,45 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TB
+    subgraph BE["backend/src/modules"]
+        direction LR
+        b1["auth, authorization"]
+        b2["catalog, batches, suppliers"]
+        b3["warehouses, locations"]
+        b4["stock, inventory-transactions"]
+        b5["goods-receipts, goods-issues,<br/>stock-transfers, stock-counts,<br/>stock-adjustments"]
+        b6["reports, alerts, notifications,<br/>audit-logs, attachments, settings"]
+        b1 ~~~ b2 ~~~ b3 ~~~ b4 ~~~ b5 ~~~ b6
+    end
+    subgraph FE["frontend/src/features"]
+        direction LR
+        f1["auth, authorization, staff"]
+        f2["products, batches, partners"]
+        f3["locations, warehouses"]
+        f4["stock, transactions, transfers,<br/>stock-counts, quick-receive"]
+        f5["reports, alerts, notifications,<br/>audit-logs, attachments, settings"]
+        f1 ~~~ f2 ~~~ f3 ~~~ f4 ~~~ f5
+    end
+
+    FE -->|Gọi REST API| BE

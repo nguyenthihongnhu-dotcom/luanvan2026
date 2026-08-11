@@ -1,0 +1,36 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu"]) --> B["Chọn hoặc tạo danh mục và nhãn hiệu"]
+    B --> C["Nhập thông tin sản phẩm"]
+    C --> Dn["Tạo biến thể SKU: đơn vị tính, cờ theo dõi lô và hạn, tồn tối thiểu và tối đa"]
+    Dn --> E{"Mã SKU hoặc barcode đã tồn tại?"}
+    E -->|Trùng| E1["Trả 409 DUPLICATE_ENTRY"]
+    E1 --> Dn
+    E -->|Không trùng| F["Lưu products và product_variants"]
+    F --> G{"Cần ngừng kinh doanh một SKU cũ?"}
+    G -->|Có| H["PUT /catalog/products/:id, đổi status sang DISCONTINUED"]
+    H --> End1(["Kết thúc: SKU ngừng kinh doanh"])
+    G -->|Không| I["Giữ status ACTIVE"]
+    I --> End2(["Kết thúc: SKU sẵn sàng cho nghiệp vụ kho"])

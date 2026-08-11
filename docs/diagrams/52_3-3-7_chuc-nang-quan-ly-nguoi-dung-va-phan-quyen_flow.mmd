@@ -1,0 +1,39 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu"]) --> B["Nhập thông tin người dùng và chọn vai trò"]
+    B --> C["Middleware verifyToken và requirePermission users:create"]
+    C --> Dq{"Có quyền users:create?"}
+    Dq -->|Không| D1["Trả 403 FORBIDDEN"]
+    D1 --> End1(["Kết thúc: Không tạo được tài khoản"])
+    Dq -->|Có| E["Băm mật khẩu bằng bcrypt"]
+    E --> F{"Email đã tồn tại?"}
+    F -->|Trùng| F1["Trả 409 DUPLICATE_EMAIL"]
+    F1 --> B
+    F -->|Không trùng| G["Lưu bản ghi users, status ACTIVE, gán role_id"]
+    G --> H{"Cần chỉnh quyền của vai trò?"}
+    H -->|Có| I["PUT /authorization/roles/:id/permissions, ghi đè role_permissions"]
+    I --> End2(["Kết thúc: Vai trò có bộ quyền mới"])
+    H -->|Không| J["Giữ nguyên bộ quyền của vai trò"]
+    J --> End3(["Kết thúc: Tài khoản sẵn sàng đăng nhập"])

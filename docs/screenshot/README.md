@@ -1,0 +1,26 @@
+# Screenshots
+
+- 00-login.png
+- 01-products.png
+- 02-categories.png
+- 03-stock.png
+- 04-quick-receive.png
+- 05-inventory-transactions.png
+- 06-batches.png
+- 07-transactions.png
+- 08-transfers.png
+- 09-stock-counts.png
+- 10-locations.png
+- 11-warehouses.png
+- 12-partners.png
+- 13-employees.png
+- 14-authorization.png
+- 15-reports.png
+- 16-alerts.png
+- 17-notifications.png
+- 18-audit-logs.png
+- 19-attachments.png
+- 20-settings.png
+- 21-receipt-detail.png
+- 22-issue-detail.png
+- 23-adjustment-detail.png

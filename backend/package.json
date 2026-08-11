@@ -1,8 +1,8 @@
 {
   "name": "backend",
   "version": "0.0.1",
-  "description": "Express + TypeScript API for Bambi WMS.",
-  "author": "Bambi WMS",
+  "description": "",
+  "author": "",
   "private": true,
   "license": "UNLICENSED",
   "scripts": {

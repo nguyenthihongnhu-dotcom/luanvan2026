@@ -1,0 +1,47 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu: POST /stock-counts, phiếu DRAFT"]) --> A["Chọn phạm vi: kho, khu vực, kệ, vị trí, SKU hoặc danh mục"]
+    A --> B["POST /:id/start, chốt snapshot tồn hệ thống vào stock_count_items"]
+    B --> C{"Snapshot có dòng nào không?"}
+    C -->|Rỗng| C1["Trả STOCK_COUNT_SNAPSHOT_EMPTY"]
+    C1 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    C -->|Có dòng| Dn["Nhân viên ghi actual_quantity từng dòng"]
+    Dn --> E{"Đã đếm hết các dòng?"}
+    E -->|Chưa| Dn
+    E -->|Rồi| F["POST /:id/submit, phiếu chuyển SUBMITTED"]
+    F --> G{"Quản lý có quyền stock_counts:approve?"}
+    G -->|Không| G1["Trả 403 FORBIDDEN"]
+    G1 --> End2(["Kết thúc: Phiếu giữ nguyên SUBMITTED"])
+    G -->|Có| H{"Còn dòng chưa nhập số thực đếm?"}
+    H -->|Còn| H1["Trả STOCK_COUNT_HAS_UNCOUNTED_ITEMS"]
+    H1 --> Dn
+    H -->|Không| I{"Có dòng chênh lệch khác 0?"}
+    I -->|Không có| J["Chuyển APPROVED, tồn kho giữ nguyên"]
+    J --> End3(["Kết thúc: Kiểm kê khớp, không phát sinh điều chỉnh"])
+    I -->|Có| K["Sinh stock_adjustments loại COUNT ở trạng thái PENDING"]
+    K --> L["Sinh stock_adjustment_items, chiều IN nếu thừa, OUT nếu thiếu"]
+    L --> M["Chuyển phiếu kiểm kê sang APPROVED, COMMIT"]
+    M --> N["Người duyệt xử lý phiếu điều chỉnh bằng POST /stock-adjustments/:id/approve"]
+    N --> End4(["Kết thúc: Tồn kho chỉ đổi sau khi duyệt phiếu điều chỉnh"])

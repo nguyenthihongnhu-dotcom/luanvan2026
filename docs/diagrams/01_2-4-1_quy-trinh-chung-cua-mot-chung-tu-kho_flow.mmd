@@ -1,0 +1,41 @@
+%%{init: {
+  'theme': 'base',
+  'themeVariables': {
+    'primaryColor': '#ffffff',
+    'primaryBorderColor': '#000000',
+    'primaryTextColor': '#000000',
+    'secondaryColor': '#ffffff',
+    'secondaryBorderColor': '#000000',
+    'secondaryTextColor': '#000000',
+    'tertiaryColor': '#ffffff',
+    'tertiaryBorderColor': '#000000',
+    'tertiaryTextColor': '#000000',
+    'lineColor': '#000000',
+    'textColor': '#000000',
+    'mainBkg': '#ffffff',
+    'nodeBorder': '#000000',
+    'clusterBkg': '#ffffff',
+    'clusterBorder': '#000000',
+    'edgeLabelBackground': '#ffffff',
+    'fontSize': '14px'
+  },
+  'flowchart': { 'curve': 'stepAfter', 'nodeSpacing': 60, 'rankSpacing': 70, 'padding': 12, 'useMaxWidth': false }
+}}%%
+flowchart TD
+    Start(["Bắt đầu: Người dùng mở màn hình chứng từ"]) --> A["Tạo phiếu, hệ thống đặt trạng thái DRAFT"]
+    A --> B["Thêm dòng hàng: SKU, số lượng, vị trí"]
+    B --> C{"Người xác nhận có quyền confirm của loại chứng từ?"}
+    C -->|Không| C1["Trả 403 FORBIDDEN"]
+    C1 --> End1(["Kết thúc: Phiếu giữ nguyên DRAFT"])
+    C -->|Có| Dq{"Phiếu đúng trạng thái và có dòng hàng?"}
+    Dq -->|Không| D1["Trả lỗi NOT_CONFIRMABLE hoặc HAS_NO_ITEMS"]
+    D1 --> B
+    Dq -->|Có| E["BEGIN TRANSACTION, khóa bản ghi tồn FOR UPDATE"]
+    E --> F{"Ràng buộc lô, hạn dùng, tồn khả dụng thỏa?"}
+    F -->|Không| F1["ROLLBACK, trả BATCH_REQUIRED hoặc INSUFFICIENT_STOCK"]
+    F1 --> End2(["Kết thúc: Tồn kho không đổi"])
+    F -->|Có| G["Cập nhật stock_locations, tăng cột version"]
+    G --> H["Ghi inventory_transactions kèm quantity_before và quantity_after"]
+    H --> I["Ghi audit_logs trong cùng giao dịch"]
+    I --> J["Đổi trạng thái phiếu sang CONFIRMED, COMMIT"]
+    J --> End3(["Kết thúc: Phiếu CONFIRMED, tồn đã cập nhật"])
