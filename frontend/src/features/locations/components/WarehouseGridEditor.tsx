@@ -52,6 +52,16 @@ function nicknameOf(zone: WarehouseZone): string {
     return generated.includes(name.toUpperCase()) ? "" : name;
 }
 
+/**
+ * Nhãn hiển thị của khu: ưu tiên tên thủ kho tự đặt, chưa đặt thì mới rơi về `Khu A`.
+ *
+ * Người dùng nhớ khu theo tên hàng ("Sữa và tã") chứ không theo chữ cái, nên mặt bằng
+ * và sidebar đều lấy tên làm nhãn chính; mã khu chỉ còn dùng trong mã ô lưu trữ.
+ */
+function labelOf(zone: WarehouseZone): string {
+    return nicknameOf(zone) || `Khu ${zone.code}`;
+}
+
 function nextZoneCode(zones: WarehouseZone[]) {
     const used = new Set(zones.map((zone) => zone.code.toUpperCase()));
     for (let charCode = 65; charCode <= 90; charCode += 1) {
@@ -91,6 +101,95 @@ function isZoneFull(zone: WarehouseZone) {
 // một cú bấm bình thường cũng bị coi là kéo: vừa ghi lại vị trí cũ, vừa mở trang chi tiết.
 const DRAG_THRESHOLD_PX = 5;
 
+interface ZoneCreateFormProps {
+    zones: WarehouseZone[];
+    isSaving: boolean;
+    onCreateZone: WarehouseGridEditorProps["onCreateZone"];
+}
+
+/**
+ * Form thêm khu, tự giữ lấy state của mình.
+ *
+ * Trước đây ô tên dùng state của WarehouseGridEditor, mà nội dung sidebar lại nằm trong
+ * state của SidebarProvider: mỗi phím gõ phải đi vòng qua hai component rồi mới quay lại
+ * ô nhập. Vòng lặp đó cắt ngang bộ gõ tiếng Việt (Unikey/Telex gửi backspace rồi ký tự
+ * mới), nên gõ "sữa" chỉ ra "sua". Để state ngay tại form và ô tên không bị React ghi đè
+ * giá trị trong lúc gõ thì dấu mới bám được vào chữ.
+ */
+function ZoneCreateForm({ zones, isSaving, onCreateZone }: ZoneCreateFormProps) {
+    const nameRef = useRef<HTMLInputElement | null>(null);
+    const [shelves, setShelves] = useState(4);
+    const [layers, setLayers] = useState(4);
+
+    const submit = async () => {
+        const code = nextZoneCode(zones);
+        const name = nameRef.current?.value.trim() ?? "";
+        await onCreateZone(code, name || `Khu ${code}`, shelves, layers, {
+            gridRow: null,
+            gridCol: null,
+            openAfterCreate: false,
+        });
+        if (nameRef.current) nameRef.current.value = "";
+    };
+
+    const stepper = (label: string, value: number, setValue: (next: number) => void) => (
+        <div className="flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
+            <span className="text-xs font-semibold text-gray-600">{label}</span>
+            <div className="flex items-center gap-2">
+                <button
+                    type="button"
+                    onClick={() => setValue(Math.max(1, value - 1))}
+                    className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50"
+                    aria-label={`Giảm ${label.toLowerCase()}`}
+                >
+                    -
+                </button>
+                <span className="w-8 text-center text-xs font-bold text-gray-800">{value}</span>
+                <button
+                    type="button"
+                    onClick={() => setValue(Math.min(20, value + 1))}
+                    className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50"
+                    aria-label={`Tăng ${label.toLowerCase()}`}
+                >
+                    +
+                </button>
+            </div>
+        </div>
+    );
+
+    return (
+        <div className="space-y-2">
+            <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Thêm khu mới</h3>
+            <div className="space-y-1">
+                <label htmlFor="zone-name-input" className="block text-[11px] font-semibold text-gray-600">Tên khu</label>
+                <input
+                    id="zone-name-input"
+                    ref={nameRef}
+                    type="text"
+                    lang="vi"
+                    defaultValue=""
+                    onKeyDown={(event) => {
+                        // Bộ gõ tiếng Việt đang ghép dấu cũng bắn Enter, gửi form lúc đó là mất chữ.
+                        if (event.key === "Enter" && !event.nativeEvent.isComposing) void submit();
+                    }}
+                    placeholder="VD: Sữa và tã"
+                    className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs focus:border-pink-500 focus:outline-none"
+                />
+            </div>
+            {stepper("Số kệ", shelves, setShelves)}
+            {stepper("Số tầng mỗi kệ", layers, setLayers)}
+            <button
+                type="button"
+                onClick={() => void submit()}
+                disabled={isSaving}
+                className="w-full rounded-lg bg-pink-600 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-pink-700 disabled:opacity-60"
+            >
+                {isSaving ? "Đang lưu..." : "+ Thêm khu mới"}
+            </button>
+        </div>
+    );
+}
+
 export default function WarehouseGridEditor({
     zones,
     warehouseName,
@@ -102,9 +201,6 @@ export default function WarehouseGridEditor({
     onRenameZone,
 }: WarehouseGridEditorProps) {
     const { setExtraContent } = useSidebar();
-    const [newZoneName, setNewZoneName] = useState("");
-    const [newZoneShelves, setNewZoneShelves] = useState(4);
-    const [newZoneLayers, setNewZoneLayers] = useState(4);
     const [drag, setDrag] = useState<DragState | null>(null);
     const [hoverCell, setHoverCell] = useState<{ row: number; col: number } | null>(null);
     const gridRef = useRef<HTMLDivElement | null>(null);
@@ -303,144 +399,107 @@ export default function WarehouseGridEditor({
             gridOrientation: zone.gridOrientation === "HORIZONTAL" ? "VERTICAL" : "HORIZONTAL",
         });
 
-    const submitNewZone = async () => {
-        const code = nextZoneCode(zones);
-        await onCreateZone(code, newZoneName.trim() || `Khu ${code}`, newZoneShelves, newZoneLayers, {
-            gridRow: null,
-            gridCol: null,
-            openAfterCreate: false,
-        });
-        setNewZoneName("");
-    };
-
     // Toàn bộ thao tác nằm ở sidebar trái, khu vực chính chỉ còn mặt bằng cho rộng.
     useEffect(() => {
+        // Nút phụ dùng chung một cỡ chữ và một khoảng đệm để hàng nút dưới thẻ khu đều nhau.
+        const chipButton =
+            "rounded-md border border-gray-200 bg-white px-2 py-1 text-[10px] font-semibold text-gray-600 transition disabled:cursor-not-allowed disabled:opacity-40";
+
+        // Thẻ khu xếp làm hai tầng: tầng trên là thông tin, tầng dưới là hàng nút.
+        // Nhồi cả bốn nút vào cùng một hàng với phần chữ thì sidebar 256px không đủ chỗ,
+        // phần chữ bị bóp còn một ký tự mỗi dòng và trông như nút đè lên tên khu.
         const zoneChip = (zone: WarehouseZone, placed: boolean) => (
             <div
                 key={zone.id}
                 onPointerDown={(event) => beginDrag(zone, event)}
-                className="flex cursor-grab select-none items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 p-2 transition hover:border-pink-300 hover:shadow-md active:cursor-grabbing"
+                className="cursor-grab select-none space-y-2 rounded-xl border border-gray-200 bg-gray-50 p-2.5 transition hover:border-pink-300 hover:shadow-md active:cursor-grabbing"
                 title="Giữ chuột kéo khu vào ô trên mặt bằng. Đang kéo bấm F để xoay ngang/dọc, Esc để hủy."
             >
-                <div
-                    className="flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-xs font-bold text-white shadow-sm"
-                    style={{ backgroundColor: colorByZoneId.get(zone.id) }}
-                >
-                    {zone.code}
+                <div className="flex items-start gap-2">
+                    <span
+                        aria-hidden
+                        className="mt-1 h-3 w-3 shrink-0 rounded-full shadow-sm"
+                        style={{ backgroundColor: colorByZoneId.get(zone.id) }}
+                    />
+                    <div className="min-w-0 flex-1">
+                        <p className="truncate text-xs font-bold text-gray-800" title={labelOf(zone)}>
+                            {labelOf(zone)}
+                        </p>
+                        <p className="mt-0.5 text-[10px] leading-tight text-gray-400">
+                            {zone.shelfCount} kệ · {zone.gridOrientation === "HORIZONTAL" ? "xếp ngang" : "xếp dọc"}
+                            {placed ? ` · ô H${(zone.gridRow ?? 0) + 1}-C${(zone.gridCol ?? 0) + 1}` : ""}
+                        </p>
+                        <p className={`text-[10px] leading-tight ${isZoneFull(zone) ? "font-bold text-red-600" : "text-gray-400"}`}>
+                            {zone.occupiedCount}/{zone.locationCount} vị trí có hàng{isZoneFull(zone) ? " · ĐẦY" : ""}
+                        </p>
+                    </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                    <p className="truncate text-xs font-bold text-gray-800">
-                        Khu {zone.code}
-                        {nicknameOf(zone) && <span className="font-medium text-gray-500"> · {nicknameOf(zone)}</span>}
-                    </p>
-                    <p className="text-[10px] text-gray-400">
-                        {zone.shelfCount} kệ · {zone.gridOrientation === "HORIZONTAL" ? "xếp ngang" : "xếp dọc"}
-                        {placed ? ` · ô H${(zone.gridRow ?? 0) + 1}-C${(zone.gridCol ?? 0) + 1}` : ""}
-                    </p>
-                    <p className={`text-[10px] ${isZoneFull(zone) ? "font-bold text-red-600" : "text-gray-400"}`}>
-                        {zone.occupiedCount}/{zone.locationCount} vị trí có hàng{isZoneFull(zone) ? " · ĐẦY" : ""}
-                    </p>
-                </div>
-                <button
-                    type="button"
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={() => void toggleOrientation(zone)}
-                    disabled={isSaving}
-                    className="shrink-0 rounded-md border border-gray-200 bg-white px-1.5 py-1 text-[10px] font-semibold text-gray-600 hover:border-pink-200 hover:text-pink-600 disabled:opacity-60"
-                    title="Đổi hướng xếp kệ của riêng khu này"
-                >
-                    {zone.gridOrientation === "HORIZONTAL" ? "↔" : "↕"}
-                </button>
-                {placed ? (
+
+                <div className="flex flex-wrap items-center gap-1">
                     <button
                         type="button"
                         onPointerDown={(event) => event.stopPropagation()}
-                        onClick={() => void handleRemoveFromGrid(zone)}
+                        onClick={() => void toggleOrientation(zone)}
                         disabled={isSaving}
-                        className="shrink-0 rounded-md border border-gray-200 bg-white px-1.5 py-1 text-[10px] font-semibold text-gray-600 hover:border-red-200 hover:text-red-600 disabled:opacity-60"
-                        title="Gỡ khu khỏi mặt bằng, không xóa dữ liệu khu"
+                        className={`${chipButton} hover:border-pink-200 hover:text-pink-600`}
+                        title="Đổi hướng xếp kệ của riêng khu này"
                     >
-                        Gỡ
+                        {zone.gridOrientation === "HORIZONTAL" ? "↔" : "↕"}
                     </button>
-                ) : (
+                    {placed ? (
+                        <button
+                            type="button"
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onClick={() => void handleRemoveFromGrid(zone)}
+                            disabled={isSaving}
+                            className={`${chipButton} hover:border-red-200 hover:text-red-600`}
+                            title="Gỡ khu khỏi mặt bằng, không xóa dữ liệu khu"
+                        >
+                            Gỡ
+                        </button>
+                    ) : (
+                        <button
+                            type="button"
+                            onPointerDown={(event) => event.stopPropagation()}
+                            onClick={() => onSelectZone?.(zone.code)}
+                            className={`${chipButton} hover:border-pink-200 hover:text-pink-600`}
+                        >
+                            Xem
+                        </button>
+                    )}
                     <button
                         type="button"
                         onPointerDown={(event) => event.stopPropagation()}
-                        onClick={() => onSelectZone?.(zone.code)}
-                        className="shrink-0 rounded-md border border-gray-200 bg-white px-1.5 py-1 text-[10px] font-semibold text-gray-600 hover:border-pink-200 hover:text-pink-600"
+                        onClick={() => void onRenameZone?.(zone)}
+                        disabled={isSaving}
+                        className={`${chipButton} hover:border-pink-200 hover:text-pink-600`}
+                        title={nicknameOf(zone) ? "Đổi tên khu" : "Đặt tên cho khu, ví dụ Sữa và tã"}
                     >
-                        Xem
+                        {nicknameOf(zone) ? "Đổi tên" : "Đặt tên"}
                     </button>
-                )}
-                <button
-                    type="button"
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={() => void onRenameZone?.(zone)}
-                    disabled={isSaving}
-                    className="shrink-0 rounded-md border border-gray-200 bg-white px-1.5 py-1 text-[10px] font-semibold text-gray-600 hover:border-pink-200 hover:text-pink-600 disabled:opacity-60"
-                    title={nicknameOf(zone) ? "Đổi biệt danh của khu" : "Đặt biệt danh cho khu, ví dụ Khu sữa bột"}
-                >
-                    {nicknameOf(zone) ? "Đổi tên" : "Đặt tên"}
-                </button>
-                {/* Khu còn hàng thì không cho xóa; nút mờ đi và nói rõ lý do
-                    thay vì để người dùng bấm rồi nhận lỗi từ server. */}
-                <button
-                    type="button"
-                    onPointerDown={(event) => event.stopPropagation()}
-                    onClick={() => void onDeleteZone?.(zone)}
-                    disabled={isSaving || zone.occupiedCount > 0}
-                    className="shrink-0 rounded-md border border-gray-200 bg-white px-1.5 py-1 text-[10px] font-semibold text-gray-600 hover:border-red-300 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-40"
-                    title={
-                        zone.occupiedCount > 0
-                            ? `Không xóa được: khu còn ${zone.occupiedCount} vị trí đang có hàng`
-                            : `Xóa khu ${zone.name} cùng toàn bộ kệ và ô lưu trữ bên trong`
-                    }
-                >
-                    Xóa
-                </button>
+                    {/* Khu còn hàng thì không cho xóa; nút mờ đi và nói rõ lý do
+                        thay vì để người dùng bấm rồi nhận lỗi từ server. */}
+                    <button
+                        type="button"
+                        onPointerDown={(event) => event.stopPropagation()}
+                        onClick={() => void onDeleteZone?.(zone)}
+                        disabled={isSaving || zone.occupiedCount > 0}
+                        className={`${chipButton} hover:border-red-300 hover:text-red-600`}
+                        title={
+                            zone.occupiedCount > 0
+                                ? `Không xóa được: khu còn ${zone.occupiedCount} vị trí đang có hàng`
+                                : `Xóa ${labelOf(zone)} cùng toàn bộ kệ và ô lưu trữ bên trong`
+                        }
+                    >
+                        Xóa
+                    </button>
+                </div>
             </div>
         );
 
         setExtraContent(
             <div className="space-y-6">
-                <div className="space-y-2">
-                    <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">Thêm khu mới</h3>
-                    <div className="space-y-1">
-                        <label htmlFor="zone-name-input" className="block text-[11px] font-semibold text-gray-600">Tên khu</label>
-                        <input
-                            id="zone-name-input"
-                            type="text"
-                            value={newZoneName}
-                            onChange={(event) => setNewZoneName(event.target.value)}
-                            placeholder="VD: Sữa và tã"
-                            className="w-full rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs focus:border-pink-500 focus:outline-none"
-                        />
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
-                        <span className="text-xs font-semibold text-gray-600">Số kệ</span>
-                        <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setNewZoneShelves(Math.max(1, newZoneShelves - 1))} className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">-</button>
-                            <span className="w-8 text-center text-xs font-bold text-gray-800">{newZoneShelves}</span>
-                            <button type="button" onClick={() => setNewZoneShelves(Math.min(20, newZoneShelves + 1))} className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">+</button>
-                        </div>
-                    </div>
-                    <div className="flex items-center justify-between rounded-xl border border-gray-200/50 bg-gray-50 p-2">
-                        <span className="text-xs font-semibold text-gray-600">Số tầng mỗi kệ</span>
-                        <div className="flex items-center gap-2">
-                            <button type="button" onClick={() => setNewZoneLayers(Math.max(1, newZoneLayers - 1))} className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">-</button>
-                            <span className="w-8 text-center text-xs font-bold text-gray-800">{newZoneLayers}</span>
-                            <button type="button" onClick={() => setNewZoneLayers(Math.min(20, newZoneLayers + 1))} className="flex h-6 w-6 items-center justify-center rounded-md border border-gray-200 bg-white text-xs font-bold shadow-sm hover:bg-gray-50">+</button>
-                        </div>
-                    </div>
-                    <button
-                        type="button"
-                        onClick={() => void submitNewZone()}
-                        disabled={isSaving}
-                        className="w-full rounded-lg bg-pink-600 py-2 text-xs font-bold text-white shadow-sm transition hover:bg-pink-700 disabled:opacity-60"
-                    >
-                        {isSaving ? "Đang lưu..." : "+ Thêm khu mới"}
-                    </button>
-                </div>
+                <ZoneCreateForm zones={zones} isSaving={isSaving} onCreateZone={onCreateZone} />
 
                 <div className="space-y-2">
                     <h3 className="mb-2 border-b border-gray-100 pb-2 text-xs font-bold uppercase text-gray-500">
@@ -468,11 +527,17 @@ export default function WarehouseGridEditor({
             </div>,
         );
 
-        return () => setExtraContent(null);
+        // Cố ý không dọn nội dung ở đây. Effect này chạy lại mỗi lần danh sách khu đổi, mà
+        // dọn rồi dựng lại sẽ có một nhịp sidebar trống — đủ để form thêm khu bị gỡ khỏi DOM
+        // và người dùng mất chữ đang gõ dở. Việc dọn để cho effect gỡ component bên dưới.
+
         // Danh sách khu và form phụ thuộc các state dưới đây; cố ý không đưa trạng thái kéo
         // vào deps để mỗi lần di chuột không phải dựng lại toàn bộ nội dung sidebar.
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [setExtraContent, zones, unplacedZones, placedZones, colorByZoneId, newZoneName, newZoneShelves, newZoneLayers, isSaving, onDeleteZone, onRenameZone]);
+    }, [setExtraContent, zones, unplacedZones, placedZones, colorByZoneId, isSaving, onCreateZone, onDeleteZone, onRenameZone]);
+
+    // Rời khỏi trang mới trả sidebar về trạng thái trống.
+    useEffect(() => () => setExtraContent(null), [setExtraContent]);
 
     return (
         <div className="flex h-[calc(100vh-180px)] flex-1 flex-col overflow-auto rounded-xl border border-gray-200 bg-gray-100 p-6">
@@ -508,7 +573,7 @@ export default function WarehouseGridEditor({
                     <div
                         ref={gridRef}
                         className="inline-grid select-none gap-1.5 rounded-3xl border border-gray-200 bg-white p-4 shadow-inner"
-                        style={{ gridTemplateColumns: `repeat(${cols}, 68px)` }}
+                        style={{ gridTemplateColumns: `repeat(${cols}, 68px)`, gridAutoRows: "64px" }}
                     >
                         {Array.from({ length: rows * cols }).map((_, index) => {
                             const row = Math.floor(index / cols);
@@ -516,8 +581,17 @@ export default function WarehouseGridEditor({
                             const key = `${row}:${col}`;
                             const zone = cellOwner.get(key);
                             const color = zone ? colorByZoneId.get(zone.id) : undefined;
-                            const isAnchor = zone && zone.gridRow === row && zone.gridCol === col;
+                            const isAnchor = zone ? zone.gridRow === row && zone.gridCol === col : false;
                             const isPreview = previewCells.has(key);
+
+                            // Khu chiếm nhiều ô được vẽ thành một khối liền từ ô gốc, các ô còn lại
+                            // của khu không vẽ nữa. Trước đây mỗi ô tự vẽ nhãn riêng nên tên khu bị
+                            // lặp lại bốn lần trên cùng một dãy kệ.
+                            if (zone && !isAnchor) return null;
+                            const span = zone ? sizeOf(zone) : 1;
+                            const isHorizontal = zone?.gridOrientation === "HORIZONTAL";
+                            const colSpan = zone && isHorizontal ? span : 1;
+                            const rowSpan = zone && !isHorizontal ? span : 1;
 
                             return (
                                 <div
@@ -530,7 +604,7 @@ export default function WarehouseGridEditor({
                                         if (suppressClick.current || !zone) return;
                                         onSelectZone?.(zone.code);
                                     }}
-                                    className={`relative flex h-16 items-center justify-center overflow-hidden rounded-2xl border-2 text-sm transition-colors ${zone
+                                    className={`relative flex items-center justify-center overflow-hidden rounded-2xl border-2 text-sm transition-colors ${zone
                                         ? "cursor-grab border-transparent shadow-sm active:cursor-grabbing"
                                         // Ô trống là lối đi, không phải chỗ chờ điền: để trắng hẳn cho
                                         // mặt bằng đọc ra hình khối kho. Lưới chấm chỉ hiện lúc đang
@@ -544,10 +618,14 @@ export default function WarehouseGridEditor({
                                                 : "border-pink-500 bg-pink-100"
                                             : ""
                                         } ${zone && isZoneFull(zone) && !isPreview ? "border-solid border-red-400" : ""}`}
-                                    style={zone && color && !isPreview ? { backgroundColor: `${color}25` } : undefined}
+                                    style={{
+                                        gridColumn: `${col + 1} / span ${colSpan}`,
+                                        gridRow: `${row + 1} / span ${rowSpan}`,
+                                        ...(zone && color && !isPreview ? { backgroundColor: `${color}25` } : null),
+                                    }}
                                     title={
                                         zone
-                                            ? `${zone.name} - ${zone.shelfCount} kệ, ${zone.occupiedCount}/${zone.locationCount} vị trí đang có hàng${isZoneFull(zone) ? " (ĐẦY, không còn ô trống)" : ""}`
+                                            ? `${labelOf(zone)} (mã ${zone.code}) - ${zone.shelfCount} kệ, ${zone.occupiedCount}/${zone.locationCount} vị trí đang có hàng${isZoneFull(zone) ? " (ĐẦY, không còn ô trống)" : ""}`
                                             : `Lối đi H${row + 1}-C${col + 1}`
                                     }
                                 >
@@ -563,20 +641,16 @@ export default function WarehouseGridEditor({
                                         />
                                     )}
                                     {zone ? (
-                                        <div className="pointer-events-none relative px-1 text-center">
-                                            {/* Mã khu (A, B, C) là định danh chính vì mã ô lưu trữ dựa vào nó;
-                                                biệt danh đặt ngay dưới để thủ kho gọi theo tên quen. */}
-                                            <div className="text-base font-bold leading-none" style={{ color }}>{zone.code}</div>
-                                            {nicknameOf(zone) && (
-                                                <div className="mt-0.5 truncate text-[10px] font-medium leading-tight text-gray-600" title={nicknameOf(zone)}>
-                                                    {nicknameOf(zone)}
-                                                </div>
-                                            )}
-                                            {isAnchor && (
-                                                <div className="mt-0.5 text-[10px] text-gray-500">
-                                                    {isZoneFull(zone) ? "ĐẦY" : `${zone.shelfCount} kệ`}
-                                                </div>
-                                            )}
+                                        <div className="pointer-events-none relative px-1.5 text-center">
+                                            {/* Tên khu là nhãn duy nhất trên mặt bằng. Mã khu (A, B, C) chỉ
+                                                còn nằm trong mã ô lưu trữ và trong tooltip, vì thủ kho tìm
+                                                khu theo tên hàng chứ không theo chữ cái. */}
+                                            <div className="break-words text-xs font-bold leading-tight" style={{ color }}>
+                                                {labelOf(zone)}
+                                            </div>
+                                            <div className="mt-0.5 text-[10px] leading-none text-gray-500">
+                                                {isZoneFull(zone) ? "ĐẦY" : `${zone.shelfCount} kệ`}
+                                            </div>
                                         </div>
                                     ) : (
                                         // Lối đi: để trống hoàn toàn, chỉ đánh dấu tọa độ mờ khi đang kéo.
@@ -595,12 +669,14 @@ export default function WarehouseGridEditor({
                     style={{ left: drag.x + 14, top: drag.y + 14 }}
                 >
                     <span
-                        className="flex h-5 w-5 items-center justify-center rounded text-[10px] font-bold text-white"
+                        aria-hidden
+                        className="h-3 w-3 shrink-0 rounded-full"
                         style={{ backgroundColor: colorByZoneId.get(draggedZone.id) }}
-                    >
-                        {draggedZone.code}
+                    />
+                    <span className="max-w-[160px] truncate text-xs font-semibold text-gray-700">
+                        {labelOf(draggedZone)}
                     </span>
-                    <span className="text-xs font-semibold text-gray-700">
+                    <span className="text-xs text-gray-500">
                         {sizeOf(draggedZone)} ô · {drag.orientation === "HORIZONTAL" ? "ngang ↔" : "dọc ↕"}
                     </span>
                     <span className="rounded bg-gray-100 px-1.5 py-0.5 text-[10px] font-bold text-gray-500">F: xoay</span>
