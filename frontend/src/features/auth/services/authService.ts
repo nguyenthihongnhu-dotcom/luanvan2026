@@ -91,6 +91,21 @@ async function register(payload: RegisterPayload): Promise<AuthResponse> {
     };
 }
 
+/**
+ * Gửi yêu cầu quên mật khẩu từ màn hình đăng nhập, chờ quản trị viên duyệt.
+ *
+ * Backend luôn trả `accepted: true` kể cả khi email không có trong hệ thống, nên
+ * màn hình đăng nhập không dùng được để dò xem email nào có tài khoản. Vì vậy
+ * thông báo cho người dùng cũng phải trung tính, không khẳng định "đã tìm thấy
+ * tài khoản".
+ */
+async function requestPasswordResetApproval(email: string, note?: string): Promise<void> {
+    await httpClient.post('/auth/password-reset/requests', {
+        email,
+        note: note?.trim() || undefined,
+    });
+}
+
 function logout(): void {
     disconnectNotificationSocket();
     setAccessToken(null);
@@ -100,4 +115,5 @@ export const authService = {
     login,
     register,
     logout,
+    requestPasswordResetApproval,
 };

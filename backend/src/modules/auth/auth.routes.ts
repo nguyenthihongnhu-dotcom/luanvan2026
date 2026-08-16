@@ -7,15 +7,18 @@ import {
 import { requirePermission } from '../../common/middleware/require-permission.middleware';
 import { verifyToken } from './auth.middleware';
 import {
+  approvePasswordResetRequestController,
+  createPasswordResetRequestController,
   createUserController,
   deleteUserController,
+  listPasswordResetRequestsController,
   listUsersController,
   loginController,
   logoutController,
   refreshController,
   registerController,
-  requestPasswordResetController,
-  resetPasswordController,
+  rejectPasswordResetRequestController,
+  resetUserPasswordController,
   updateUserController,
 } from './auth.controller';
 
@@ -49,9 +52,36 @@ authRouter.post('/login', loginRateLimit, asyncHandler(loginController));
 authRouter.post('/register', asyncHandler(registerController));
 authRouter.post('/refresh', asyncHandler(refreshController));
 authRouter.post('/logout', asyncHandler(logoutController));
+// Đặt lại mật khẩu về giá trị mặc định. Hai đường vào, một kết quả:
+//   1. Quản trị viên chủ động đặt lại cho một nhân viên.
+//   2. Nhân viên gửi yêu cầu từ màn hình đăng nhập, quản trị viên duyệt.
+// Đường 2 không cần đăng nhập nên phải chặn spam bằng rate limit.
 authRouter.post(
-  '/password-reset/request',
-  passwordResetRateLimit,
-  asyncHandler(requestPasswordResetController),
+  '/users/:id/reset-password',
+  asyncHandler(verifyToken),
+  requirePermission('users:reset_password'),
+  asyncHandler(resetUserPasswordController),
 );
-authRouter.post('/password-reset/reset', asyncHandler(resetPasswordController));
+authRouter.post(
+  '/password-reset/requests',
+  passwordResetRateLimit,
+  asyncHandler(createPasswordResetRequestController),
+);
+authRouter.get(
+  '/password-reset/requests',
+  asyncHandler(verifyToken),
+  requirePermission('users:reset_password'),
+  asyncHandler(listPasswordResetRequestsController),
+);
+authRouter.post(
+  '/password-reset/requests/:id/approve',
+  asyncHandler(verifyToken),
+  requirePermission('users:reset_password'),
+  asyncHandler(approvePasswordResetRequestController),
+);
+authRouter.post(
+  '/password-reset/requests/:id/reject',
+  asyncHandler(verifyToken),
+  requirePermission('users:reset_password'),
+  asyncHandler(rejectPasswordResetRequestController),
+);

@@ -67,15 +67,80 @@ export async function listUsers(): Promise<User[]> {
 }
 
 /**
- * Sinh mã đặt lại mật khẩu cho nhân viên. Quản trị viên không xem hay đặt hộ mật
- * khẩu: hệ thống chỉ cấp một mã dùng một lần, nhân viên tự nhập mật khẩu mới.
+ * Quản trị viên đặt lại mật khẩu của một nhân viên về `DEFAULT_RESET_PASSWORD`.
+ *
+ * Cùng kết quả với việc duyệt yêu cầu quên mật khẩu — hệ thống chỉ có một cách
+ * đặt lại mật khẩu và một giá trị mặc định duy nhất.
  */
-export async function requestPasswordReset(email: string): Promise<string | null> {
-    const response = await httpClient.post<{ data: { accepted: boolean; resetToken?: string } }>(
-        '/auth/password-reset/request',
-        { email },
+export async function resetUserPassword(id: number): Promise<void> {
+    await httpClient.post(`/auth/users/${id}/reset-password`);
+}
+
+export type PasswordResetRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export interface PasswordResetRequest {
+    id: number;
+    userId: number;
+    fullName: string;
+    employeeCode: string;
+    email: string;
+    roleCode: string;
+    status: PasswordResetRequestStatus;
+    note: string | null;
+    rejectionReason: string | null;
+    approvedByName: string | null;
+    rejectedByName: string | null;
+    createdAt: string;
+}
+
+type PasswordResetRequestRow = {
+    id: number;
+    user_id: number;
+    requested_email: string;
+    status: PasswordResetRequestStatus;
+    note: string | null;
+    rejection_reason: string | null;
+    full_name: string;
+    employee_code: string | null;
+    role_code: string;
+    approved_by_name: string | null;
+    rejected_by_name: string | null;
+    created_at: string;
+};
+
+/** Mật khẩu mà backend đặt lại khi quản trị viên duyệt yêu cầu quên mật khẩu. */
+export const DEFAULT_RESET_PASSWORD = '123456';
+
+export async function listPasswordResetRequests(
+    status?: PasswordResetRequestStatus,
+): Promise<PasswordResetRequest[]> {
+    const query = status ? `?status=${status}` : '';
+    const response = await httpClient.get<{ data: PasswordResetRequestRow[] }>(
+        `/auth/password-reset/requests${query}`,
     );
-    return unwrapData(response)?.resetToken ?? null;
+
+    return unwrapData(response).map((row) => ({
+        id: row.id,
+        userId: row.user_id,
+        fullName: row.full_name,
+        employeeCode: row.employee_code ?? String(row.user_id),
+        email: row.requested_email,
+        roleCode: row.role_code,
+        status: row.status,
+        note: row.note,
+        rejectionReason: row.rejection_reason,
+        approvedByName: row.approved_by_name,
+        rejectedByName: row.rejected_by_name,
+        createdAt: row.created_at,
+    }));
+}
+
+export async function approvePasswordResetRequest(id: number): Promise<void> {
+    await httpClient.post(`/auth/password-reset/requests/${id}/approve`);
+}
+
+export async function rejectPasswordResetRequest(id: number, rejectionReason: string): Promise<void> {
+    await httpClient.post(`/auth/password-reset/requests/${id}/reject`, { rejectionReason });
 }
 
 export async function createUser(input: CreateUserInput): Promise<void> {
@@ -104,4 +169,13 @@ export async function updateUser(id: number, input: UpdateUserInput): Promise<vo
 export async function deleteUser(id: number): Promise<void> {
     await httpClient.delete(`/auth/users/${id}`);
 }
-export const userService = { listUsers, createUser, updateUser, deleteUser, requestPasswordReset };
+export const userService = {
+    listUsers,
+    createUser,
+    updateUser,
+    deleteUser,
+    resetUserPassword,
+    listPasswordResetRequests,
+    approvePasswordResetRequest,
+    rejectPasswordResetRequest,
+};

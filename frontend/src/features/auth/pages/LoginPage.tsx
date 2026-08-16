@@ -24,6 +24,38 @@ const Login: React.FC = () => {
     const [showRegisterModal, setShowRegisterModal] = useState(false);
     const [registerData, setRegisterData] = useState<RegisterData>(emptyRegisterData);
 
+    // Quên mật khẩu: gửi yêu cầu cho quản trị viên duyệt, không tự đặt lại được.
+    const [showForgotModal, setShowForgotModal] = useState(false);
+    const [forgotEmail, setForgotEmail] = useState('');
+    const [forgotNote, setForgotNote] = useState('');
+    const [forgotSending, setForgotSending] = useState(false);
+    const [forgotSent, setForgotSent] = useState(false);
+    const [forgotError, setForgotError] = useState('');
+
+    const openForgotModal = () => {
+        setForgotEmail(username);       // đỡ phải gõ lại email vừa nhập ở ô đăng nhập
+        setForgotNote('');
+        setForgotSent(false);
+        setForgotError('');
+        setShowForgotModal(true);
+    };
+
+    const handleForgotPassword = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setForgotSending(true);
+        setForgotError('');
+
+        try {
+            await authService.requestPasswordResetApproval(forgotEmail, forgotNote);
+            setForgotSent(true);
+        } catch (err: unknown) {
+            console.error('Lỗi gửi yêu cầu quên mật khẩu:', err);
+            setForgotError(getAuthErrorMessage(err, 'Không gửi được yêu cầu. Vui lòng thử lại sau.'));
+        } finally {
+            setForgotSending(false);
+        }
+    };
+
     const handleRegisterInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setRegisterData({ ...registerData, [name]: value });
@@ -147,7 +179,109 @@ const Login: React.FC = () => {
                         Đăng ký
                     </button> */}
                 </div>
+
+                <div style={{ marginTop: '14px', textAlign: 'center' }}>
+                    <button
+                        type="button"
+                        onClick={openForgotModal}
+                        style={{ background: 'none', border: 'none', color: '#DB2777', cursor: 'pointer', fontSize: '14px', textDecoration: 'underline', padding: 0 }}
+                    >
+                        Quên mật khẩu?
+                    </button>
+                </div>
             </form>
+
+            {showForgotModal && (
+                <div style={{ position: 'fixed', inset: 0, zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px', backgroundColor: 'rgba(15, 23, 42, 0.45)' }}>
+                    <div style={{ width: '100%', maxWidth: '420px', backgroundColor: 'white', borderRadius: '12px', overflow: 'hidden', boxShadow: '0 10px 30px rgba(0,0,0,0.2)' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '16px 20px', backgroundColor: '#FDF2F8', borderBottom: '1px solid #FBCFE8' }}>
+                            <h3 style={{ margin: 0, color: '#BE185D', fontSize: '17px', fontWeight: 700 }}>Quên mật khẩu</h3>
+                            <button
+                                type="button"
+                                onClick={() => setShowForgotModal(false)}
+                                aria-label="Đóng"
+                                style={{ background: 'none', border: 'none', fontSize: '22px', lineHeight: 1, color: '#9CA3AF', cursor: 'pointer' }}
+                            >
+                                ×
+                            </button>
+                        </div>
+
+                        {forgotSent ? (
+                            <div style={{ padding: '20px' }}>
+                                <p style={{ margin: '0 0 10px', fontSize: '14px', color: '#166534', fontWeight: 600 }}>
+                                    Đã gửi yêu cầu tới quản trị viên.
+                                </p>
+                                <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#4B5563', lineHeight: 1.55 }}>
+                                    Nếu email vừa nhập có tài khoản trong hệ thống, quản trị viên sẽ thấy yêu cầu này ở
+                                    màn hình quản lý nhân viên. Sau khi được duyệt, mật khẩu của bạn sẽ được đặt lại
+                                    thành <strong>123456</strong> và mọi phiên đăng nhập cũ bị đăng xuất.
+                                </p>
+                                <p style={{ margin: 0, fontSize: '13px', color: '#B45309', lineHeight: 1.55 }}>
+                                    Hãy đăng nhập lại bằng mật khẩu mặc định rồi đổi mật khẩu ngay.
+                                </p>
+                                <button
+                                    type="button"
+                                    onClick={() => setShowForgotModal(false)}
+                                    style={{ marginTop: '16px', width: '100%', padding: '10px', backgroundColor: '#DB2777', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontSize: '15px', fontWeight: 'bold' }}
+                                >
+                                    Đã hiểu
+                                </button>
+                            </div>
+                        ) : (
+                            <form onSubmit={handleForgotPassword} style={{ padding: '20px' }}>
+                                <p style={{ margin: '0 0 14px', fontSize: '13px', color: '#4B5563', lineHeight: 1.55 }}>
+                                    Nhập email đăng nhập của bạn. Yêu cầu sẽ được gửi tới quản trị viên; khi được duyệt,
+                                    mật khẩu sẽ về mặc định <strong>123456</strong>.
+                                </p>
+
+                                {forgotError && (
+                                    <p style={{ margin: '0 0 12px', color: 'red', fontSize: '13px' }}>{forgotError}</p>
+                                )}
+
+                                <div style={{ marginBottom: '12px' }}>
+                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Email đăng nhập:</label>
+                                    <input
+                                        type="email"
+                                        value={forgotEmail}
+                                        onChange={(e) => setForgotEmail(e.target.value)}
+                                        required
+                                        style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box' }}
+                                    />
+                                </div>
+
+                                <div style={{ marginBottom: '16px' }}>
+                                    <label style={{ display: 'block', marginBottom: '5px', fontSize: '14px' }}>Ghi chú cho quản trị viên (không bắt buộc):</label>
+                                    <textarea
+                                        value={forgotNote}
+                                        onChange={(e) => setForgotNote(e.target.value)}
+                                        maxLength={500}
+                                        rows={3}
+                                        placeholder="Ví dụ: đổi điện thoại nên không nhớ mật khẩu"
+                                        style={{ width: '100%', padding: '10px', borderRadius: '4px', border: '1px solid #ccc', boxSizing: 'border-box', resize: 'vertical', fontFamily: 'inherit', fontSize: '14px' }}
+                                    />
+                                </div>
+
+                                <div style={{ display: 'flex', gap: '10px' }}>
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowForgotModal(false)}
+                                        style={{ flex: 1, padding: '10px', backgroundColor: 'white', color: '#374151', border: '1px solid #D1D5DB', borderRadius: '4px', cursor: 'pointer', fontSize: '15px' }}
+                                    >
+                                        Hủy
+                                    </button>
+                                    <button
+                                        type="submit"
+                                        disabled={forgotSending}
+                                        style={{ flex: 1, padding: '10px', backgroundColor: '#DB2777', color: 'white', border: 'none', borderRadius: '4px', cursor: forgotSending ? 'not-allowed' : 'pointer', fontSize: '15px', fontWeight: 'bold', opacity: forgotSending ? 0.6 : 1 }}
+                                    >
+                                        {forgotSending ? 'Đang gửi...' : 'Gửi yêu cầu'}
+                                    </button>
+                                </div>
+                            </form>
+                        )}
+                    </div>
+                </div>
+            )}
 
             {showRegisterModal && (
                 <RegisterModal

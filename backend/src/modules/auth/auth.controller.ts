@@ -1,10 +1,16 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-call */
 import type { Request, Response } from 'express';
+import { HttpError } from '../../common/http';
 import {
+  approvePasswordResetRequest,
+  listPasswordResetRequests,
   login,
   logout,
   refresh,
-  requestPasswordReset,
-  resetPassword,
+  rejectPasswordResetRequest,
+  requestPasswordResetApproval,
+  resetUserPassword,
   register,
   createManagedUser,
   listUsers,
@@ -12,15 +18,26 @@ import {
   deleteUser,
 } from './auth.service';
 import {
+  parseCreatePasswordResetRequestInput,
   parseLoginInput,
   parseLogoutInput,
+  parsePasswordResetRequestId,
+  parsePasswordResetRequestsFilters,
   parseRefreshInput,
-  parseRequestPasswordResetInput,
-  parseResetPasswordInput,
+  parseRejectPasswordResetRequestInput,
   parseRegisterInput,
   parseCreateUserInput,
   parseUpdateUserInput,
+  parseUserId,
 } from './auth.validation';
+
+function requireAuthenticatedUser(req: Request): number {
+  if (!req.user) {
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
+  }
+
+  return Number(req.user.id);
+}
 
 function getRequestMetadata(req: Request): {
   userAgent?: string;
@@ -59,22 +76,65 @@ export async function logoutController(
   res.json({ data: await logout(input) });
 }
 
-export async function requestPasswordResetController(
+/** Quản trị viên đặt lại mật khẩu của một nhân viên về giá trị mặc định. */
+export async function resetUserPasswordController(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const input = parseRequestPasswordResetInput(req.body);
+  const resetBy = requireAuthenticatedUser(req);
+  const userId = parseUserId(req.params.id);
 
-  res.json({ data: await requestPasswordReset(input) });
+  res.json({ data: await resetUserPassword({ userId, resetBy }) });
 }
 
-export async function resetPasswordController(
+export async function createPasswordResetRequestController(
   req: Request,
   res: Response,
 ): Promise<void> {
-  const input = parseResetPasswordInput(req.body);
+  const input = parseCreatePasswordResetRequestInput(
+    req.body,
+    getRequestMetadata(req),
+  );
 
-  res.json({ data: await resetPassword(input) });
+  res.status(201).json({ data: await requestPasswordResetApproval(input) });
+}
+
+export async function listPasswordResetRequestsController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const filters = parsePasswordResetRequestsFilters(req.query);
+
+  res.json({ data: await listPasswordResetRequests(filters) });
+}
+
+export async function approvePasswordResetRequestController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const approvedBy = requireAuthenticatedUser(req);
+  const requestId = parsePasswordResetRequestId(req.params.id);
+
+  res.json({
+    data: await approvePasswordResetRequest({ requestId, approvedBy }),
+  });
+}
+
+export async function rejectPasswordResetRequestController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const rejectedBy = requireAuthenticatedUser(req);
+  const requestId = parsePasswordResetRequestId(req.params.id);
+  const { rejectionReason } = parseRejectPasswordResetRequestInput(req.body);
+
+  res.json({
+    data: await rejectPasswordResetRequest({
+      requestId,
+      rejectedBy,
+      rejectionReason,
+    }),
+  });
 }
 
 export async function registerController(

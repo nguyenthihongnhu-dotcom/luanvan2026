@@ -1,17 +1,15 @@
 import { z } from 'zod';
 import { validateInput } from '../../common/validation/validate';
 import type {
+  CreatePasswordResetRequestInput,
   LoginInput,
   LogoutInput,
+  PasswordResetRequestsFilters,
   RefreshInput,
-  RequestPasswordResetInput,
-  ResetPasswordInput,
   CreateUserInput,
   RegisterInput,
   UpdateUserInput,
 } from './auth.model';
-
-const passwordSchema = z.string().min(8).max(128);
 
 const loginSchema = z.object({
   email: z.string().trim().email().max(191).toLowerCase(),
@@ -24,14 +22,6 @@ const refreshSchema = z.object({
 
 const logoutSchema = refreshSchema;
 
-const requestPasswordResetSchema = z.object({
-  email: z.string().trim().email().max(191).toLowerCase(),
-});
-
-const resetPasswordSchema = z.object({
-  token: z.string().min(32).max(512),
-  newPassword: passwordSchema,
-});
 const registerSchema = z.object({
   email: z.string().trim().email().max(191).toLowerCase(),
   password: z.string().min(6).max(128),
@@ -62,14 +52,48 @@ export function parseLogoutInput(input: unknown): LogoutInput {
   return validateInput(logoutSchema, input);
 }
 
-export function parseRequestPasswordResetInput(
-  input: unknown,
-): RequestPasswordResetInput {
-  return validateInput(requestPasswordResetSchema, input);
+export function parseUserId(input: unknown): number {
+  return validateInput(z.coerce.number().int().positive(), input);
 }
 
-export function parseResetPasswordInput(input: unknown): ResetPasswordInput {
-  return validateInput(resetPasswordSchema, input);
+const createPasswordResetRequestSchema = z.object({
+  email: z.string().trim().email().max(191).toLowerCase(),
+  note: z.string().trim().max(500).optional(),
+});
+
+const passwordResetRequestsFiltersSchema = z.object({
+  status: z.enum(['PENDING', 'APPROVED', 'REJECTED']).optional(),
+});
+
+/** Từ chối bắt buộc nêu lý do để nhân viên biết vì sao yêu cầu bị bỏ. */
+const rejectPasswordResetRequestSchema = z.object({
+  rejectionReason: z.string().trim().min(1).max(500),
+});
+
+export function parseCreatePasswordResetRequestInput(
+  input: unknown,
+  metadata: Pick<CreatePasswordResetRequestInput, 'userAgent' | 'ipAddress'>,
+): CreatePasswordResetRequestInput {
+  return {
+    ...validateInput(createPasswordResetRequestSchema, input),
+    ...metadata,
+  };
+}
+
+export function parsePasswordResetRequestsFilters(
+  input: unknown,
+): PasswordResetRequestsFilters {
+  return validateInput(passwordResetRequestsFiltersSchema, input);
+}
+
+export function parsePasswordResetRequestId(input: unknown): number {
+  return validateInput(z.coerce.number().int().positive(), input);
+}
+
+export function parseRejectPasswordResetRequestInput(input: unknown): {
+  rejectionReason: string;
+} {
+  return validateInput(rejectPasswordResetRequestSchema, input);
 }
 
 export function parseRegisterInput(input: unknown): RegisterInput {

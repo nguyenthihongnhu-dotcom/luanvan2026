@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import type { FormEvent } from "react";
 import DashboardLayout from "@/layouts/dashboard/DashboardLayout";
 import Tablelayout from "@/shared/ui/Table/TableLayout";
 import { useSidebar } from "@/app/providers/useSidebar";
 import type { ColumnProps } from "@/shared/ui/Table/types";
-import { roleLabel, userService } from "@/features/staff/services/userService";
+import { DEFAULT_RESET_PASSWORD, roleLabel, userService } from "@/features/staff/services/userService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
-import type { User, UserRoleCode } from "@/features/staff/services/userService";
+import { usePermissions } from "@/shared/auth/usePermissions";
+import type { PasswordResetRequest, User, UserRoleCode } from "@/features/staff/services/userService";
 
 const roleOptions: Array<{ code: UserRoleCode; label: string }> = [
     { code: "ADMIN", label: roleLabel("ADMIN") },
@@ -27,6 +28,7 @@ const initialFormState = {
 
 export default function EmployeesPage() {
     const { setExtraContent } = useSidebar();
+    const { hasPermission } = usePermissions();
     const [searchTerm, setSearchTerm] = useState("");
     const [roleFilter, setRoleFilter] = useState("All");
     const [data, setData] = useState<User[]>([]);
@@ -34,9 +36,13 @@ export default function EmployeesPage() {
     const [isLoading, setIsLoading] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
-    // Mã đặt lại mật khẩu vừa cấp, hiện một lần để quản trị viên chuyển cho nhân viên.
-    const [resetInfo, setResetInfo] = useState<{ name: string; email: string; token: string } | null>(null);
     const [formData, setFormData] = useState(initialFormState);
+
+    // Hàng đợi yêu cầu "Quên mật khẩu" nhân viên tự gửi từ màn hình đăng nhập.
+    const [resetRequests, setResetRequests] = useState<PasswordResetRequest[]>([]);
+    const [processingRequestId, setProcessingRequestId] = useState<number | null>(null);
+    const [approvedInfo, setApprovedInfo] = useState<{ name: string; email: string } | null>(null);
+    const canApproveReset = hasPermission("users:reset_password");
 
     /**
      * Tải danh sách nhân viên từ backend.
@@ -55,7 +61,72 @@ export default function EmployeesPage() {
         }
     }
 
+    /**
+     * Chỉ gọi khi tài khoản có quyền duyệt — endpoint này yêu cầu
+     * `users:reset_password`, gọi khi không có quyền chỉ tổ sinh 403 vô ích.
+     */
+    const loadResetRequests = useCallback(async () => {
+        if (!canApproveReset) {
+            setResetRequests([]);
+            return;
+        }
+
+        try {
+            setResetRequests(await userService.listPasswordResetRequests("PENDING"));
+        } catch (err) {
+            console.error(err);
+            setError(getHttpErrorMessage(err, "Không tải được danh sách yêu cầu quên mật khẩu"));
+        }
+    }, [canApproveReset]);
+
     useEffect(() => { void loadUsers(); }, []);
+    useEffect(() => { void loadResetRequests(); }, [loadResetRequests]);
+
+    /**
+     * Duyệt yêu cầu quên mật khẩu: backend đặt mật khẩu về mặc định, mở khóa tài
+     * khoản và thu hồi mọi phiên đăng nhập cũ của nhân viên đó.
+     */
+    const handleApproveReset = async (request: PasswordResetRequest) => {
+        if (!window.confirm(
+            `Duyệt yêu cầu của ${request.fullName} (${request.email})?\n\n` +
+            `Mật khẩu sẽ được đặt lại thành "${DEFAULT_RESET_PASSWORD}" và mọi phiên đăng nhập hiện tại của tài khoản này sẽ bị đăng xuất.`,
+        )) return;
+
+        setProcessingRequestId(request.id);
+        setError(null);
+        try {
+            await userService.approvePasswordResetRequest(request.id);
+            setApprovedInfo({ name: request.fullName, email: request.email });
+            await loadResetRequests();
+        } catch (err) {
+            console.error(err);
+            setError(getHttpErrorMessage(err, "Không duyệt được yêu cầu đặt lại mật khẩu"));
+        } finally {
+            setProcessingRequestId(null);
+        }
+    };
+
+    /** Từ chối yêu cầu — bắt buộc nêu lý do để nhân viên biết vì sao bị bỏ. */
+    const handleRejectReset = async (request: PasswordResetRequest) => {
+        const reason = window.prompt(`Lý do từ chối yêu cầu của ${request.fullName}:`, "");
+        if (reason === null) return;
+        if (!reason.trim()) {
+            window.alert("Phải nhập lý do từ chối.");
+            return;
+        }
+
+        setProcessingRequestId(request.id);
+        setError(null);
+        try {
+            await userService.rejectPasswordResetRequest(request.id, reason.trim());
+            await loadResetRequests();
+        } catch (err) {
+            console.error(err);
+            setError(getHttpErrorMessage(err, "Không từ chối được yêu cầu đặt lại mật khẩu"));
+        } finally {
+            setProcessingRequestId(null);
+        }
+    };
 
     useEffect(() => {
         setExtraContent(
@@ -141,19 +212,23 @@ export default function EmployeesPage() {
     };
 
     /**
-     * Cấp mã đặt lại mật khẩu cho nhân viên quên mật khẩu. Quản trị viên không
-     * đặt hộ mật khẩu — hệ thống sinh mã dùng một lần, nhân viên tự nhập mật khẩu
-     * mới, nên không ai ngoài chính họ biết mật khẩu.
+     * Đặt lại mật khẩu của nhân viên về giá trị mặc định. Giống hệt kết quả của
+     * việc duyệt yêu cầu quên mật khẩu bên trên — hệ thống chỉ có một cách đặt
+     * lại mật khẩu, nên quản trị viên không phải nhớ hai quy trình khác nhau.
      */
     const handleResetPassword = async (user: User) => {
-        if (!window.confirm(`Cấp mã đặt lại mật khẩu cho ${user.HoTen} (${user.Email})?`)) return;
+        if (!window.confirm(
+            `Đặt lại mật khẩu cho ${user.HoTen} (${user.Email})?\n\n` +
+            `Mật khẩu sẽ thành "${DEFAULT_RESET_PASSWORD}" và mọi phiên đăng nhập hiện tại của tài khoản này sẽ bị đăng xuất.`,
+        )) return;
 
+        setError(null);
         try {
-            const token = await userService.requestPasswordReset(user.Email);
-            setResetInfo(token ? { name: user.HoTen, email: user.Email, token } : null);
+            await userService.resetUserPassword(user.MaNguoiDung);
+            setApprovedInfo({ name: user.HoTen, email: user.Email });
         } catch (err) {
             console.error(err);
-            window.alert("Không cấp được mã đặt lại mật khẩu. Thử lại sau.");
+            setError(getHttpErrorMessage(err, "Không đặt lại được mật khẩu cho nhân viên"));
         }
     };
 
@@ -186,14 +261,16 @@ export default function EmployeesPage() {
                 return (
                     <div className="flex flex-wrap gap-1">
                         <button type="button" onClick={() => openEditModal(record)} className="btn-action btn-blue">Sửa</button>
-                        <button
-                            type="button"
-                            onClick={() => void handleResetPassword(record)}
-                            className="btn-action btn-blue"
-                            title="Đặt lại mật khẩu và gửi hướng dẫn tới email của nhân viên"
-                        >
-                            Đặt lại mật khẩu
-                        </button>
+                        {canApproveReset && (
+                            <button
+                                type="button"
+                                onClick={() => void handleResetPassword(record)}
+                                className="btn-action btn-blue"
+                                title={`Đặt mật khẩu về ${DEFAULT_RESET_PASSWORD} và đăng xuất mọi phiên của tài khoản này`}
+                            >
+                                Đặt lại mật khẩu
+                            </button>
+                        )}
                         <button
                             type="button"
                             onClick={() => void handleToggleStatus(record)}
@@ -224,34 +301,84 @@ export default function EmployeesPage() {
                     <button type="button" onClick={openCreateModal} className="rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700">+ Thêm nhân viên</button>
                 </div>
                 {error && <div className="text-sm text-red-600">{error}</div>}
-                {resetInfo && (
-                    <div className="rounded-md border border-blue-200 bg-blue-50 p-4 text-sm text-blue-900">
-                        <p className="font-semibold">Đã cấp mã đặt lại mật khẩu cho {resetInfo.name}</p>
-                        <p className="mt-1 text-xs">
-                            Gửi mã này cho nhân viên ({resetInfo.email}) để họ tự đặt mật khẩu mới. Mã chỉ dùng được
-                            một lần và sẽ hết hạn sau ít phút — bạn không xem được mật khẩu của nhân viên, và cũng không cần biết.
-                        </p>
-                        <div className="mt-2 flex flex-wrap items-center gap-2">
-                            <code className="select-all break-all rounded border border-blue-300 bg-white px-2 py-1 font-mono text-xs">
-                                {resetInfo.token}
-                            </code>
-                            <button
-                                type="button"
-                                onClick={() => void navigator.clipboard?.writeText(resetInfo.token)}
-                                className="rounded-md border border-blue-300 bg-white px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100"
-                            >
-                                Sao chép
-                            </button>
-                            <button
-                                type="button"
-                                onClick={() => setResetInfo(null)}
-                                className="rounded-md border border-blue-300 bg-white px-2 py-1 text-xs font-medium text-blue-800 hover:bg-blue-100"
-                            >
-                                Đóng
-                            </button>
+
+                {canApproveReset && resetRequests.length > 0 && (
+                    <div className="rounded-lg border border-amber-300 bg-amber-50 p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-sm font-bold text-amber-900">Yêu cầu quên mật khẩu chờ duyệt</h2>
+                            <span className="rounded-full border border-amber-300 bg-white px-2 py-0.5 text-xs font-semibold text-amber-800">
+                                {resetRequests.length}
+                            </span>
                         </div>
+                        <p className="mt-1 text-xs text-amber-800">
+                            Nhân viên tự gửi từ màn hình đăng nhập. Duyệt sẽ đặt mật khẩu về{" "}
+                            <code className="rounded border border-amber-300 bg-white px-1 font-mono">{DEFAULT_RESET_PASSWORD}</code>,
+                            mở khóa tài khoản và đăng xuất mọi phiên đang mở của tài khoản đó.
+                        </p>
+                        <ul className="mt-3 space-y-2">
+                            {resetRequests.map((request) => (
+                                <li
+                                    key={request.id}
+                                    className="flex flex-wrap items-start justify-between gap-3 rounded-md border border-amber-200 bg-white px-3 py-2"
+                                >
+                                    <div className="min-w-0">
+                                        <p className="text-sm font-medium text-gray-900">
+                                            {request.fullName}{" "}
+                                            <span className="font-normal text-gray-500">
+                                                ({request.employeeCode} · {roleLabel(request.roleCode)})
+                                            </span>
+                                        </p>
+                                        <p className="text-xs text-gray-600">{request.email}</p>
+                                        {request.note && (
+                                            <p className="mt-1 text-xs text-gray-500 italic">Ghi chú: {request.note}</p>
+                                        )}
+                                    </div>
+                                    <div className="flex shrink-0 gap-1">
+                                        <button
+                                            type="button"
+                                            disabled={processingRequestId === request.id}
+                                            onClick={() => void handleApproveReset(request)}
+                                            className="btn-action btn-green disabled:opacity-50"
+                                            title={`Đặt lại mật khẩu về ${DEFAULT_RESET_PASSWORD}`}
+                                        >
+                                            {processingRequestId === request.id ? "Đang xử lý..." : "Duyệt"}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            disabled={processingRequestId === request.id}
+                                            onClick={() => void handleRejectReset(request)}
+                                            className="btn-action btn-red disabled:opacity-50"
+                                        >
+                                            Từ chối
+                                        </button>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
                     </div>
                 )}
+
+                {approvedInfo && (
+                    <div className="rounded-md border border-green-200 bg-green-50 p-4 text-sm text-green-900">
+                        <p className="font-semibold">
+                            Đã đặt lại mật khẩu cho {approvedInfo.name} ({approvedInfo.email})
+                        </p>
+                        <p className="mt-1 text-xs">
+                            Mật khẩu hiện tại là{" "}
+                            <code className="select-all rounded border border-green-300 bg-white px-1.5 py-0.5 font-mono">
+                                {DEFAULT_RESET_PASSWORD}
+                            </code>. Báo nhân viên đăng nhập lại và đổi mật khẩu ngay — mật khẩu mặc định ai cũng đoán được.
+                        </p>
+                        <button
+                            type="button"
+                            onClick={() => setApprovedInfo(null)}
+                            className="mt-2 rounded-md border border-green-300 bg-white px-2 py-1 text-xs font-medium text-green-800 hover:bg-green-100"
+                        >
+                            Đóng
+                        </button>
+                    </div>
+                )}
+
                 <div className="bg-white p-4 rounded-lg border border-gray-200 shadow-sm">
                     <input type="text" placeholder="Tìm theo tên, email hoặc mã nhân viên..." className="w-full md:w-1/3 px-4 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-pink-500 outline-none text-sm" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                 </div>

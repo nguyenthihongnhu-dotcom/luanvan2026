@@ -4,48 +4,21 @@ import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
 import { authorizationService } from '@/features/authorization/services/authorizationService';
 import { getHttpErrorMessage } from '@/shared/services/httpClient';
+import { usePermissionLabels } from '@/shared/auth/usePermissionLabels';
 import type { AuthorizationRole, PermissionItem } from '@/features/authorization/services/authorizationService';
 
 function permissionsOf(role: AuthorizationRole): string[] {
     return role.permissions ? role.permissions.split(',').filter(Boolean) : [];
 }
 
-/**
- * Tên nhóm quyền và tên vai trò hiển thị bằng tiếng Việt. Mã (`module`, `code`)
- * giữ nguyên tiếng Anh vì backend dùng chúng làm khóa trong requirePermission().
- */
-const MODULE_LABELS: Record<string, string> = {
-    alerts: 'Cảnh báo tồn kho',
-    auth: 'Tài khoản nhân viên',
-    authorization: 'Phân quyền',
-    goods_issues: 'Phiếu xuất kho',
-    goods_receipts: 'Phiếu nhập kho',
-    notifications: 'Thông báo',
-    settings: 'Tham số hệ thống',
-    stock_adjustments: 'Phiếu điều chỉnh tồn',
-    stock_counts: 'Phiếu kiểm kê',
-    stock_transfers: 'Phiếu chuyển kho',
-    warehouses: 'Kho hàng',
-};
-
-const ROLE_LABELS: Record<string, string> = {
-    ADMIN: 'Quản trị viên',
-    WAREHOUSE_MANAGER: 'Quản lý kho',
-    STAFF: 'Nhân viên kho',
-    AUDITOR: 'Kiểm soát viên',
-};
-
-function moduleLabel(moduleName: string): string {
-    return MODULE_LABELS[moduleName] ?? moduleName;
-}
-
-function roleLabel(code: string, fallback: string): string {
-    return ROLE_LABELS[code] ?? fallback;
-}
-
 export default function AuthorizationPage() {
     const [roles, setRoles] = useState<AuthorizationRole[]>([]);
     const [allPermissions, setAllPermissions] = useState<PermissionItem[]>([]);
+
+    // Nhãn tiếng Việt cho mã quyền. Truyền danh mục quyền vào để ưu tiên cột
+    // `permissions.name` trong CSDL; quyền mới thêm tự hiện đúng tên tiếng Việt
+    // mà không phải sửa từ điển tĩnh trong hook.
+    const { labelOf, moduleLabelOf, roleLabelOf, describe } = usePermissionLabels(allPermissions);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
@@ -145,11 +118,16 @@ export default function AuthorizationPage() {
     }
 
     const groupedPermissions = useMemo(() => {
+        const keyword = permSearchTerm.toLowerCase();
         const filtered = allPermissions.filter(
             (p) =>
-                p.code.toLowerCase().includes(permSearchTerm.toLowerCase()) ||
-                p.name?.toLowerCase().includes(permSearchTerm.toLowerCase()) ||
-                p.module?.toLowerCase().includes(permSearchTerm.toLowerCase()),
+                p.code.toLowerCase().includes(keyword) ||
+                p.name?.toLowerCase().includes(keyword) ||
+                p.module?.toLowerCase().includes(keyword) ||
+                // Cho phép gõ tiếng Việt: người dùng thấy "Duyệt phiếu kiểm kê"
+                // trên màn hình thì gõ đúng chữ đó phải ra kết quả.
+                labelOf(p.code).toLowerCase().includes(keyword) ||
+                moduleLabelOf(p.module || '').toLowerCase().includes(keyword),
         );
 
         const groups: Record<string, PermissionItem[]> = {};
@@ -159,11 +137,11 @@ export default function AuthorizationPage() {
             groups[mod].push(perm);
         }
         return groups;
-    }, [allPermissions, permSearchTerm]);
+    }, [allPermissions, permSearchTerm, labelOf, moduleLabelOf]);
 
     const columns: ColumnProps<AuthorizationRole>[] = [
         { key: 'code', title: 'Mã vai trò', className: 'font-semibold text-gray-900' },
-        { key: 'name', title: 'Tên vai trò', render: (value, record) => roleLabel(record.code, String(value ?? '')) },
+        { key: 'name', title: 'Tên vai trò', render: (value, record) => roleLabelOf(record.code, String(value ?? '')) },
         { key: 'description', title: 'Mô tả', render: (value) => String(value || '-') },
         { key: 'is_system', title: 'Loại', render: (value) => value ? 'Hệ thống' : 'Tùy chỉnh' },
         {
@@ -173,10 +151,16 @@ export default function AuthorizationPage() {
                 const permissions = permissionsOf(record);
                 if (permissions.length === 0) return <span className="text-gray-400 italic">Chưa gán</span>;
                 return (
+                    // Hiện nhãn tiếng Việt; mã gốc để trong `title` để khi cần
+                    // đối chiếu với requirePermission() thì rê chuột là thấy.
                     <div className="flex max-w-xl flex-wrap gap-1">
                         {permissions.map((permission) => (
-                            <span key={permission} className="rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-700">
-                                {permission}
+                            <span
+                                key={permission}
+                                title={describe(permission) ? `${permission} — ${describe(permission)}` : permission}
+                                className="rounded border border-gray-200 bg-gray-50 px-2 py-0.5 text-xs text-gray-700"
+                            >
+                                {labelOf(permission)}
                             </span>
                         ))}
                     </div>
@@ -284,7 +268,7 @@ export default function AuthorizationPage() {
                                             <div key={moduleName} className="rounded-md border border-gray-200 bg-gray-50/50 p-3">
                                                 <div className="mb-2 flex items-center justify-between border-b border-gray-200 pb-2">
                                                     <span className="text-xs font-bold uppercase tracking-wider text-pink-700">
-                                                        {moduleLabel(moduleName)}
+                                                        {moduleLabelOf(moduleName)}
                                                     </span>
                                                     <button
                                                         type="button"
@@ -313,7 +297,7 @@ export default function AuthorizationPage() {
                                                                     className="mt-0.5 h-4 w-4 rounded border-gray-300 text-pink-600 focus:ring-pink-500"
                                                                 />
                                                                 <div>
-                                                                    <div className="font-semibold">{perm.name || perm.code}</div>
+                                                                    <div className="font-semibold">{labelOf(perm.code)}</div>
                                                                     <div className="text-[11px] text-gray-500">{perm.code}</div>
                                                                     {perm.description && (
                                                                         <div className="mt-0.5 text-[11px] text-gray-400">{perm.description}</div>

@@ -17,7 +17,12 @@ Dưới đây là **Bộ 5 Tài Liệu Giảng Dạy & Phản Biện Cấp Tốc
    - Bộ **100 câu hỏi phản biện nảy lửa** hay gặp nhất của Thầy/Cô và Hội đồng, chia làm 5 chuyên đề (20 câu/chuyên đề).
    - Mỗi câu hỏi có sẵn **Câu trả lời mẫu** ngắn gọn, chuẩn ngôn ngữ IT và **Minh chứng đường dẫn file + số dòng code chính xác** để mở cho Hội đồng xem trong 5 giây.
 
-3. [🔄 **00-QUY-TRINH-LUONG-XU-LY-PROCESS.md**](file:///c:/source/lv-nhu/luanvan2026/docs/00-QUY-TRINH-LUONG-XU-LY-PROCESS.md)
+3. [🎯 **00-20-CAU-HOI-PHAN-BIEN-5-NHOM.md**](file:///c:/source/lv-nhu/luanvan2026/docs/00-20-CAU-HOI-PHAN-BIEN-5-NHOM.md)
+   - Bộ **20 câu hỏi phản biện chia 5 nhóm**: Kiến trúc & Công nghệ, Nghiệp vụ kho, CSDL & Giao dịch, Bảo mật & Phân quyền, Giao diện & UX.
+   - Mỗi câu trả lời đối chiếu **file + số dòng thật** trong mã nguồn, kèm liên kết tới sơ đồ ERD/State/Sequence tương ứng.
+   - Có sẵn mục **"Ba điểm yếu nên chủ động nêu"** để phòng thủ trước khi Hội đồng chỉ ra.
+
+4. [🔄 **00-QUY-TRINH-LUONG-XU-LY-PROCESS.md**](file:///c:/source/lv-nhu/luanvan2026/docs/00-QUY-TRINH-LUONG-XU-LY-PROCESS.md)
    - Tổng hợp bộ sơ đồ quy trình dạng **Mermaid Sequence Diagram**, **Flowchart** và **State Diagram**.
    - Sẵn sàng copy-paste vào Slide thuyết trình và Báo cáo đồ án (Auth & RBAC, Quick Receive QR, FEFO Algorithm, Concurrency & Reversal Engine, State Machine).
 

@@ -99,6 +99,37 @@ CREATE TABLE password_reset_tokens (
     INDEX idx_password_reset_tokens_expires (expires_at)
 ) ENGINE=InnoDB;
 
+-- Yêu cầu quên mật khẩu do chính nhân viên gửi từ màn hình đăng nhập, chờ quản
+-- trị viên duyệt. Khác với password_reset_tokens (nhân viên tự đặt mật khẩu mới
+-- bằng mã dùng một lần): duyệt yêu cầu này sẽ đặt mật khẩu về giá trị mặc định.
+-- Tách bảng riêng vì đây là hàng đợi phê duyệt có vòng đời trạng thái, không
+-- phải mã dùng một lần; nhét chung sẽ phải bịa token_hash cho mỗi yêu cầu.
+CREATE TABLE password_reset_requests (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    user_id BIGINT UNSIGNED NOT NULL,
+    requested_email VARCHAR(191) NOT NULL,
+    status ENUM('PENDING','APPROVED','REJECTED') NOT NULL DEFAULT 'PENDING',
+    note VARCHAR(500) NULL,
+    approved_by BIGINT UNSIGNED NULL,
+    approved_at DATETIME(3) NULL,
+    rejected_by BIGINT UNSIGNED NULL,
+    rejected_at DATETIME(3) NULL,
+    rejection_reason VARCHAR(500) NULL,
+    ip_address VARCHAR(45) NULL,
+    user_agent VARCHAR(500) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+        ON UPDATE CURRENT_TIMESTAMP(3),
+    CONSTRAINT fk_password_reset_requests_user
+        FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_password_reset_requests_approved_by
+        FOREIGN KEY (approved_by) REFERENCES users(id),
+    CONSTRAINT fk_password_reset_requests_rejected_by
+        FOREIGN KEY (rejected_by) REFERENCES users(id),
+    INDEX idx_password_reset_requests_status (status, created_at),
+    INDEX idx_password_reset_requests_user (user_id, status)
+) ENGINE=InnoDB;
+
 -- ============================================================
 -- 2. WAREHOUSE MAPPING
 -- ============================================================
@@ -1030,6 +1061,7 @@ VALUES
     ('users:create', 'Thêm nhân viên', 'auth', 'Tạo tài khoản nhân viên mới'),
     ('users:update', 'Sửa nhân viên', 'auth', 'Cập nhật thông tin và vai trò của nhân viên'),
     ('users:delete', 'Vô hiệu hóa nhân viên', 'auth', 'Ngừng hoạt động tài khoản nhân viên'),
+    ('users:reset_password', 'Duyệt yêu cầu quên mật khẩu', 'auth', 'Duyệt hoặc từ chối yêu cầu quên mật khẩu và đặt lại mật khẩu mặc định'),
     ('authorization:read', 'Xem phân quyền', 'authorization', 'Xem danh sách vai trò và quyền'),
     ('authorization:update', 'Sửa phân quyền', 'authorization', 'Gán hoặc gỡ quyền của một vai trò'),
     ('warehouses:create', 'Thêm kho', 'warehouses', 'Tạo kho mới'),
@@ -1065,6 +1097,7 @@ JOIN permissions p ON p.code IN (
     'users:create',
     'users:update',
     'users:delete',
+    'users:reset_password',
     'authorization:read',
     'authorization:update',
     'warehouses:create',

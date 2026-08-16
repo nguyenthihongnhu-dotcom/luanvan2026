@@ -38,14 +38,6 @@ export type SessionRow = RowDataPacket & {
   revoked_at: Date | null;
 };
 
-export type PasswordResetTokenRow = RowDataPacket & {
-  id: number;
-  user_id: number;
-  token_hash: string;
-  expires_at: Date;
-  used_at: Date | null;
-};
-
 export type LoginInput = {
   email: string;
   password: string;
@@ -63,13 +55,86 @@ export type LogoutInput = {
   refreshToken: string;
 };
 
-export type RequestPasswordResetInput = {
-  email: string;
+export type ResetUserPasswordInput = {
+  userId: number;
+  resetBy: number;
 };
 
-export type ResetPasswordInput = {
-  token: string;
-  newPassword: string;
+export type ResetUserPasswordResult = {
+  userId: number;
+  email: string;
+  fullName: string;
+  passwordReset: true;
+};
+
+export type PasswordResetRequestStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export type PasswordResetRequestRow = RowDataPacket & {
+  id: number;
+  user_id: number;
+  requested_email: string;
+  status: PasswordResetRequestStatus;
+  note: string | null;
+  approved_by: number | null;
+  approved_at: Date | null;
+  rejected_by: number | null;
+  rejected_at: Date | null;
+  rejection_reason: string | null;
+  created_at: Date;
+};
+
+/** Dòng hiển thị cho quản trị viên, kèm tên người yêu cầu và người đã xử lý. */
+export type PasswordResetRequestListRow = PasswordResetRequestRow & {
+  full_name: string;
+  employee_code: string | null;
+  role_code: string;
+  user_status: string;
+  approved_by_name: string | null;
+  rejected_by_name: string | null;
+};
+
+export type PasswordResetRequestsFilters = {
+  status?: PasswordResetRequestStatus;
+};
+
+export type CreatePasswordResetRequestInput = {
+  email: string;
+  note?: string;
+  ipAddress?: string;
+  userAgent?: string;
+};
+
+/**
+ * Luôn `accepted: true` kể cả khi email không tồn tại — không để màn hình đăng
+ * nhập trở thành công cụ dò xem email nào có tài khoản.
+ */
+export type CreatePasswordResetRequestResult = {
+  accepted: true;
+};
+
+export type ApprovePasswordResetRequestInput = {
+  requestId: number;
+  approvedBy: number;
+};
+
+export type ApprovePasswordResetRequestResult = {
+  requestId: number;
+  userId: number;
+  email: string;
+  fullName: string;
+  status: 'APPROVED';
+};
+
+export type RejectPasswordResetRequestInput = {
+  requestId: number;
+  rejectedBy: number;
+  rejectionReason: string;
+};
+
+export type RejectPasswordResetRequestResult = {
+  requestId: number;
+  userId: number;
+  status: 'REJECTED';
 };
 
 export type TokenPair = {
@@ -88,15 +153,6 @@ export type RefreshResult = TokenPair & {
 
 export type LogoutResult = {
   revoked: boolean;
-};
-
-export type RequestPasswordResetResult = {
-  accepted: true;
-  resetToken?: string;
-};
-
-export type ResetPasswordResult = {
-  reset: true;
 };
 
 export type RegisterInput = {

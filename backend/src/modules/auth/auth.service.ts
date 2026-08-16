@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-unsafe-assignment */
+/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { randomBytes, createHash } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -5,17 +7,23 @@ import { HttpError } from '../../common/http';
 import { config } from '../../config/config';
 import type {
   AccessTokenPayload,
+  ApprovePasswordResetRequestInput,
+  ApprovePasswordResetRequestResult,
   AuthUser,
+  CreatePasswordResetRequestInput,
+  CreatePasswordResetRequestResult,
+  PasswordResetRequestListRow,
+  PasswordResetRequestsFilters,
+  RejectPasswordResetRequestInput,
+  RejectPasswordResetRequestResult,
+  ResetUserPasswordInput,
+  ResetUserPasswordResult,
   LoginInput,
   LoginResult,
   LogoutInput,
   LogoutResult,
   RefreshInput,
   RefreshResult,
-  RequestPasswordResetInput,
-  RequestPasswordResetResult,
-  ResetPasswordInput,
-  ResetPasswordResult,
   CreateUserInput,
   RegisterInput,
   RegisterResult,
@@ -25,14 +33,17 @@ import type {
   UserMutationResult,
 } from './auth.model';
 import {
-  createPasswordResetToken,
+  approvePasswordResetRequestTransaction,
+  createPasswordResetRequest,
   createSession,
   findActiveAuthUserById,
   findLoginUserByEmail,
+  findPasswordResetRequests,
   findUserByEmailForReset,
   markLoginFailure,
   markLoginSuccess,
-  resetPasswordWithTokenHash,
+  rejectPasswordResetRequestTransaction,
+  resetUserPasswordTransaction,
   createUser,
   listUsers as listUsersRepository,
   updateUserRepository,
@@ -40,6 +51,43 @@ import {
   rotateRefreshSession,
   revokeSessionByRefreshHash,
 } from './auth.repository';
+
+/**
+ * Mật khẩu mặc định sau mỗi lần đặt lại, dùng chung cho cả hai đường vào:
+ * quản trị viên bấm "Đặt lại mật khẩu" trong màn hình Nhân viên, và quản trị
+ * viên duyệt yêu cầu quên mật khẩu nhân viên gửi từ màn hình đăng nhập.
+ *
+ * Cố ý để dễ đọc qua điện thoại: nhân viên kho nhận lại tài khoản rồi tự đổi.
+ * Vì vậy phiên đăng nhập cũ bị thu hồi và tài khoản được mở khóa ngay khi đặt
+ * lại — xem `applyPasswordResetToUser` trong repository.
+ */
+export const DEFAULT_RESET_PASSWORD = '123456';
+
+const passwordResetRequestErrorMap: Record<string, HttpError> = {
+  PASSWORD_RESET_REQUEST_NOT_FOUND: new HttpError(
+    404,
+    'Không tìm thấy yêu cầu đặt lại mật khẩu',
+    'PASSWORD_RESET_REQUEST_NOT_FOUND',
+  ),
+  PASSWORD_RESET_REQUEST_NOT_PENDING: new HttpError(
+    409,
+    'Yêu cầu này đã được xử lý trước đó',
+    'PASSWORD_RESET_REQUEST_NOT_PENDING',
+  ),
+  PASSWORD_RESET_USER_NOT_FOUND: new HttpError(
+    404,
+    'Không tìm thấy tài khoản cần đặt lại mật khẩu',
+    'PASSWORD_RESET_USER_NOT_FOUND',
+  ),
+};
+
+function mapPasswordResetRequestError(error: unknown): never {
+  if (error instanceof Error && passwordResetRequestErrorMap[error.message]) {
+    throw passwordResetRequestErrorMap[error.message];
+  }
+
+  throw error;
+}
 
 function hashToken(token: string): string {
   return createHash('sha256').update(token).digest('hex');
@@ -51,10 +99,6 @@ function generateOpaqueToken(): string {
 
 function addDays(days: number): Date {
   return new Date(Date.now() + days * 24 * 60 * 60 * 1000);
-}
-
-function addMinutes(minutes: number): Date {
-  return new Date(Date.now() + minutes * 60 * 1000);
 }
 
 function toAuthUser(input: {
@@ -257,47 +301,105 @@ export async function logout(input: LogoutInput): Promise<LogoutResult> {
   };
 }
 
-export async function requestPasswordReset(
-  input: RequestPasswordResetInput,
-): Promise<RequestPasswordResetResult> {
-  const user = await findUserByEmailForReset(input.email);
+/**
+ * Quản trị viên đặt lại mật khẩu cho một nhân viên, không cần nhân viên gửi yêu cầu.
+ *
+ * Dùng chung `DEFAULT_RESET_PASSWORD` với đường duyệt yêu cầu quên mật khẩu —
+ * hệ thống chỉ có đúng một cách đặt lại mật khẩu, một giá trị mặc định.
+ */
+export async function resetUserPassword(
+  input: ResetUserPasswordInput,
+): Promise<ResetUserPasswordResult> {
+  const passwordHash = await bcrypt.hash(DEFAULT_RESET_PASSWORD, 12);
 
-  if (!user) {
-    return { accepted: true };
+  try {
+    const result = await resetUserPasswordTransaction({
+      userId: input.userId,
+      resetBy: input.resetBy,
+      passwordHash,
+    });
+
+    return {
+      userId: result.userId,
+      email: result.email,
+      fullName: result.fullName,
+      passwordReset: true,
+    };
+  } catch (error) {
+    mapPasswordResetRequestError(error);
   }
-
-  const resetToken = generateOpaqueToken();
-
-  await createPasswordResetToken({
-    userId: user.id,
-    tokenHash: hashToken(resetToken),
-    expiresAt: addMinutes(config.passwordResetTtlMinutes),
-  });
-
-  return {
-    accepted: true,
-    resetToken,
-  };
 }
 
-export async function resetPassword(
-  input: ResetPasswordInput,
-): Promise<ResetPasswordResult> {
-  const passwordHash = await bcrypt.hash(input.newPassword, 12);
-  const reset = await resetPasswordWithTokenHash({
-    tokenHash: hashToken(input.token),
-    passwordHash,
-  });
+/**
+ * Nhân viên bấm "Quên mật khẩu" ở màn hình đăng nhập.
+ *
+ * Luôn trả `accepted: true` kể cả khi email không tồn tại hoặc tài khoản đã
+ * ngưng hoạt động — nếu phân biệt hai trường hợp, màn hình đăng nhập trở thành
+ * công cụ dò xem email nào có tài khoản trong hệ thống.
+ */
+export async function requestPasswordResetApproval(
+  input: CreatePasswordResetRequestInput,
+): Promise<CreatePasswordResetRequestResult> {
+  const user = await findUserByEmailForReset(input.email);
 
-  if (!reset) {
-    throw new HttpError(
-      401,
-      'Invalid or expired reset token',
-      'RESET_TOKEN_INVALID',
-    );
+  if (user) {
+    await createPasswordResetRequest({
+      userId: user.id,
+      requestedEmail: input.email,
+      note: input.note,
+      ipAddress: input.ipAddress,
+      userAgent: input.userAgent,
+    });
   }
 
-  return { reset: true };
+  return { accepted: true };
+}
+
+export async function listPasswordResetRequests(
+  filters: PasswordResetRequestsFilters,
+): Promise<PasswordResetRequestListRow[]> {
+  return findPasswordResetRequests(filters);
+}
+
+/** Duyệt yêu cầu: mật khẩu của nhân viên trở về `DEFAULT_RESET_PASSWORD`. */
+export async function approvePasswordResetRequest(
+  input: ApprovePasswordResetRequestInput,
+): Promise<ApprovePasswordResetRequestResult> {
+  const passwordHash = await bcrypt.hash(DEFAULT_RESET_PASSWORD, 12);
+
+  try {
+    const result = await approvePasswordResetRequestTransaction({
+      requestId: input.requestId,
+      approvedBy: input.approvedBy,
+      passwordHash,
+    });
+
+    return {
+      requestId: input.requestId,
+      userId: result.userId,
+      email: result.email,
+      fullName: result.fullName,
+      status: 'APPROVED',
+    };
+  } catch (error) {
+    mapPasswordResetRequestError(error);
+  }
+}
+
+export async function rejectPasswordResetRequest(
+  input: RejectPasswordResetRequestInput,
+): Promise<RejectPasswordResetRequestResult> {
+  try {
+    const result = await rejectPasswordResetRequestTransaction(input);
+
+    return {
+      requestId: input.requestId,
+      userId: result.userId,
+      status: 'REJECTED',
+    };
+  } catch (error) {
+    mapPasswordResetRequestError(error);
+  }
 }
 
 export async function register(input: RegisterInput): Promise<RegisterResult> {
