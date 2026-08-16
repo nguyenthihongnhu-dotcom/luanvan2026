@@ -22,6 +22,7 @@ const ReportsPage = lazy(() => import('@/features/reports/pages/ReportsPage'));
 const AuditLogsPage = lazy(() => import('@/features/audit-logs/pages/AuditLogsPage'));
 const AttachmentsPage = lazy(() => import('@/features/attachments/pages/AttachmentsPage'));
 const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
+const OrderPage = lazy(() => import('@/features/orders/pages/OrderPage'));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
 
 function RouteFallback() {
@@ -64,6 +65,7 @@ export default function AppRouter() {
         <Route path="/audit-logs" element={<AuditLogsPage />} />
         <Route path="/attachments" element={<AttachmentsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/orders" element={<OrderPage />} />
       </Routes>
     </Suspense>
   );

@@ -19,6 +19,7 @@ import { inventoryTransactionsModule } from './modules/inventory-transactions/in
 import { locationsModule } from './modules/locations/locations.module';
 import { notificationsModule } from './modules/notifications/notifications.module';
 import { openApiModule } from './modules/openapi/openapi.module';
+import { ordersModule } from './modules/orders/orders.module';
 import { reportsModule } from './modules/reports/reports.module';
 import { settingsModule } from './modules/settings/settings.module';
 import { stockModule } from './modules/stock/stock.module';
@@ -93,6 +94,7 @@ export function createApp(): express.Express {
   app.use('/attachments', attachmentsModule);
   app.use('/settings', settingsModule);
   app.use('/reports', reportsModule);
+  app.use('/orders', ordersModule);
 
   app.use(notFoundHandler);
   app.use(errorHandler);

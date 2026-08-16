@@ -49,6 +49,7 @@ const navbarGroups = [
             { label: 'Hàng hoá', path: '/products', icon: ShoppingOutlined },
             { label: 'Danh mục', path: '/categories', icon: AppstoreOutlined },
             { label: 'Đối tác', path: '/partners', icon: TeamOutlined },
+            { label: 'Đơn hàng', path: '/orders', icon: TeamOutlined },
         ],
     },
     {
