@@ -10,6 +10,8 @@ export interface AuditLog {
     module: string;
     entity_type: string | null;
     entity_id: number | null;
+    /** Tên/số chứng từ của đối tượng bị tác động, backend nối từ bảng gốc. */
+    entity_name?: string | null;
     ip_address: string | null;
     user_agent: string | null;
     created_at: string;

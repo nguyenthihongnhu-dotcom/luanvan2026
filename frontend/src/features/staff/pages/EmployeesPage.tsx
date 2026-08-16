@@ -364,10 +364,10 @@ export default function EmployeesPage() {
                             Đã đặt lại mật khẩu cho {approvedInfo.name} ({approvedInfo.email})
                         </p>
                         <p className="mt-1 text-xs">
-                            Mật khẩu hiện tại là{" "}
+                            Mật khẩu hiện tại:{" "}
                             <code className="select-all rounded border border-green-300 bg-white px-1.5 py-0.5 font-mono">
                                 {DEFAULT_RESET_PASSWORD}
-                            </code>. Báo nhân viên đăng nhập lại và đổi mật khẩu ngay — mật khẩu mặc định ai cũng đoán được.
+                            </code>
                         </p>
                         <button
                             type="button"

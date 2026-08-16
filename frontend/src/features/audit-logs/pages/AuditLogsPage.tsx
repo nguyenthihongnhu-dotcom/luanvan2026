@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
 import DashboardLayout from '@/layouts/dashboard/DashboardLayout';
 import Tablelayout from '@/shared/ui/Table/TableLayout';
 import type { ColumnProps } from '@/shared/ui/Table/types';
@@ -10,50 +11,86 @@ function formatDateTime(value: string): string {
     return new Intl.DateTimeFormat('vi-VN', { dateStyle: 'short', timeStyle: 'short' }).format(new Date(value));
 }
 
+/**
+ * Nhãn hành động. Phải phủ hết mã mà backend thật sự ghi ra — thiếu mã nào là
+ * bảng hiện thẳng chuỗi tiếng Anh viết hoa giữa các dòng tiếng Việt.
+ * Nguồn: các lời gọi `insertAuditLog({ action: ... })` trong backend/src/modules.
+ */
+const ACTION_LABELS: Record<string, string> = {
+    CONFIRM: 'Xác nhận',
+    APPROVE: 'Duyệt',
+    CREATE: 'Tạo mới',
+    REVERSE: 'Đảo phiếu',
+    REJECT: 'Từ chối',
+    CANCEL: 'Hủy phiếu',
+    UPDATE: 'Cập nhật',
+    DELETE: 'Xóa',
+    START: 'Bắt đầu kiểm kê',
+    SUBMIT: 'Gửi duyệt',
+    RESET_PASSWORD: 'Đặt lại mật khẩu',
+    REQUEST_PASSWORD_RESET: 'Gửi yêu cầu quên mật khẩu',
+    APPROVE_PASSWORD_RESET: 'Duyệt yêu cầu quên mật khẩu',
+    REJECT_PASSWORD_RESET: 'Từ chối yêu cầu quên mật khẩu',
+};
+
+const MODULE_LABELS: Record<string, string> = {
+    auth: 'Tài khoản nhân viên',
+    users: 'Tài khoản nhân viên',
+    authorization: 'Phân quyền',
+    goods_receipts: 'Phiếu nhập kho',
+    goods_issues: 'Phiếu xuất kho',
+    stock_transfers: 'Phiếu điều chuyển',
+    stock_adjustments: 'Phiếu điều chỉnh',
+    stock_counts: 'Phiếu kiểm kê',
+    warehouses: 'Kho hàng',
+    locations: 'Vị trí kho',
+    products: 'Sản phẩm',
+    suppliers: 'Nhà cung cấp',
+};
+
+const ENTITY_TYPE_LABELS: Record<string, string> = {
+    GOODS_RECEIPT: 'Phiếu nhập',
+    GOODS_ISSUE: 'Phiếu xuất',
+    STOCK_TRANSFER: 'Phiếu điều chuyển',
+    STOCK_ADJUSTMENT: 'Phiếu điều chỉnh',
+    STOCK_COUNT: 'Phiếu kiểm kê',
+    USER: 'Nhân viên',
+    WAREHOUSE: 'Kho hàng',
+    PASSWORD_RESET_REQUEST: 'Yêu cầu quên mật khẩu',
+};
+
 function formatActionLabel(action: string): string {
-    const map: Record<string, string> = {
-        CONFIRM: 'Xác nhận',
-        APPROVE: 'Duyệt',
-        CREATE: 'Tạo mới',
-        REVERSE: 'Đảo phiếu',
-        REJECT: 'Từ chối',
-        CANCEL: 'Hủy phiếu',
-        UPDATE: 'Cập nhật',
-        DELETE: 'Xóa',
-    };
-    const key = action.trim().toUpperCase();
-    return map[key] ?? action;
+    return ACTION_LABELS[action.trim().toUpperCase()] ?? action;
 }
 
 function formatModuleLabel(mod: string): string {
-    const map: Record<string, string> = {
-        goods_receipts: 'Phiếu nhập kho',
-        goods_issues: 'Phiếu xuất kho',
-        stock_transfers: 'Phiếu điều chuyển',
-        stock_adjustments: 'Phiếu điều chỉnh',
-        stock_counts: 'Phiếu kiểm kê',
-        users: 'Người dùng',
-        warehouses: 'Kho hàng',
-        locations: 'Vị trí kho',
-        products: 'Sản phẩm',
-        suppliers: 'Nhà cung cấp',
-    };
-    return map[mod] ?? mod;
+    return MODULE_LABELS[mod] ?? mod;
 }
 
-function formatEntityLabel(record: AuditLog): string {
+/**
+ * Loại đối tượng và tên của nó tách làm hai dòng thay vì ghép một chuỗi: số
+ * chứng từ có thể rất dài, và ghép thẳng dễ ra chuỗi lặp kiểu
+ * "Nhân viên Nhân viên PHS" khi tên người trùng với nhãn loại.
+ *
+ * Ưu tiên tên/số chứng từ thật backend nối sang bảng gốc (`entity_name`); chỉ
+ * rơi về `#id` khi bản ghi gốc đã bị xóa hoặc loại đối tượng chưa được nối.
+ */
+function renderEntityCell(record: AuditLog): ReactNode {
     if (!record.entity_type) return '-';
-    const typeMap: Record<string, string> = {
-        GOODS_RECEIPT: 'Phiếu nhập',
-        GOODS_ISSUE: 'Phiếu xuất',
-        STOCK_TRANSFER: 'Phiếu điều chuyển',
-        STOCK_ADJUSTMENT: 'Phiếu điều chỉnh',
-        STOCK_COUNT: 'Phiếu kiểm kê',
-        USER: 'Người dùng',
-        WAREHOUSE: 'Kho hàng',
-    };
-    const label = typeMap[record.entity_type] ?? record.entity_type;
-    return record.entity_id ? `${label} #${record.entity_id}` : label;
+
+    const typeLabel = ENTITY_TYPE_LABELS[record.entity_type] ?? record.entity_type;
+    const detail = record.entity_name ?? (record.entity_id ? `#${record.entity_id}` : null);
+
+    return (
+        <div className="leading-tight">
+            <div>{typeLabel}</div>
+            {detail && (
+                <div className="mt-0.5 font-mono text-[11px] break-all text-gray-500" title={detail}>
+                    {detail}
+                </div>
+            )}
+        </div>
+    );
 }
 
 export default function AuditLogsPage() {
@@ -82,7 +119,7 @@ export default function AuditLogsPage() {
         { key: 'id', title: 'ID', className: 'font-semibold text-gray-900' },
         { key: 'action', title: 'Hành động', render: (value) => formatActionLabel(String(value || '')) },
         { key: 'module', title: 'Phân hệ (Module)', render: (value) => formatModuleLabel(String(value || '')) },
-        { key: 'entity_type', title: 'Đối tượng (Entity)', render: (_, record) => formatEntityLabel(record) },
+        { key: 'entity_type', title: 'Đối tượng (Entity)', className: 'whitespace-normal', render: (_, record) => renderEntityCell(record) },
         { key: 'user_id', title: 'Người dùng', render: (_, record) => record.user_full_name ? record.user_full_name : (record.user_id ? `#${record.user_id}` : 'Hệ thống') },
         { key: 'ip_address', title: 'Địa chỉ IP', render: (value) => String(value || '-') },
         { key: 'created_at', title: 'Thời gian', render: (value) => formatDateTime(String(value)) },

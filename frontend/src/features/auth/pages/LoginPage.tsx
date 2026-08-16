@@ -211,13 +211,9 @@ const Login: React.FC = () => {
                                 <p style={{ margin: '0 0 10px', fontSize: '14px', color: '#166534', fontWeight: 600 }}>
                                     Đã gửi yêu cầu tới quản trị viên.
                                 </p>
-                                <p style={{ margin: '0 0 8px', fontSize: '13px', color: '#4B5563', lineHeight: 1.55 }}>
+                                <p style={{ margin: 0, fontSize: '13px', color: '#4B5563', lineHeight: 1.55 }}>
                                     Nếu email vừa nhập có tài khoản trong hệ thống, quản trị viên sẽ thấy yêu cầu này ở
-                                    màn hình quản lý nhân viên. Sau khi được duyệt, mật khẩu của bạn sẽ được đặt lại
-                                    thành <strong>123456</strong> và mọi phiên đăng nhập cũ bị đăng xuất.
-                                </p>
-                                <p style={{ margin: 0, fontSize: '13px', color: '#B45309', lineHeight: 1.55 }}>
-                                    Hãy đăng nhập lại bằng mật khẩu mặc định rồi đổi mật khẩu ngay.
+                                    màn hình quản lý nhân viên. Sau khi được duyệt, mật khẩu sẽ là <strong>123456</strong>.
                                 </p>
                                 <button
                                     type="button"

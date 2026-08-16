@@ -13,11 +13,6 @@ interface OrderFormItem {
     unitPrice: string;
     note: string;
 }
-interface AvailableStockRow {
-    productVariantId: number;
-    availableQuantity: number;
-}
-
 interface OrderFormData {
     customerName: string;
     customerPhone: string;
@@ -102,8 +97,6 @@ export default function OrderModal({
     onClose,
     onSaved,
 }: OrderModalProps) {
-    const [availableStock, setAvailableStock] =
-        useState<Record<number, number>>({});
     const [formData, setFormData] = useState<OrderFormData>(
         () => createInitialForm(editingOrder),
     );
