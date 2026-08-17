@@ -1,4 +1,8 @@
 import type { Request, Response } from 'express';
+import {
+  isWarehouseInScope,
+  resolveWarehouseScope,
+} from '../../common/access/warehouse-scope';
 import { HttpError } from '../../common/http';
 import {
   createWarehouse,
@@ -26,8 +30,18 @@ export async function listWarehousesController(
   res: Response,
 ): Promise<void> {
   const filters = parseWarehousesFilters(req.query);
+  // Vẫn trả đủ danh sách vì nhiều màn dùng nó để đổi id thành tên kho (kể cả kho
+  // trên phiếu cũ); cắt bớt ở đây sẽ làm phiếu hiện "Kho #2". Thay vào đó đánh
+  // dấu kho người dùng được phụ trách để phía giao diện chỉ cho chọn những kho đó.
+  const warehouseScope = await resolveWarehouseScope(req.user);
+  const warehouses = await listWarehouses(filters);
 
-  res.json({ data: await listWarehouses(filters) });
+  res.json({
+    data: warehouses.map((warehouse) => ({
+      ...warehouse,
+      in_scope: isWarehouseInScope(warehouseScope, Number(warehouse.id)),
+    })),
+  });
 }
 
 export async function createWarehouseController(

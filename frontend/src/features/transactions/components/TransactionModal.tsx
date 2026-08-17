@@ -1,3 +1,4 @@
+import { selectableWarehouses } from '@/features/warehouses/services/warehouseService';
 import React, { useEffect, useRef, useState } from "react";
 import { formatQuantity } from "@/shared/utils/number";
 import type { Transaction, TransactionItem } from "@/features/transactions/hooks/useTransactions";
@@ -518,7 +519,7 @@ export default function TransactionModal({
                                 required
                             >
                                 <option value="">-- Chọn kho thực hiện --</option>
-                                {warehouses.map((warehouse) => (
+                                {selectableWarehouses(warehouses).map((warehouse) => (
                                     <option key={warehouse.id} value={warehouse.id}>{warehouse.code} - {warehouse.name ?? "Không tên"}</option>
                                 ))}
                             </select>

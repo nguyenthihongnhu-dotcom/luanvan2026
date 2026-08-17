@@ -59,6 +59,30 @@ export async function resolveWarehouseScope(
 }
 
 /**
+ * Chặn các màn dữ liệu không gắn kho (nhật ký thao tác chẳng hạn) cho những vai
+ * trò vốn nhìn toàn hệ thống. Không có cột kho để lọc thì không thể cắt theo kho,
+ * nên cách duy nhất còn lại là không cho nhân viên kho vào.
+ */
+export function requireWarehouseWideRole(
+  req: { user?: AuthUser },
+  _res: unknown,
+  next: (error?: unknown) => void,
+): void {
+  if (!req.user || !UNRESTRICTED_ROLES.has(req.user.role)) {
+    next(
+      new HttpError(
+        403,
+        'Chỉ quản trị, quản lý kho và kiểm toán xem được dữ liệu toàn hệ thống này',
+        'WAREHOUSE_WIDE_ROLE_REQUIRED',
+      ),
+    );
+    return;
+  }
+
+  next();
+}
+
+/**
  * Suy ra kho từ một ô lưu trữ. Một số chứng từ cho phép bỏ trống warehouseId và
  * để backend tự suy từ vị trí dòng hàng đầu tiên, nên phần kiểm tra phạm vi cũng
  * phải suy được y như vậy, nếu không nhân viên gửi phiếu hợp lệ vẫn bị chặn.

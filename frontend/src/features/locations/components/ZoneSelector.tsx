@@ -1,3 +1,4 @@
+import { selectableWarehouses } from '@/features/warehouses/services/warehouseService';
 import { useMemo, useState } from "react";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import type { WarehouseZone } from "@/features/locations/services/warehouseService";
@@ -84,7 +85,7 @@ export default function ZoneSelector({
                         className="cursor-pointer rounded-lg border border-pink-300 bg-pink-50 px-3 py-1.5 text-sm font-bold text-pink-700 focus:outline-none focus:ring-2 focus:ring-pink-500"
                         title="Chọn kho cần xem sơ đồ"
                     >
-                        {warehouses.map((wh) => (
+                        {selectableWarehouses(warehouses).map((wh) => (
                             <option key={wh.id} value={wh.id}>
                                 {wh.name || wh.code} ({wh.code})
                             </option>

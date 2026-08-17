@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { resolveWarehouseScope } from '../../common/access/warehouse-scope';
 import { HttpError } from '../../common/http';
 
 import {
@@ -31,9 +32,10 @@ export async function listOrdersController(
   res: Response,
 ): Promise<void> {
   const filters = parseOrdersFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
   res.json({
-    data: await listOrders(filters),
+    data: await listOrders({ ...filters, warehouseScope }),
   });
 }
 

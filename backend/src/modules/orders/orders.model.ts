@@ -1,3 +1,4 @@
+import type { WarehouseScope } from '../../common/access/warehouse-scope';
 import type { RowDataPacket } from 'mysql2';
 
 export type OrderStatus =
@@ -15,6 +16,8 @@ export type OrdersFilters = {
   search?: string;
   status?: string;
   warehouseId?: number;
+  /** Giới hạn theo kho người dùng phụ trách; bỏ trống nghĩa là không giới hạn. */
+  warehouseScope?: WarehouseScope;
 };
 
 export type QueryParams = Record<string, string | number | null>;

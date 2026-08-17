@@ -1,3 +1,4 @@
+import { selectableWarehouses } from '@/features/warehouses/services/warehouseService';
 import React, { useMemo, useState } from "react";
 import type {
     CreateOrderInput,
@@ -497,7 +498,7 @@ export default function OrderModal({
                                         -- Chọn kho --
                                     </option>
 
-                                    {warehouses.map(
+                                    {selectableWarehouses(warehouses).map(
                                         (warehouse) => (
                                             <option
                                                 key={

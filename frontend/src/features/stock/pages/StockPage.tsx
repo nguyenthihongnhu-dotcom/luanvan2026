@@ -1,3 +1,4 @@
+import { selectableWarehouses } from '@/features/warehouses/services/warehouseService';
 /**
  * StockPage.tsx - Giao diện Quản lý Tồn kho (/stock)
  * 
@@ -310,7 +311,7 @@ export default function StockPage() {
                             <label className="mb-1 block text-xs font-semibold uppercase text-gray-500">Kho</label>
                             <select value={selectedWarehouseId} onChange={(event) => setSelectedWarehouseId(event.target.value)} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
                                 <option value="">Tất cả kho</option>
-                                {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouseLabel(warehouse)}</option>)}
+                                {selectableWarehouses(warehouses).map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouseLabel(warehouse)}</option>)}
                             </select>
                         </div>
                         <SkuPicker

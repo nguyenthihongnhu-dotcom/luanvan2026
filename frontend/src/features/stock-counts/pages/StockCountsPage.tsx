@@ -1,3 +1,4 @@
+import { selectableWarehouses } from '@/features/warehouses/services/warehouseService';
 import { formatQuantity, toQuantityInputValue } from "@/shared/utils/number";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
@@ -422,7 +423,7 @@ export default function StockCountsPage() {
                                 <label className="mb-1 block text-sm font-medium text-gray-700">Kho</label>
                                 <select required value={formData.warehouseId} onChange={(event) => setFormData({ ...formData, warehouseId: event.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
                                     <option value="">Chọn kho</option>
-                                    {warehouses.map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouseLabel(warehouse)}</option>)}
+                                    {selectableWarehouses(warehouses).map((warehouse) => <option key={warehouse.id} value={warehouse.id}>{warehouseLabel(warehouse)}</option>)}
                                 </select>
                             </div>
                             <div>

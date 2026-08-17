@@ -7,6 +7,12 @@ export interface WarehouseOption {
     code: string;
     name: string | null;
     status: WarehouseStatus;
+    /**
+     * Người đang đăng nhập có phụ trách kho này không. Danh sách vẫn trả về đủ mọi
+     * kho để đổi id thành tên (phiếu cũ có thể trỏ tới kho khác), nên chỗ nào cho
+     * chọn kho để thao tác thì phải lọc theo cờ này.
+     */
+    inScope: boolean;
 }
 
 export interface Warehouse extends WarehouseOption {
@@ -45,9 +51,18 @@ function buildQuery(filters: WarehouseFilters = {}): string {
     return query ? `?${query}` : '';
 }
 
+type WarehouseRow = Omit<Warehouse, 'inScope'> & { in_scope?: boolean };
+
 export async function listWarehouses(filters: WarehouseFilters = { status: 'ACTIVE' }): Promise<Warehouse[]> {
-    const response = await httpClient.get<{ data: Warehouse[] }>(`/warehouses${buildQuery(filters)}`);
-    return unwrapData(response);
+    const response = await httpClient.get<{ data: WarehouseRow[] }>(`/warehouses${buildQuery(filters)}`);
+    // Backend cũ chưa gửi in_scope thì coi như được phép, để bản frontend mới không
+    // khoá sạch dropdown khi hai bên chưa deploy cùng lúc.
+    return unwrapData(response).map((row) => ({ ...row, inScope: row.in_scope !== false }));
+}
+
+/** Chỉ những kho người dùng được phép thao tác — dùng cho dropdown chọn kho. */
+export function selectableWarehouses<T extends { inScope: boolean }>(warehouses: T[]): T[] {
+    return warehouses.filter((warehouse) => warehouse.inScope);
 }
 
 export async function createWarehouse(input: WarehouseInput): Promise<void> {
@@ -64,6 +79,7 @@ export async function deleteWarehouse(id: number): Promise<void> {
 
 export const warehouseService = {
     listWarehouses,
+    selectableWarehouses,
     createWarehouse,
     updateWarehouse,
     deleteWarehouse,

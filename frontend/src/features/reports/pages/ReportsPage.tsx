@@ -5,7 +5,7 @@ import type { ColumnProps } from '@/shared/ui/Table/types';
 import { reportService } from '@/features/reports/services/reportService';
 import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import type { ReportFilters, ReportRow } from '@/features/reports/services/reportService';
-import { warehouseService, type Warehouse } from '@/features/warehouses/services/warehouseService';
+import { warehouseService, type Warehouse, selectableWarehouses } from '@/features/warehouses/services/warehouseService';
 import { productService } from '@/features/products/services/productService';
 import type { ProductItem } from '@/features/products/hooks/useProducts';
 
@@ -135,7 +135,7 @@ export default function ReportsPage() {
                         <input value={filters.search ?? ''} onChange={(event) => setFilters({ ...filters, search: event.target.value })} placeholder="Tìm kiếm..." className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
                         <select value={filters.warehouseId ?? ''} onChange={(event) => setFilters({ ...filters, warehouseId: event.target.value })} className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
                             <option value="">Tất cả kho</option>
-                            {warehouses.map((warehouse) => (
+                            {selectableWarehouses(warehouses).map((warehouse) => (
                                 <option key={warehouse.id} value={warehouse.id}>{warehouse.code} - {warehouse.name ?? 'Không tên'}</option>
                             ))}
                         </select>

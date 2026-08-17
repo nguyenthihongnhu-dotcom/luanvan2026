@@ -1,6 +1,10 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 
 import { generateDocumentCode } from '../../common/code/document-code';
+import {
+  UNRESTRICTED_SCOPE,
+  warehouseScopeWhere,
+} from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
 
 import type {
@@ -40,6 +44,13 @@ export async function findOrders(filters: OrdersFilters): Promise<OrderRow[]> {
     where.push('o.warehouse_id = :warehouseId');
     params.warehouseId = filters.warehouseId;
   }
+
+  const scopeWhere = warehouseScopeWhere(
+    filters.warehouseScope ?? UNRESTRICTED_SCOPE,
+    'o.warehouse_id',
+    params,
+  );
+  if (scopeWhere) where.push(scopeWhere);
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
