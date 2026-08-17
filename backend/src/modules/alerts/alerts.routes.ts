@@ -10,7 +10,13 @@ import {
 
 export const alertsRouter = Router();
 
-alertsRouter.get('/', asyncHandler(listAlertsController));
+// Danh sách cảnh báo lộ tên kho, SKU và số tồn nên tối thiểu phải đăng nhập mới
+// đọc được; trước đây route này bỏ trống hoàn toàn phần xác thực.
+alertsRouter.get(
+  '/',
+  asyncHandler(verifyToken),
+  asyncHandler(listAlertsController),
+);
 alertsRouter.post(
   '/generate',
   asyncHandler(verifyToken),
