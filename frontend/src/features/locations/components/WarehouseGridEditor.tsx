@@ -97,14 +97,23 @@ interface DragState {
 }
 
 /**
- * Khu không còn ô trống để xếp hàng mới vào: mọi ô đều đang có hàng hoặc đã đánh
- * dấu FULL. Đây là "hết ô trống" chứ không phải "hết sức chứa" — một khu chỉ có
- * một ô mà ô đó mới dùng 620/800 vẫn rơi vào trường hợp này, nên nhãn phải nói
- * đúng như vậy thay vì gắn chữ ĐẦY.
+ * Khu hết sức chứa thật: mọi ô đều đã chạm trần sức chứa khai báo hoặc bị đánh
+ * dấu FULL. Backend tính fullCount theo tồn so với max_capacity, nên khu chỉ có
+ * một ô vừa nhận vài món không còn bị coi là đầy như trước.
  */
 function isZoneFull(zone: WarehouseZone) {
     if (zone.locationCount === 0) return false;
-    return zone.occupiedCount >= zone.locationCount || zone.fullCount >= zone.locationCount;
+    return zone.fullCount >= zone.locationCount;
+}
+
+/**
+ * Mọi ô đều đã có hàng: vẫn nhét thêm vào các ô đó được, chỉ là không còn ô trống
+ * nào để tách riêng một mặt hàng mới. Hữu ích khi xếp hàng nhưng nhẹ hơn hẳn
+ * "đầy", nên hiển thị bằng màu khác.
+ */
+function hasNoEmptyCell(zone: WarehouseZone) {
+    if (zone.locationCount === 0) return false;
+    return zone.occupiedCount >= zone.locationCount;
 }
 
 // Phải di chuyển quá ngưỡng này mới tính là kéo. Nếu bắt kéo ngay từ pointerdown thì
@@ -439,8 +448,9 @@ export default function WarehouseGridEditor({
                             {zone.shelfCount} kệ · {zone.gridOrientation === "HORIZONTAL" ? "xếp ngang" : "xếp dọc"}
                             {placed ? ` · ô H${(zone.gridRow ?? 0) + 1}-C${(zone.gridCol ?? 0) + 1}` : ""}
                         </p>
-                        <p className={`text-[10px] leading-tight ${isZoneFull(zone) ? "font-bold text-red-600" : "text-gray-400"}`}>
-                            {zone.occupiedCount}/{zone.locationCount} ô đã có hàng{isZoneFull(zone) ? " · hết ô trống" : ""}
+                        <p className={`text-[10px] leading-tight ${isZoneFull(zone) ? "font-bold text-red-600" : hasNoEmptyCell(zone) ? "font-semibold text-amber-600" : "text-gray-400"}`}>
+                            {zone.occupiedCount}/{zone.locationCount} ô đã có hàng
+                            {isZoneFull(zone) ? " · đầy sức chứa" : hasNoEmptyCell(zone) ? " · hết ô trống" : ""}
                         </p>
                     </div>
                 </div>
@@ -635,7 +645,7 @@ export default function WarehouseGridEditor({
                                     }}
                                     title={
                                         zone
-                                            ? `${labelOf(zone)} (mã ${zone.code}) - ${zone.shelfCount} kệ, ${zone.occupiedCount}/${zone.locationCount} ô đang có hàng${isZoneFull(zone) ? " (không còn ô trống để xếp hàng mới, không phải hết sức chứa)" : ""}`
+                                            ? `${labelOf(zone)} (mã ${zone.code}) - ${zone.shelfCount} kệ, ${zone.occupiedCount}/${zone.locationCount} ô đang có hàng${isZoneFull(zone) ? " (đã chạm sức chứa khai báo)" : hasNoEmptyCell(zone) ? " (mọi ô đều có hàng, vẫn nhét thêm được nhưng không còn ô trống)" : ""}`
                                             : `Lối đi H${row + 1}-C${col + 1}`
                                     }
                                 >
@@ -659,7 +669,7 @@ export default function WarehouseGridEditor({
                                                 {labelOf(zone)}
                                             </div>
                                             <div className="mt-0.5 text-[10px] leading-none text-gray-500">
-                                                {isZoneFull(zone) ? "hết ô trống" : `${zone.shelfCount} kệ`}
+                                                {isZoneFull(zone) ? "đầy" : `${zone.shelfCount} kệ`}
                                             </div>
                                         </div>
                                     ) : (

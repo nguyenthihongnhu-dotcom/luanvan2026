@@ -607,25 +607,67 @@ export async function insertShelf(
 
     const zone = await findZoneForWrite(connection, input);
 
+    // Lấy số lớn nhất TRÍCH TỪ mã kệ, không phải MAX(code) theo chuỗi: khu có cả
+    // mã kiểu 'A01' lẫn '04' thì so chuỗi cho ra 'A02' (chữ lớn hơn số), lấy phần
+    // số ra là 2 rồi sinh '03' đè lên kệ đã có và vỡ uq_shelf_code.
+    //
+    // Cũng phải xét cả kệ đã xóa mềm, vì ràng buộc UNIQUE(zone_id, code) không
+    // phân biệt kệ còn sống hay đã xóa.
     const [maxRows] = await connection.query<
       Array<
-        RowDataPacket & { max_code: string | null; max_sort: number | null }
+        RowDataPacket & { max_number: number | null; max_sort: number | null }
       >
     >(
-      `SELECT MAX(code) AS max_code, MAX(sort_order) AS max_sort FROM warehouse_shelves WHERE zone_id = ? AND deleted_at IS NULL`,
+      `
+        SELECT
+          MAX(CAST(NULLIF(REGEXP_REPLACE(code, '[^0-9]', ''), '') AS UNSIGNED))
+            AS max_number,
+          MAX(sort_order) AS max_sort
+        FROM warehouse_shelves
+        WHERE zone_id = ?
+      `,
       [zone.id],
     );
     const nextNumber = input.code
       ? Number(input.code.replace(/\D/g, '')) || 1
-      : (Number(String(maxRows[0]?.max_code ?? '0').replace(/\D/g, '')) || 0) +
-        1;
+      : Number(maxRows[0]?.max_number ?? 0) + 1;
     const shelfCode = input.code ?? String(nextNumber).padStart(2, '0');
     const shelfName = input.name ?? `Kệ ${shelfCode}`;
 
-    const [shelfResult] = await connection.query<ResultSetHeader>(
-      `INSERT INTO warehouse_shelves (zone_id, code, name, status, sort_order) VALUES (?, ?, ?, 'ACTIVE', ?)`,
-      [zone.id, shelfCode, shelfName, (maxRows[0]?.max_sort ?? 0) + 1],
+    // Mã trùng một kệ đã xóa mềm thì hồi sinh kệ đó thay vì vỡ ràng buộc; trùng
+    // kệ đang sống thì báo lỗi nghiệp vụ rõ ràng.
+    const [existingRows] = await connection.query<
+      Array<RowDataPacket & { id: number; deleted_at: Date | null }>
+    >(
+      `SELECT id, deleted_at FROM warehouse_shelves WHERE zone_id = ? AND code = ? LIMIT 1`,
+      [zone.id, shelfCode],
     );
+    const existingShelf = existingRows[0];
+
+    if (existingShelf && existingShelf.deleted_at === null) {
+      throw new Error('SHELF_CODE_ALREADY_EXISTS');
+    }
+
+    const nextSortOrder = Number(maxRows[0]?.max_sort ?? 0) + 1;
+    let shelfId: number;
+
+    if (existingShelf) {
+      await connection.query(
+        `
+          UPDATE warehouse_shelves
+          SET name = ?, status = 'ACTIVE', sort_order = ?, deleted_at = NULL
+          WHERE id = ?
+        `,
+        [shelfName, nextSortOrder, existingShelf.id],
+      );
+      shelfId = existingShelf.id;
+    } else {
+      const [shelfResult] = await connection.query<ResultSetHeader>(
+        `INSERT INTO warehouse_shelves (zone_id, code, name, status, sort_order) VALUES (?, ?, ?, 'ACTIVE', ?)`,
+        [zone.id, shelfCode, shelfName, nextSortOrder],
+      );
+      shelfId = shelfResult.insertId;
+    }
 
     const [layerRows] = await connection.query<
       Array<RowDataPacket & { max_layer: number | null }>
@@ -649,7 +691,7 @@ export async function insertShelf(
 
     await connection.commit();
     return {
-      id: shelfResult.insertId,
+      id: shelfId,
       code: shelfCode,
       createdLocationCount,
     };
@@ -763,18 +805,40 @@ export async function findZonesByWarehouse(
         COUNT(DISTINCT ws.id) AS shelf_count,
         COUNT(DISTINCT loc.id) AS location_count,
         COUNT(DISTINCT CASE WHEN loc.qty > 0 THEN loc.id END) AS occupied_count,
-        COUNT(DISTINCT CASE WHEN loc.status = 'FULL' THEN loc.id END) AS full_count
+        -- Ô hết chỗ thật: bị đánh dấu FULL, hoặc tồn đã chạm sức chứa khai báo.
+        -- Trước đây chỉ đếm cờ FULL nên giao diện phải suy "mọi ô có hàng = đầy",
+        -- khiến khu chỉ có một ô vừa nhận vài món đã bị coi là hết chỗ.
+        COUNT(DISTINCT CASE
+          WHEN loc.status = 'FULL'
+            OR (
+              loc.capacity_control_enabled = 1
+              AND loc.max_capacity IS NOT NULL
+              AND loc.qty >= loc.max_capacity
+            )
+          THEN loc.id
+        END) AS full_count
       FROM warehouse_zones wz
       LEFT JOIN warehouse_shelves ws
         ON ws.zone_id = wz.id AND ws.deleted_at IS NULL
       LEFT JOIN (
         -- Gom tồn về từng vị trí trước rồi mới join, nếu join thẳng stock_locations
         -- thì một vị trí chứa nhiều SKU sẽ bị đếm lặp.
-        SELECT wl.id, wl.shelf_id, wl.status, COALESCE(SUM(sl.quantity), 0) AS qty
+        SELECT
+          wl.id,
+          wl.shelf_id,
+          wl.status,
+          wl.capacity_control_enabled,
+          wl.max_capacity,
+          COALESCE(SUM(sl.quantity), 0) AS qty
         FROM warehouse_locations wl
         LEFT JOIN stock_locations sl ON sl.location_id = wl.id
         WHERE wl.deleted_at IS NULL
-        GROUP BY wl.id, wl.shelf_id, wl.status
+        GROUP BY
+          wl.id,
+          wl.shelf_id,
+          wl.status,
+          wl.capacity_control_enabled,
+          wl.max_capacity
       ) loc ON loc.shelf_id = ws.id
       WHERE wz.warehouse_id = :warehouseId
         AND wz.deleted_at IS NULL

@@ -92,23 +92,15 @@ export async function generateNotificationsFromAlerts(): Promise<{
 
       UNION
 
-      -- 3. Không ai được gán và kho cũng chưa có người phụ trách (hoặc cảnh báo
-      --    mức toàn hệ thống, warehouse_id NULL) thì chuyển cho quản trị và quản
-      --    lý kho, để cảnh báo không rơi vào khoảng không.
+      -- 3. Quản trị và quản lý kho luôn nhận, kể cả khi kho đã có nhân viên phụ
+      --    trách: họ là người chịu trách nhiệm cuối, mà trước đây gán kho cho một
+      --    nhân viên xong là cảnh báo kho đó không còn tới tay ai ở cấp quản lý.
       SELECT a3.id, u2.id
       FROM alerts a3
       JOIN users u2 ON u2.status = 'ACTIVE' AND u2.deleted_at IS NULL
       JOIN roles r2 ON r2.id = u2.role_id
       WHERE a3.assigned_to IS NULL
         AND r2.code IN ('ADMIN', 'WAREHOUSE_MANAGER')
-        AND NOT EXISTS (
-          SELECT 1
-          FROM user_warehouses uw2
-          JOIN users u3 ON u3.id = uw2.user_id
-          WHERE uw2.warehouse_id = a3.warehouse_id
-            AND u3.status = 'ACTIVE'
-            AND u3.deleted_at IS NULL
-        )
     ) r ON r.alert_id = a.id
     WHERE a.status = 'OPEN'
       AND r.user_id IS NOT NULL

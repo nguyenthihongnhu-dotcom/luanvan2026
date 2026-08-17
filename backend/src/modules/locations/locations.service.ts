@@ -60,6 +60,11 @@ const ZONE_ERRORS: Record<string, HttpError> = {
     'Không tìm thấy kho',
     'WAREHOUSE_NOT_FOUND',
   ),
+  SHELF_CODE_ALREADY_EXISTS: new HttpError(
+    409,
+    'Mã kệ này đã tồn tại trong khu, chọn mã khác',
+    'SHELF_CODE_ALREADY_EXISTS',
+  ),
 };
 
 function toZoneHttpError(error: unknown): unknown {
