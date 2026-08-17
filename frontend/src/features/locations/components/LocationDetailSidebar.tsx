@@ -172,7 +172,9 @@ export default function LocationDetailSidebar({
                             {storedProducts.length > 0 ? (
                                 <ul className="mt-1 space-y-1 text-sm font-semibold text-gray-700">
                                     {storedProducts.map((product) => (
-                                        <li key={product} className="rounded-md bg-gray-50 px-2 py-1 leading-snug">{product}</li>
+                                        <li key={product} className="rounded-md bg-gray-50 px-2 py-1 leading-snug">
+                                            {product.replace(/(\d+)\.000(?=\))/g, "$1")}
+                                        </li>
                                     ))}
                                 </ul>
                             ) : (

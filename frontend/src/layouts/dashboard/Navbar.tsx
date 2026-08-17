@@ -49,7 +49,7 @@ const navbarGroups = [
             { label: 'Hàng hoá', path: '/products', icon: ShoppingOutlined },
             { label: 'Danh mục', path: '/categories', icon: AppstoreOutlined },
             { label: 'Đối tác', path: '/partners', icon: TeamOutlined },
-            { label: 'Đơn hàng', path: '/orders', icon: TeamOutlined },
+            // { label: 'Đơn hàng', path: '/orders', icon: TeamOutlined },
         ],
     },
     {
@@ -205,8 +205,8 @@ export default function Navbar(): ReactNode {
                                     }}
                                     aria-expanded={isOpen}
                                     className={`flex items-center gap-1.5 rounded-full px-3.5 py-1.5 text-xs font-semibold whitespace-nowrap transition-colors ${isOpen || isGroupActive
-                                            ? 'bg-pink-50 text-pink-700'
-                                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                        ? 'bg-pink-50 text-pink-700'
+                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                                         }`}
                                 >
                                     <span>{group.name}</span>
@@ -223,8 +223,8 @@ export default function Navbar(): ReactNode {
                                                     key={item.path}
                                                     to={item.path}
                                                     className={`flex items-center gap-2 rounded-lg px-3 py-2 text-xs font-medium transition-colors ${isActive
-                                                            ? 'bg-pink-600 font-semibold text-white'
-                                                            : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
+                                                        ? 'bg-pink-600 font-semibold text-white'
+                                                        : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'
                                                         }`}
                                                 >
                                                     <Icon className={`text-sm ${isActive ? 'text-white' : 'text-slate-400'}`} />
@@ -256,8 +256,8 @@ export default function Navbar(): ReactNode {
                                             setNotificationOpen((open) => !open);
                                         }}
                                         className={`relative flex h-9 w-9 items-center justify-center rounded-full text-base transition-colors ${isNotificationOpen || isActive
-                                                ? 'bg-pink-600 text-white shadow-sm shadow-pink-200'
-                                                : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                                            ? 'bg-pink-600 text-white shadow-sm shadow-pink-200'
+                                            : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                                             }`}
                                     >
                                         <Icon />
@@ -339,8 +339,8 @@ export default function Navbar(): ReactNode {
                                 to={item.path}
                                 title={item.label}
                                 className={`relative flex h-9 w-9 items-center justify-center rounded-full text-base transition-colors ${isActive
-                                        ? 'bg-pink-600 text-white shadow-sm shadow-pink-200'
-                                        : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
+                                    ? 'bg-pink-600 text-white shadow-sm shadow-pink-200'
+                                    : 'text-slate-500 hover:bg-slate-100 hover:text-slate-900'
                                     }`}
                             >
                                 <Icon />
