@@ -169,8 +169,9 @@ export async function rejectPasswordResetRequest(id: number, rejectionReason: st
     await httpClient.post(`/auth/password-reset/requests/${id}/reject`, { rejectionReason });
 }
 
-export async function createUser(input: CreateUserInput): Promise<void> {
-    await httpClient.post('/auth/users', {
+/** Trả về id tài khoản vừa tạo để nơi gọi gán kho phụ trách ngay sau đó. */
+export async function createUser(input: CreateUserInput): Promise<{ id: number | null }> {
+    const response = await httpClient.post<{ data: { insertId?: number } }>('/auth/users', {
         email: input.email,
         password: input.password,
         fullName: input.fullName,
@@ -178,6 +179,8 @@ export async function createUser(input: CreateUserInput): Promise<void> {
         employeeCode: input.employeeCode || undefined,
         roleCode: input.roleCode,
     });
+
+    return { id: unwrapData(response).insertId ?? null };
 }
 
 

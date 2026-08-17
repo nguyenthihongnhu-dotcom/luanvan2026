@@ -46,6 +46,10 @@ export default function EmployeesPage() {
     const [assignedWarehouseIds, setAssignedWarehouseIds] = useState<number[]>([]);
     const [primaryWarehouseId, setPrimaryWarehouseId] = useState<number | null>(null);
     const [isAssigning, setIsAssigning] = useState(false);
+    // Kho chọn ngay trong form thêm/sửa. Tách khỏi state của modal "Gán kho" để hai
+    // luồng không ghi đè nhau khi mở lần lượt.
+    const [formWarehouseIds, setFormWarehouseIds] = useState<number[]>([]);
+    const [formPrimaryWarehouseId, setFormPrimaryWarehouseId] = useState<number | null>(null);
 
     // Hàng đợi yêu cầu "Quên mật khẩu" nhân viên tự gửi từ màn hình đăng nhập.
     const [resetRequests, setResetRequests] = useState<PasswordResetRequest[]>([]);
@@ -205,7 +209,19 @@ export default function EmployeesPage() {
     const openCreateModal = () => {
         setEditingUser(null);
         setFormData(initialFormState);
+        setFormWarehouseIds([]);
+        setFormPrimaryWarehouseId(null);
         setShowModal(true);
+    };
+
+    const toggleFormWarehouse = (warehouseId: number) => {
+        setFormWarehouseIds((current) => {
+            const next = current.includes(warehouseId)
+                ? current.filter((id) => id !== warehouseId)
+                : [...current, warehouseId];
+            setFormPrimaryWarehouseId((primary) => (primary && next.includes(primary) ? primary : null));
+            return next;
+        });
     };
 
     /**
@@ -225,6 +241,8 @@ export default function EmployeesPage() {
             roleCode: user.roleCode,
             status: user.TrangThai === "HoatDong" ? "ACTIVE" : "LOCKED",
         });
+        setFormWarehouseIds(user.warehouseIds);
+        setFormPrimaryWarehouseId(user.primaryWarehouseId);
         setShowModal(true);
     };
 
@@ -236,10 +254,21 @@ export default function EmployeesPage() {
      */
     const handleSubmit = async (event: FormEvent) => {
         event.preventDefault();
+        // Chỉ nhân viên kho mới cần gán kho; các vai trò còn lại xem được mọi kho
+        // nên gán cũng không có tác dụng gì.
+        const warehouseIds = formData.roleCode === "STAFF" ? formWarehouseIds : [];
+        const primaryWarehouseId =
+            formData.roleCode === "STAFF" ? formPrimaryWarehouseId : null;
+
         if (editingUser) {
             await userService.updateUser(editingUser.MaNguoiDung, formData);
+            await userService.assignUserWarehouses(editingUser.MaNguoiDung, warehouseIds, primaryWarehouseId);
         } else {
-            await userService.createUser(formData);
+            const created = await userService.createUser(formData);
+            // Tài khoản vừa tạo mới có id, nên phần gán kho phải chạy sau.
+            if (created?.id) {
+                await userService.assignUserWarehouses(created.id, warehouseIds, primaryWarehouseId);
+            }
         }
         setShowModal(false);
         setEditingUser(null);
@@ -574,6 +603,50 @@ export default function EmployeesPage() {
                                     {roleOptions.map((role) => <option key={role.code} value={role.code}>{role.label}</option>)}
                                 </select>
                             </div>
+                            {formData.roleCode === "STAFF" && (
+                                <div className="rounded-md border border-gray-200 bg-gray-50 p-3">
+                                    <label className="mb-1 block text-sm font-medium text-gray-700">Kho phụ trách</label>
+                                    <p className="mb-2 text-xs text-gray-500">
+                                        Nhân viên chỉ thấy tồn kho, chứng từ, cảnh báo của kho được chọn và chỉ tạo được
+                                        chứng từ cho kho đó. Không chọn kho nào thì họ không thấy dữ liệu vận hành nào.
+                                    </p>
+                                    {warehouses.length === 0 ? (
+                                        <div className="text-sm text-gray-500">Chưa có kho nào trong hệ thống.</div>
+                                    ) : (
+                                        <div className="space-y-1.5">
+                                            {warehouses.map((warehouse) => {
+                                                const checked = formWarehouseIds.includes(warehouse.id);
+                                                return (
+                                                    <label key={warehouse.id} className={`flex items-center justify-between gap-3 rounded-md border px-2.5 py-1.5 ${checked ? "border-pink-200 bg-white" : "border-transparent"}`}>
+                                                        <span className="flex items-center gap-2 text-sm">
+                                                            <input
+                                                                type="checkbox"
+                                                                checked={checked}
+                                                                onChange={() => toggleFormWarehouse(warehouse.id)}
+                                                                className="h-4 w-4 accent-pink-600"
+                                                            />
+                                                            <span className="font-medium text-gray-800">{warehouse.code}</span>
+                                                            <span className="text-gray-500">{warehouse.name ?? ""}</span>
+                                                        </span>
+                                                        {checked && (
+                                                            <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                                                                <input
+                                                                    type="radio"
+                                                                    name="formPrimaryWarehouse"
+                                                                    checked={formPrimaryWarehouseId === warehouse.id}
+                                                                    onChange={() => setFormPrimaryWarehouseId(warehouse.id)}
+                                                                    className="h-3.5 w-3.5 accent-pink-600"
+                                                                />
+                                                                Kho chính
+                                                            </label>
+                                                        )}
+                                                    </label>
+                                                );
+                                            })}
+                                        </div>
+                                    )}
+                                </div>
+                            )}
                             {editingUser && (
                                 <div>
                                     <label className="mb-1 block text-sm font-medium text-gray-700">Trạng thái</label>
