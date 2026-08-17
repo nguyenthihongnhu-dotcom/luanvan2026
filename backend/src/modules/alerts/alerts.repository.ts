@@ -92,6 +92,47 @@ export async function generateInventoryAlerts(): Promise<{
       )
   `);
 
+  // vw_product_total_stock dựng từ stock_locations, nên SKU chưa từng nhập kho
+  // lần nào sẽ không có dòng nào trong view và câu trên không thấy để cảnh báo.
+  // Nhóm này chỉ cảnh báo được ở mức toàn hệ thống (warehouse_id NULL): SKU không
+  // thuộc về kho cụ thể nào cả thì không thể nói nó hết hàng ở kho nào.
+  const neverStockedCount = await insertOpenAlerts(`
+    INSERT INTO alerts (
+      alert_type,
+      severity,
+      warehouse_id,
+      product_variant_id,
+      title,
+      message
+    )
+    SELECT
+      'OUT_OF_STOCK',
+      'CRITICAL',
+      NULL,
+      pv.id,
+      CONCAT('Out of stock: ', pv.sku),
+      CONCAT(p.name, ' / ', pv.variant_name, ' chưa có tồn ở bất kỳ kho nào')
+    FROM product_variants pv
+    JOIN products p ON p.id = pv.product_id
+    WHERE pv.status = 'ACTIVE'
+      AND pv.deleted_at IS NULL
+      AND NOT EXISTS (
+        SELECT 1
+        FROM stock_locations sl
+        WHERE sl.product_variant_id = pv.id
+          AND sl.quantity > 0
+      )
+      -- Chặn theo SKU chứ không theo kho: câu ở trên có thể đã báo hết hàng cho
+      -- chính SKU này ở một kho cụ thể, báo thêm lần nữa là thừa.
+      AND NOT EXISTS (
+        SELECT 1
+        FROM alerts a
+        WHERE a.status = 'OPEN'
+          AND a.alert_type IN ('LOW_STOCK', 'OUT_OF_STOCK')
+          AND a.product_variant_id = pv.id
+      )
+  `);
+
   const overMaxCount = await insertOpenAlerts(`
     INSERT INTO alerts (
       alert_type,
@@ -152,7 +193,8 @@ export async function generateInventoryAlerts(): Promise<{
   `);
 
   return {
-    createdCount: lowStockCount + overMaxCount + nearExpiryCount,
+    createdCount:
+      lowStockCount + neverStockedCount + overMaxCount + nearExpiryCount,
   };
 }
 

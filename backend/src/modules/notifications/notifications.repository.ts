@@ -1,4 +1,4 @@
-import type { ResultSetHeader } from 'mysql2';
+import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import { db } from '../../database/db';
 import type {
   NotificationsFilters,
@@ -44,6 +44,16 @@ export async function generateNotificationsFromAlerts(): Promise<{
   createdCount: number;
   createdNotifications: NotificationsRow[];
 }> {
+  // Chốt mốc id trước khi chèn: sau đó chỉ cần lấy các dòng có id lớn hơn mốc là
+  // ra đúng những thông báo vừa sinh. Cách cũ (lấy N dòng id lớn nhất) sai khi có
+  // hai luồng chạy gần nhau — hàm này nay được gọi sau mỗi lần xác nhận chứng từ
+  // chứ không chỉ khi bấm nút, nên hai người thao tác cùng lúc là chuyện thường:
+  // luồng này sẽ bốc nhầm dòng của luồng kia và bỏ sót thông báo của chính mình.
+  const [maxRows] = await db.query<
+    Array<RowDataPacket & { last_id: number | null }>
+  >('SELECT MAX(id) AS last_id FROM notifications');
+  const lastNotificationId = Number(maxRows[0]?.last_id ?? 0);
+
   const [result] = await db.query(`
     INSERT INTO notifications (
       user_id,
@@ -92,8 +102,14 @@ export async function generateNotificationsFromAlerts(): Promise<{
 
   if (createdCount > 0) {
     const [rows] = await db.query<NotificationsRow[]>({
-      sql: `SELECT * FROM notifications ORDER BY id DESC LIMIT :limit`,
-      values: { limit: createdCount },
+      sql: `
+        SELECT *
+        FROM notifications
+        WHERE id > :lastNotificationId
+          AND reference_type = 'ALERT'
+        ORDER BY id
+      `,
+      values: { lastNotificationId },
     });
     createdNotifications = rows;
   }
