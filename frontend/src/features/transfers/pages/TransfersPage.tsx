@@ -4,7 +4,7 @@ import DashboardLayout from "@/layouts/dashboard/DashboardLayout";
 import Tablelayout from "@/shared/ui/Table/TableLayout";
 import type { ColumnProps } from "@/shared/ui/Table/types";
 import { transferService } from "@/features/transfers/services/transferService";
-import type { CurrentStockItem, StockTransfer, TransferStatus, WarehouseLocationOption } from "@/features/transfers/services/transferService";
+import type { CurrentStockItem, LocationStatus, StockTransfer, TransferStatus, WarehouseLocationOption } from "@/features/transfers/services/transferService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 
 const initialFormState = {
@@ -30,14 +30,37 @@ function formatDate(value: string): string {
     return new Intl.DateTimeFormat("vi-VN", { dateStyle: "short", timeStyle: "short" }).format(new Date(value));
 }
 
+// Chuyển kho chỉ dời chỗ nên trần là tồn vật lý của ô, kể cả phần đang giữ chỗ
+// cho đơn đặt trước (phần giữ chỗ đó được dời sang ô đích cùng với hàng).
 function stockLabel(item: CurrentStockItem): string {
-    const available = Number(item.available_quantity ?? 0).toLocaleString("vi-VN");
+    const quantity = Number(item.quantity ?? 0).toLocaleString("vi-VN");
+    const reserved = Number(item.reserved_quantity ?? 0);
     const batch = item.lot_number ? ` - Lô ${item.lot_number}` : "";
-    return `${item.sku} - ${item.variant_name || item.product_name}${batch} | ${item.location_code} | còn ${available}`;
+    const reservedNote = reserved > 0 ? ` (giữ chỗ ${reserved.toLocaleString("vi-VN")})` : "";
+    return `${item.sku} - ${item.variant_name || item.product_name}${batch} | ${item.location_code} | còn ${quantity}${reservedNote}`;
 }
 
+function locationStatusLabel(status: LocationStatus): string {
+    const labels: Record<LocationStatus, string> = {
+        ACTIVE: "",
+        INACTIVE: "ngừng dùng",
+        LOCKED: "đang khóa",
+        MAINTENANCE: "bảo trì",
+        FULL: "đã đầy",
+    };
+    return labels[status] ?? status;
+}
+
+// Tên khu/kệ/vị trí lấy thẳng từ DB (người dùng có thể đặt lại trong Sơ đồ kho),
+// chỉ khi cột name trống mới dựng nhãn mặc định từ mã.
 function locationLabel(location: WarehouseLocationOption): string {
-    return `${location.code} - Khu ${location.zone_code}, kệ ${location.shelf_code}, tầng ${String(location.layer_no).padStart(2, "0")}`;
+    const layerCode = String(location.layer_no).padStart(2, "0");
+    const zone = location.zone_name?.trim() || `Khu ${location.zone_code}`;
+    const shelf = location.shelf_name?.trim() || `Kệ ${location.shelf_code}`;
+    const detail = location.name?.trim() || `${shelf} tầng ${layerCode}`;
+    const status = locationStatusLabel(location.status);
+    const suffix = status ? ` [${status}]` : "";
+    return `${location.code} - ${zone} / ${detail}${suffix}`;
 }
 
 export default function TransfersPage() {
@@ -83,6 +106,18 @@ export default function TransfersPage() {
         return locations.filter((location) => location.id !== selectedStock.location_id);
     }, [locations, selectedStock]);
 
+    // Gom vị trí đích theo kho (tên kho lấy từ DB) để danh sách dài vẫn đọc được.
+    const destinationGroups = useMemo(() => {
+        const groups = new Map<string, WarehouseLocationOption[]>();
+        destinationOptions.forEach((location) => {
+            const key = location.warehouse_name || location.warehouse_code || "Kho";
+            const bucket = groups.get(key);
+            if (bucket) bucket.push(location);
+            else groups.set(key, [location]);
+        });
+        return Array.from(groups.entries());
+    }, [destinationOptions]);
+
     const selectedDestination = useMemo(() => {
         const destinationLocationId = Number(formData.destinationLocationId);
         return locations.find((location) => location.id === destinationLocationId);
@@ -101,9 +136,9 @@ export default function TransfersPage() {
         }
 
         const quantity = Number(formData.quantity);
-        const available = Number(selectedStock.available_quantity ?? 0);
-        if (!Number.isFinite(quantity) || quantity <= 0 || quantity > available) {
-            setError("Số lượng chuyển phải lớn hơn 0 và không vượt tồn khả dụng.");
+        const onHand = Number(selectedStock.quantity ?? 0);
+        if (!Number.isFinite(quantity) || quantity <= 0 || quantity > onHand) {
+            setError("Số lượng chuyển phải lớn hơn 0 và không vượt tồn thực tế của ô nguồn.");
             return;
         }
 
@@ -254,7 +289,11 @@ export default function TransfersPage() {
                                 <label className="mb-1 block text-sm font-medium text-gray-700">Vị trí đích</label>
                                 <select required value={formData.destinationLocationId} onChange={(event) => setFormData({ ...formData, destinationLocationId: event.target.value })} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
                                     <option value="">Chọn vị trí đích</option>
-                                    {destinationOptions.map((location) => <option key={location.id} value={location.id}>{locationLabel(location)}</option>)}
+                                    {destinationGroups.map(([warehouseLabel, options]) => (
+                                        <optgroup key={warehouseLabel} label={warehouseLabel}>
+                                            {options.map((location) => <option key={location.id} value={location.id}>{locationLabel(location)}</option>)}
+                                        </optgroup>
+                                    ))}
                                 </select>
                             </div>
                             <div>

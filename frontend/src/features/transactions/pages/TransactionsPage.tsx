@@ -86,6 +86,7 @@ export default function Transactions() {
         setShowDetailModal,
         selectedTransaction,
         formData,
+        setFormData,
         handleInputChange,
         handleSubmit,
         handleAddClick,
@@ -243,6 +244,7 @@ export default function Transactions() {
                     allocationPreview={allocationPreview}
                     previewingItemIndex={previewingItemIndex}
                     handlePreviewAllocation={handlePreviewAllocation}
+                    onSupplierAutofill={(supplierId) => setFormData((prev) => ({ ...prev, maNCC: supplierId }))}
                 />,
                 document.body,
             )}

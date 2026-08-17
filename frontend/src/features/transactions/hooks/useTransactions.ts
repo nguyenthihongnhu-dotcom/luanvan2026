@@ -168,7 +168,12 @@ export function useTransactions() {
 
             if (!Number.isInteger(productVariantId) || productVariantId <= 0) return `Dòng ${rowNumber}: Vui lòng chọn Sản phẩm / Biến thể.`;
             if (!Number.isFinite(quantity) || quantity <= 0) return `Dòng ${rowNumber}: Nhập số lượng lớn hơn 0.`;
-            if (!Number.isInteger(locationId) || locationId <= 0) return `Dòng ${rowNumber}: Vui lòng chọn Vị trí kho.`;
+            // Phiếu xuất để backend tự phân bổ ô lấy hàng theo FEFO/FIFO, vị trí chỉ
+            // là tùy chọn khi người dùng muốn chỉ định tay; phiếu nhập và điều chỉnh
+            // thì bắt buộc vì phải biết hàng vào/ra ô nào.
+            if (formData.loai !== 'XUAT' && (!Number.isInteger(locationId) || locationId <= 0)) {
+                return `Dòng ${rowNumber}: Vui lòng chọn Vị trí kho.`;
+            }
 
             if (formData.loai === 'DIEU_CHINH') {
                 if (item.adjustmentMode === 'QUANTITY' && item.adjustmentDirection !== 'IN' && item.adjustmentDirection !== 'OUT') {

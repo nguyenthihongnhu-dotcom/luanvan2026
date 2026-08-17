@@ -39,6 +39,8 @@ export interface CurrentStockItem {
     available_quantity: string | number;
 }
 
+export type LocationStatus = 'ACTIVE' | 'INACTIVE' | 'LOCKED' | 'MAINTENANCE' | 'FULL';
+
 export interface WarehouseLocationOption {
     id: number;
     code: string;
@@ -47,8 +49,12 @@ export interface WarehouseLocationOption {
     warehouse_code: string;
     warehouse_name: string;
     zone_code: string;
+    zone_name: string | null;
     shelf_code: string;
+    shelf_name: string | null;
     layer_no: number;
+    status: LocationStatus;
+    current_quantity: number;
 }
 
 export interface CreateTransferInput {
@@ -66,7 +72,7 @@ export interface CreateTransferInput {
     }>;
 }
 
-type LocationRow = WarehouseLocationOption & {
+type LocationRow = Omit<WarehouseLocationOption, 'current_quantity'> & {
     current_quantity?: string | number;
 };
 
@@ -77,7 +83,9 @@ export async function listTransfers(): Promise<StockTransfer[]> {
 
 export async function listCurrentStock(): Promise<CurrentStockItem[]> {
     const response = await httpClient.get<{ data: CurrentStockItem[] }>('/stock/current');
-    return unwrapData(response).filter((item) => Number(item.available_quantity ?? 0) > 0);
+    // Lọc theo tồn vật lý: ô chỉ còn hàng đang giữ chỗ vẫn chuyển đi được, giữ chỗ
+    // sẽ đi theo hàng sang ô đích.
+    return unwrapData(response).filter((item) => Number(item.quantity ?? 0) > 0);
 }
 
 export async function listLocationOptions(): Promise<WarehouseLocationOption[]> {
@@ -90,8 +98,12 @@ export async function listLocationOptions(): Promise<WarehouseLocationOption[]> 
         warehouse_code: row.warehouse_code,
         warehouse_name: row.warehouse_name,
         zone_code: row.zone_code,
+        zone_name: row.zone_name ?? null,
         shelf_code: row.shelf_code,
+        shelf_name: row.shelf_name ?? null,
         layer_no: row.layer_no,
+        status: row.status ?? 'ACTIVE',
+        current_quantity: Number(row.current_quantity ?? 0),
     }));
 }
 

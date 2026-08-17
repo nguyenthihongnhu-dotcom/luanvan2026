@@ -207,14 +207,19 @@ export async function reverseInventoryReference(
       throw new Error('REVERSAL_INSUFFICIENT_STOCK');
     }
 
+    // Rút hàng khỏi ô có thể kéo tồn xuống dưới phần đang giữ chỗ (phiếu chuyển
+    // được phép dời cả hàng giữ chỗ sang ô mới). Kẹp lại để không vỡ ràng buộc
+    // chk_stock_available (reserved_quantity <= quantity) của bảng.
     const [updateResult] = await connection.query<ResultSetHeader>(
       `
         UPDATE stock_locations
-        SET quantity = ?, version = version + 1
+        SET quantity = ?,
+            reserved_quantity = LEAST(reserved_quantity, ?),
+            version = version + 1
         WHERE id = ?
           AND ? >= 0
       `,
-      [after, stockLocation.id, after],
+      [after, after, stockLocation.id, after],
     );
 
     if (updateResult.affectedRows !== 1) {

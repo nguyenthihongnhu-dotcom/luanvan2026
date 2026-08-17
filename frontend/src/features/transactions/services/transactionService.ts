@@ -146,7 +146,9 @@ function mapItems(input: Transaction) {
 
         return [{
             ...base,
-            locationId: Number(item.locationId),
+            // Bỏ trống ô lấy hàng ở phiếu xuất nghĩa là nhờ backend phân bổ; gửi 0
+            // sẽ bị zod chặn (locationId phải là số dương) nên phải để undefined.
+            locationId: item.locationId ? Number(item.locationId) : undefined,
             quantity: Number(item.quantity),
             adjustmentDirection: item.adjustmentDirection,
         }];
@@ -236,7 +238,12 @@ export interface CurrentStockRow {
     locationCode: string;
     batchId: number | null;
     lotNumber: string | null;
+    /** Tồn thực nằm trong ô, gồm cả phần đã giữ chỗ cho phiếu khác. */
     quantity: number;
+    /** Phần đã bị phiếu khác giữ chỗ, không xuất được. */
+    reservedQuantity: number;
+    /** quantity - reserved_quantity: đúng phần mà phân bổ FEFO/FIFO được phép lấy. */
+    availableQuantity: number;
 }
 
 type BackendCurrentStock = BackendRow & {
@@ -247,6 +254,8 @@ type BackendCurrentStock = BackendRow & {
     batch_id?: number | null;
     lot_number?: string | null;
     quantity?: string | number;
+    reserved_quantity?: string | number;
+    available_quantity?: string | number;
 };
 
 /**
@@ -265,6 +274,8 @@ export async function listCurrentStock(): Promise<CurrentStockRow[]> {
         batchId: row.batch_id == null ? null : Number(row.batch_id),
         lotNumber: row.lot_number ?? null,
         quantity: Number(row.quantity ?? 0),
+        reservedQuantity: Number(row.reserved_quantity ?? 0),
+        availableQuantity: Number(row.available_quantity ?? row.quantity ?? 0),
     }));
 }
 

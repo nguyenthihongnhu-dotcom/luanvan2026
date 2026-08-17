@@ -1,6 +1,8 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import type { Transaction, TransactionItem } from "@/features/transactions/hooks/useTransactions";
 import type { AllocationPreviewItem, AllocationPreviewResult, AllocationStrategy, CurrentStockRow } from "@/features/transactions/services/transactionService";
+import { batchService } from "@/features/batches/services/batchService";
+import type { ProductBatch } from "@/features/batches/services/batchService";
 import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import type { Partner } from "@/features/partners/services/partnerService";
 import type { ProductItem } from "@/features/products/hooks/useProducts";
@@ -44,6 +46,8 @@ interface TransactionModalProps {
     allocationPreview: AllocationPreviewResult | null;
     previewingItemIndex: number | null;
     handlePreviewAllocation: (index: number) => void;
+    /** Điền nhà cung cấp cho phiếu nhập theo lô vừa chọn (lô đã khai nhà cung cấp). */
+    onSupplierAutofill?: (supplierId: string) => void;
 }
 
 function formatDate(value: string | null): string {
@@ -249,6 +253,118 @@ function AdjustmentStockPicker({
     );
 }
 
+const batchStatusNote: Record<ProductBatch["status"], string> = {
+    ACTIVE: "",
+    NEAR_EXPIRY: "cận hạn",
+    EXPIRED: "hết hạn",
+    BLOCKED: "đang khóa",
+    DEPLETED: "đã hết",
+};
+
+function batchOptionLabel(batch: ProductBatch, supplierName: string): string {
+    const parts = [`Lô ${batch.lot_number}`];
+    if (batch.expiry_date) parts.push(`HSD ${formatDate(batch.expiry_date)}`);
+    if (supplierName) parts.push(supplierName);
+    const note = batchStatusNote[batch.status];
+    if (note) parts.push(note);
+    return parts.join(" • ");
+}
+
+/**
+ * Chọn lô từ danh sách lô đã khai báo của sản phẩm (bảng product_batches) thay vì
+ * bắt người dùng nhớ rồi gõ tay ID lô. Nhà cung cấp đã được khai ngay trên lô nên
+ * component trả luôn bản ghi lô về cho nơi gọi để điền nhà cung cấp cho phiếu nhập.
+ */
+function BatchSelect({
+    productVariantId,
+    value,
+    suppliers,
+    onChange,
+}: {
+    productVariantId: string;
+    value: string;
+    suppliers: Partner[];
+    onChange: (batchId: string, batch: ProductBatch | null) => void;
+}) {
+    const [batches, setBatches] = useState<ProductBatch[]>([]);
+    const [isLoading, setIsLoading] = useState(false);
+    const [loadFailed, setLoadFailed] = useState(false);
+    // Giữ qua ref để effect chỉ chạy lại khi đổi sản phẩm; nếu đưa vào deps thì
+    // hàm onChange dựng mới mỗi lần render sẽ khiến effect gọi API vô hạn.
+    const onChangeRef = useRef(onChange);
+    const valueRef = useRef(value);
+
+    useEffect(() => {
+        onChangeRef.current = onChange;
+        valueRef.current = value;
+    });
+
+    useEffect(() => {
+        const variantId = Number(productVariantId);
+        if (!variantId) {
+            setBatches([]);
+            setLoadFailed(false);
+            return;
+        }
+
+        let cancelled = false;
+        setIsLoading(true);
+        setLoadFailed(false);
+        batchService.listBatches({ productVariantId: variantId })
+            .then((rows) => {
+                if (cancelled) return;
+                setBatches(rows);
+                // Đổi sản phẩm làm lô đang chọn không còn thuộc sản phẩm nữa,
+                // giữ lại sẽ gửi lên backend một batch_id sai sản phẩm.
+                if (valueRef.current && !rows.some((row) => String(row.id) === valueRef.current)) {
+                    onChangeRef.current("", null);
+                }
+            })
+            .catch(() => {
+                if (cancelled) return;
+                setBatches([]);
+                setLoadFailed(true);
+            })
+            .finally(() => {
+                if (!cancelled) setIsLoading(false);
+            });
+
+        return () => { cancelled = true; };
+    }, [productVariantId]);
+
+    const supplierName = (supplierId: number | null) =>
+        suppliers.find((supplier) => String(supplier.MaNCC) === String(supplierId))?.TenNCC ?? "";
+
+    const placeholder = !productVariantId
+        ? "-- Chọn sản phẩm trước --"
+        : isLoading
+            ? "Đang tải lô..."
+            : loadFailed
+                ? "-- Không tải được danh sách lô --"
+                : batches.length === 0
+                    ? "-- Sản phẩm chưa khai báo lô --"
+                    : "-- Không theo lô --";
+
+    return (
+        <select
+            value={value}
+            disabled={!productVariantId || isLoading}
+            onChange={(event) => {
+                const batchId = event.target.value;
+                onChange(batchId, batches.find((row) => String(row.id) === batchId) ?? null);
+            }}
+            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500 disabled:bg-gray-100"
+        >
+            <option value="">{placeholder}</option>
+            {batches.map((batch) => (
+                <option key={batch.id} value={batch.id}>
+                    {batchOptionLabel(batch, supplierName(batch.supplier_id))}
+                </option>
+            ))}
+        </select>
+    );
+}
+
 const formatQty = (value: number) => Number(value).toLocaleString("vi-VN");
 
 /**
@@ -336,6 +452,7 @@ export default function TransactionModal({
     allocationPreview,
     previewingItemIndex,
     handlePreviewAllocation,
+    onSupplierAutofill,
 }: TransactionModalProps) {
     const [manualPickMap, setManualPickMap] = useState<Record<number, boolean>>({});
 
@@ -492,10 +609,13 @@ export default function TransactionModal({
                         </div>
                         <div className="space-y-3">
                             {items.map((item, index) => {
-                                const variantAvailQty = currentStock
+                                const variantStockRows = currentStock
                                     .filter((s) => (!selectedWarehouseId || String(s.warehouseId) === String(selectedWarehouseId))
-                                        && String(s.productVariantId) === String(item.productVariantId))
-                                    .reduce((sum, r) => sum + Number(r.quantity || 0), 0);
+                                        && String(s.productVariantId) === String(item.productVariantId));
+                                // Phân bổ FEFO/FIFO chỉ lấy phần khả dụng (tồn trừ giữ chỗ), nên nhãn
+                                // phải bám theo số đó; lấy tổng tồn sẽ hứa nhiều hơn số thật sự xuất được.
+                                const variantAvailQty = variantStockRows.reduce((sum, r) => sum + Number(r.availableQuantity || 0), 0);
+                                const variantReservedQty = variantStockRows.reduce((sum, r) => sum + Number(r.reservedQuantity || 0), 0);
 
                                 return (
                                     <div key={index} className="rounded-lg border border-gray-200 bg-gray-50 p-3 shadow-xs transition hover:border-gray-300">
@@ -523,9 +643,19 @@ export default function TransactionModal({
                                                         {item.productVariantId && (
                                                             <div className="mt-1 flex items-center gap-1.5">
                                                                 {variantAvailQty > 0 ? (
-                                                                    <span className="inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
-                                                                        📦 Khả dụng tại kho: {formatQty(variantAvailQty)}
-                                                                    </span>
+                                                                    <>
+                                                                        <span className="inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                                                                            📦 Khả dụng tại kho: {formatQty(variantAvailQty)}
+                                                                        </span>
+                                                                        {variantReservedQty > 0 && (
+                                                                            <span
+                                                                                className="inline-flex items-center rounded bg-amber-50 px-2 py-0.5 text-[11px] font-semibold text-amber-700 border border-amber-200"
+                                                                                title="Phần đang bị phiếu khác giữ chỗ, không nằm trong số xuất được"
+                                                                            >
+                                                                                🔒 Đang giữ chỗ: {formatQty(variantReservedQty)}
+                                                                            </span>
+                                                                        )}
+                                                                    </>
                                                                 ) : (
                                                                     <span className="inline-flex items-center rounded bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 border border-rose-200">
                                                                         ⚠️ Hết hàng khả dụng tại kho này
@@ -544,11 +674,18 @@ export default function TransactionModal({
                                                             type="number"
                                                             min="0.001"
                                                             step="0.001"
+                                                            max={variantAvailQty > 0 ? variantAvailQty : undefined}
                                                             value={item.quantity}
                                                             onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
                                                             placeholder="VD: 10"
                                                             className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500 font-bold text-gray-900"
                                                         />
+                                                        {/* Báo ngay tại ô nhập, thay vì để người dùng bấm lưu rồi mới nhận phân bổ thiếu. */}
+                                                        {Number(item.quantity) > variantAvailQty && variantAvailQty > 0 && (
+                                                            <p className="mt-1 text-[11px] font-medium text-rose-600">
+                                                                Vượt tồn khả dụng, chỉ xuất được tối đa {formatQty(variantAvailQty)}.
+                                                            </p>
+                                                        )}
                                                     </div>
 
                                                     <div className="col-span-6 md:col-span-2">
@@ -599,14 +736,12 @@ export default function TransactionModal({
                                                         </p>
                                                         <div className="grid grid-cols-12 gap-2">
                                                             <div className="col-span-12 md:col-span-4">
-                                                                <label className="mb-1 block text-xs font-medium text-gray-600">ID Lô hàng (tùy chọn)</label>
-                                                                <input
-                                                                    type="number"
-                                                                    min="1"
+                                                                <label className="mb-1 block text-xs font-medium text-gray-600">Lô hàng (để trống = tự động)</label>
+                                                                <BatchSelect
+                                                                    productVariantId={item.productVariantId}
                                                                     value={item.batchId}
-                                                                    onChange={(e) => handleItemChange(index, "batchId", e.target.value)}
-                                                                    className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
-                                                                    placeholder="Để trống = tự động"
+                                                                    suppliers={suppliers}
+                                                                    onChange={(batchId) => handleItemChange(index, "batchId", batchId)}
                                                                 />
                                                             </div>
                                                             <div className="col-span-12 md:col-span-8">
@@ -665,14 +800,18 @@ export default function TransactionModal({
 
                                                 {!isAdjustment && (
                                                     <div className="col-span-6 md:col-span-2">
-                                                        <label className="mb-1 block text-xs font-medium text-gray-600">Mã Lô hàng (Batch ID)</label>
-                                                        <input
-                                                            type="number"
-                                                            min="1"
+                                                        <label className="mb-1 block text-xs font-medium text-gray-600">Lô hàng</label>
+                                                        <BatchSelect
+                                                            productVariantId={item.productVariantId}
                                                             value={item.batchId}
-                                                            onChange={(e) => handleItemChange(index, "batchId", e.target.value)}
-                                                            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
-                                                            placeholder="ID Lô có sẵn (nếu có)"
+                                                            suppliers={suppliers}
+                                                            onChange={(batchId, batch) => {
+                                                                handleItemChange(index, "batchId", batchId);
+                                                                // Nhà cung cấp đã khai ở lô nên lấy thẳng từ đó, khỏi chọn lại ở đầu phiếu.
+                                                                if (batch?.supplier_id && String(batch.supplier_id) !== String(formData.maNCC)) {
+                                                                    onSupplierAutofill?.(String(batch.supplier_id));
+                                                                }
+                                                            }}
                                                         />
                                                     </div>
                                                 )}

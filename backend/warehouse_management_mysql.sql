@@ -1287,16 +1287,20 @@ VALUES
 ((SELECT id FROM product_variants WHERE sku='BIM-MOONY-M'), (SELECT id FROM suppliers WHERE code='NCC-BABYCARE'), 'LOT-MOONY-M-202607', '2026-07-01', NULL, '2026-07-05', 'ACTIVE', 'Tã Moony size M')
 ON DUPLICATE KEY UPDATE status = VALUES(status), expiry_date = VALUES(expiry_date), notes = VALUES(notes);
 
+-- reserved_quantity để 0 cho mọi dòng: giữ chỗ chỉ phát sinh khi có đơn đặt trước,
+-- mà hệ thống chưa có luồng nghiệp vụ nào ghi cột này (chỉ đọc để chặn xuất quá
+-- tồn). Seed đặt sẵn số giữ chỗ thì nó treo vĩnh viễn, người dùng không hiểu vì
+-- sao tồn 37 mà chỉ xuất được 34.
 INSERT INTO stock_locations (product_variant_id, location_id, batch_id, quantity, reserved_quantity, version)
 VALUES
-((SELECT id FROM product_variants WHERE sku='BIM-HUG-M'), (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-M' AND b.lot_number='LOT-HUG-M-202607'), 150, 12, 1),
-((SELECT id FROM product_variants WHERE sku='BIM-HUG-L'), (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-L' AND b.lot_number='LOT-HUG-L-202607'), 95, 8, 1),
+((SELECT id FROM product_variants WHERE sku='BIM-HUG-M'), (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-M' AND b.lot_number='LOT-HUG-M-202607'), 150, 0, 1),
+((SELECT id FROM product_variants WHERE sku='BIM-HUG-L'), (SELECT id FROM warehouse_locations WHERE code='HCM01-B-B01-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-HUG-L' AND b.lot_number='LOT-HUG-L-202607'), 95, 0, 1),
 ((SELECT id FROM product_variants WHERE sku='SUA-FRISO-3'), (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A01-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='SUA-FRISO-3' AND b.lot_number='LOT-FRISO3-202605'), 8, 0, 1),
-((SELECT id FROM product_variants WHERE sku='SUA-FRISO-4'), (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A02-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='SUA-FRISO-4' AND b.lot_number='LOT-FRISO4-202605'), 64, 4, 1),
+((SELECT id FROM product_variants WHERE sku='SUA-FRISO-4'), (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A02-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='SUA-FRISO-4' AND b.lot_number='LOT-FRISO4-202605'), 64, 0, 1),
 ((SELECT id FROM product_variants WHERE sku='TI-GIAM-CHICCO'), (SELECT id FROM warehouse_locations WHERE code='HCM01-C-C01-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='TI-GIAM-CHICCO' AND b.lot_number='LOT-CHICCO-202606'), 0, 0, 1),
-((SELECT id FROM product_variants WHERE sku='BOT-HEINZ-GC'), (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A01-02'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BOT-HEINZ-GC' AND b.lot_number='LOT-HEINZ-202601'), 24, 2, 1),
-((SELECT id FROM product_variants WHERE sku='BINH-PIGEON-240'), (SELECT id FROM warehouse_locations WHERE code='HCM01-C-C01-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BINH-PIGEON-240' AND b.lot_number='LOT-PIGEON-202606'), 37, 3, 1),
-((SELECT id FROM product_variants WHERE sku='BIM-MOONY-M'), (SELECT id FROM warehouse_locations WHERE code='HCM02-A-A01-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-MOONY-M' AND b.lot_number='LOT-MOONY-M-202607'), 42, 5, 1)
+((SELECT id FROM product_variants WHERE sku='BOT-HEINZ-GC'), (SELECT id FROM warehouse_locations WHERE code='HCM01-A-A01-02'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BOT-HEINZ-GC' AND b.lot_number='LOT-HEINZ-202601'), 24, 0, 1),
+((SELECT id FROM product_variants WHERE sku='BINH-PIGEON-240'), (SELECT id FROM warehouse_locations WHERE code='HCM01-C-C01-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BINH-PIGEON-240' AND b.lot_number='LOT-PIGEON-202606'), 37, 0, 1),
+((SELECT id FROM product_variants WHERE sku='BIM-MOONY-M'), (SELECT id FROM warehouse_locations WHERE code='HCM02-A-A01-01'), (SELECT b.id FROM product_batches b JOIN product_variants v ON v.id=b.product_variant_id WHERE v.sku='BIM-MOONY-M' AND b.lot_number='LOT-MOONY-M-202607'), 42, 0, 1)
 ON DUPLICATE KEY UPDATE quantity = VALUES(quantity), reserved_quantity = VALUES(reserved_quantity), version = version + 1;
 
 -- 6) Phieu nhap, xuat, chuyen kho

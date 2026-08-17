@@ -26,6 +26,7 @@ const tableName = 'stock_transfers';
 type StockLocationRow = RowDataPacket & {
   id: number;
   quantity: number;
+  reserved_quantity: number;
 };
 
 export async function findStockTransfers(
@@ -133,7 +134,7 @@ async function lockStockLocation(
 ): Promise<StockLocationRow | undefined> {
   const [rows] = await connection.query<StockLocationRow[]>(
     `
-      SELECT id, quantity
+      SELECT id, quantity, reserved_quantity
       FROM stock_locations
       WHERE product_variant_id = ?
         AND location_id = ?
@@ -152,6 +153,9 @@ async function addDestinationStock(
   locationId: number,
   batchId: number | null,
   quantity: number,
+  // Phần giữ chỗ dời theo hàng: đơn đặt trước vẫn được giữ đúng số lượng, chỉ là
+  // hàng nằm ở ô khác.
+  reservedQuantity = 0,
 ): Promise<{ stockLocationId: number; before: number; after: number }> {
   const existing = await lockStockLocation(
     connection,
@@ -166,10 +170,12 @@ async function addDestinationStock(
     await connection.query(
       `
         UPDATE stock_locations
-        SET quantity = quantity + ?, version = version + 1
+        SET quantity = quantity + ?,
+            reserved_quantity = reserved_quantity + ?,
+            version = version + 1
         WHERE id = ?
       `,
-      [quantity, existing.id],
+      [quantity, reservedQuantity, existing.id],
     );
 
     return { stockLocationId: existing.id, before, after };
@@ -181,11 +187,12 @@ async function addDestinationStock(
         product_variant_id,
         location_id,
         batch_id,
-        quantity
+        quantity,
+        reserved_quantity
       )
-      VALUES (?, ?, ?, ?)
+      VALUES (?, ?, ?, ?, ?)
     `,
-    [productVariantId, locationId, batchId, quantity],
+    [productVariantId, locationId, batchId, quantity, reservedQuantity],
   );
 
   return { stockLocationId: insertResult.insertId, before, after };
@@ -261,16 +268,27 @@ export async function confirmStockTransferTransaction(
       }
 
       const quantityBeforeOut = Number(source.quantity);
-      const quantityAfterOut = quantityBeforeOut - Number(item.quantity);
+      const movedQuantity = Number(item.quantity);
+      const quantityAfterOut = quantityBeforeOut - movedQuantity;
+
+      // Chuyển kho chỉ đổi chỗ chứ không tiêu thụ hàng, nên hàng đang giữ chỗ cho
+      // đơn đặt trước vẫn được phép đi: chuyển quá phần khả dụng thì phần dôi ra
+      // chính là giữ chỗ dời sang ô đích. Trần vẫn là tồn vật lý của ô nguồn, và
+      // ràng buộc chk_stock_available (reserved <= quantity) không bị vỡ ở cả hai đầu.
+      const availableAtSource =
+        quantityBeforeOut - Number(source.reserved_quantity);
+      const movedReserved = Math.max(0, movedQuantity - availableAtSource);
 
       const [deductResult] = await connection.query<ResultSetHeader>(
         `
           UPDATE stock_locations
-          SET quantity = quantity - ?, version = version + 1
+          SET quantity = quantity - ?,
+              reserved_quantity = reserved_quantity - ?,
+              version = version + 1
           WHERE id = ?
-            AND quantity - reserved_quantity >= ?
+            AND quantity >= ?
         `,
-        [item.quantity, source.id, item.quantity],
+        [movedQuantity, movedReserved, source.id, movedQuantity],
       );
 
       if (deductResult.affectedRows !== 1) {
@@ -282,7 +300,8 @@ export async function confirmStockTransferTransaction(
         item.product_variant_id,
         item.destination_location_id,
         item.batch_id,
-        Number(item.quantity),
+        movedQuantity,
+        movedReserved,
       );
 
       await connection.query(
