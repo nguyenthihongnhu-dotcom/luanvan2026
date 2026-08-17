@@ -1,5 +1,6 @@
 import {
   UNRESTRICTED_SCOPE,
+  isWarehouseInScope,
   warehouseScopeWhere,
 } from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
@@ -239,6 +240,16 @@ export async function quickReceiveStock(
 
     if (!location) {
       throw new Error('LOCATION_NOT_FOUND');
+    }
+
+    // Kiểm phạm vi ngay tại đây, trong cùng giao dịch: biết ô thuộc kho nào rồi
+    // nhưng chưa ghi gì, nên ném lỗi là rollback sạch. Kiểm sau khi ghi thì hàng
+    // đã vào tồn kho người ta rồi mới báo lỗi.
+    if (
+      input.warehouseScope &&
+      !isWarehouseInScope(input.warehouseScope, location.warehouse_id)
+    ) {
+      throw new Error('WAREHOUSE_OUT_OF_SCOPE');
     }
 
     const [userRows] = await connection.query<QuickIdRow[]>(

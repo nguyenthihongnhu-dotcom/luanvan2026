@@ -113,6 +113,14 @@ export async function quickReceiveStock(
     return await quickReceiveStockRepository(input);
   } catch (error) {
     if (error instanceof Error) {
+      if (error.message === 'WAREHOUSE_OUT_OF_SCOPE') {
+        throw new HttpError(
+          403,
+          'Ô lưu trữ này thuộc kho bạn không phụ trách',
+          'WAREHOUSE_OUT_OF_SCOPE',
+        );
+      }
+
       if (error.message === 'PRODUCT_NOT_FOUND') {
         throw new HttpError(
           404,

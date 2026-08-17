@@ -99,6 +99,8 @@ export type QuickReceiveInput = {
   lotNumber?: string;
   expiryDate?: string;
   note?: string;
+  /** Phạm vi kho của người quét; kiểm ngay trong giao dịch trước khi ghi tồn. */
+  warehouseScope?: WarehouseScope;
 };
 
 export type QuickReceiveResult = {
