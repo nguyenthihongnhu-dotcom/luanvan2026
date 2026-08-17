@@ -303,17 +303,42 @@ export async function countLayerLocationsWithStock(
 export async function softDeleteLocationsByShelfId(
   shelfId: number,
 ): Promise<MutationResult> {
-  const [result] = await db.query<ResultSetHeader>({
-    sql: `
-      UPDATE warehouse_locations
-      SET deleted_at = CURRENT_TIMESTAMP(3), status = 'INACTIVE'
-      WHERE shelf_id = :shelfId
-        AND deleted_at IS NULL
-    `,
-    values: { shelfId } satisfies QueryParams,
-  });
+  const connection = await db.getConnection();
+  try {
+    await connection.beginTransaction();
 
-  return { affectedRows: result.affectedRows };
+    const [locationResult] = await connection.query<ResultSetHeader>(
+      `
+        UPDATE warehouse_locations
+        SET deleted_at = CURRENT_TIMESTAMP(3), status = 'INACTIVE'
+        WHERE shelf_id = ?
+          AND deleted_at IS NULL
+      `,
+      [shelfId],
+    );
+
+    const [shelfResult] = await connection.query<ResultSetHeader>(
+      `
+        UPDATE warehouse_shelves
+        SET deleted_at = CURRENT_TIMESTAMP(3), status = 'INACTIVE'
+        WHERE id = ?
+          AND deleted_at IS NULL
+      `,
+      [shelfId],
+    );
+
+    await connection.commit();
+
+    return {
+      affectedRows:
+        (shelfResult.affectedRows || 0) + (locationResult.affectedRows || 0),
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function softDeleteLocationByLayer(

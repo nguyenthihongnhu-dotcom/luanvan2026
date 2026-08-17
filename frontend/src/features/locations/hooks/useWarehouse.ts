@@ -310,7 +310,7 @@ export function useWarehouse() {
     };
 
     const handleDeleteShelf = async (shelfId: string, shelfCode: string) => {
-        if (!window.confirm(`Bạn có chắc muốn xóa kệ ${shelfCode}?`)) return;
+        if (!window.confirm(`Xóa kệ ${shelfCode}? Chỉ xóa được khi tất cả vị trí trong kệ không còn hàng.`)) return;
         await runMutation(async () => {
             const numericShelfId = Number(shelfId);
             if (!Number.isFinite(numericShelfId)) throw new Error('Mã kệ không hợp lệ.');
@@ -355,7 +355,7 @@ export function useWarehouse() {
     };
 
     const handleDeleteLayer = async (_layerId: string, layerCode: string) => {
-        if (!window.confirm(`Bạn có chắc muốn xóa tầng ${layerCode}?`)) return;
+        if (!window.confirm(`Xóa tầng ${layerCode}? Chỉ xóa được khi tầng này không còn hàng trong mọi kệ.`)) return;
         await runMutation(async () => {
             const targetLocations = locations.filter(l => l.KhuVuc === selectedZone && l.Tang === layerCode && l.MaKe);
             for (const location of targetLocations) {

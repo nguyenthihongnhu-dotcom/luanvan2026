@@ -24,13 +24,11 @@ export default function StructureSidebar({
     handleDeleteLayer,
 }: StructureSidebarProps) {
     function confirmDeleteShelf(shelf: Shelf) {
-        const confirmed = window.confirm(`Xóa kệ ${shelf.code}? Chỉ xóa được khi tất cả vị trí trong kệ không còn hàng.`);
-        if (confirmed) handleDeleteShelf(shelf.id, shelf.code);
+        handleDeleteShelf(shelf.id, shelf.code);
     }
 
     function confirmDeleteLayer(layer: Layer) {
-        const confirmed = window.confirm(`Xóa tầng ${layer.code}? Chỉ xóa được khi tầng này không còn hàng trong mọi kệ.`);
-        if (confirmed) handleDeleteLayer(layer.id, layer.code);
+        handleDeleteLayer(layer.id, layer.code);
     }
 
     return (
