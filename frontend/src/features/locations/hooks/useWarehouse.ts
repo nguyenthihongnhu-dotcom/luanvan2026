@@ -41,8 +41,16 @@ export function useWarehouse() {
         try {
             const list = await masterWarehouseService.listWarehouses({ status: 'ACTIVE' });
             setWarehouses(list);
-            if (list.length > 0 && !selectedWarehouseId) {
-                setSelectedWarehouseId(list[0].id);
+
+            // Chỉ chọn được kho mình phụ trách. Kho đang mở mà không nằm trong đó
+            // (người dùng đổi tài khoản, hoặc bị gỡ khỏi kho) thì phải nhảy về kho
+            // hợp lệ đầu tiên; giữ nguyên sẽ ra cảnh: tiêu đề ghi kho này còn ô
+            // chọn lại hiện kho khác, và mọi thao tác sau đó đều bị backend từ chối.
+            const selectable = masterWarehouseService.selectableWarehouses(list);
+            const stillAllowed = selectable.some((warehouse) => warehouse.id === selectedWarehouseId);
+
+            if (!stillAllowed) {
+                setSelectedWarehouseId(selectable.length > 0 ? selectable[0].id : null);
             }
         } catch (err) {
             console.error('Failed to load warehouses:', err);
