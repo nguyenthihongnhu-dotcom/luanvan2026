@@ -337,6 +337,8 @@ export default function TransactionModal({
     previewingItemIndex,
     handlePreviewAllocation,
 }: TransactionModalProps) {
+    const [manualPickMap, setManualPickMap] = useState<Record<number, boolean>>({});
+
     const isIssue = formData.loai === "XUAT";
     const isAdjustment = formData.loai === "DIEU_CHINH";
     // Số phiếu do backend sinh theo dạng <tiền tố>-YYYYMM-NNN, ở đây chỉ báo trước cho người dùng.
@@ -364,7 +366,7 @@ export default function TransactionModal({
             <div className="max-h-[92vh] w-full max-w-6xl overflow-hidden rounded-xl bg-white shadow-xl animate-in fade-in zoom-in duration-200">
                 <div className="flex items-center justify-between border-b border-gray-100 bg-pink-50 px-6 py-4">
                     <h2 className="text-lg font-bold text-pink-700">{editingTransaction ? "Chỉnh sửa giao dịch" : "Thêm giao dịch mới"}</h2>
-                    <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600" aria-label="Đóng">×</button>
+                    <button type="button" onClick={onClose} className="text-gray-400 hover:text-gray-600 text-xl font-bold" aria-label="Đóng">×</button>
                 </div>
                 <form onSubmit={handleSubmit} className="max-h-[calc(92vh-72px)] space-y-4 overflow-y-auto p-6">
                     {error && (
@@ -372,7 +374,7 @@ export default function TransactionModal({
                             ⚠️ {error}
                         </div>
                     )}
-                    <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+                    <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
                         <div>
                             <label className="mb-1 block text-sm font-medium text-gray-700">Số phiếu</label>
                             <div className="w-full rounded-md border border-dashed border-gray-300 bg-gray-50 px-3 py-2 text-sm text-gray-500">
@@ -388,9 +390,36 @@ export default function TransactionModal({
                             </select>
                         </div>
                         <div>
-                            <label className="mb-1 block text-sm font-medium text-gray-700">Ngày thực hiện</label>
-                            <input type="date" name="ngay" required value={formData.ngay} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                            <label className="mb-1 block text-sm font-medium text-gray-700">
+                                {isIssue ? "Kho xuất hàng" : isAdjustment ? "Kho điều chỉnh" : "Kho nhập hàng"} <span className="text-pink-600">*</span>
+                            </label>
+                            <select
+                                value={selectedWarehouseId}
+                                onChange={(event) => setSelectedWarehouseId(event.target.value)}
+                                className="w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500"
+                                required
+                            >
+                                <option value="">-- Chọn kho thực hiện --</option>
+                                {warehouses.map((warehouse) => (
+                                    <option key={warehouse.id} value={warehouse.id}>{warehouse.code} - {warehouse.name ?? "Không tên"}</option>
+                                ))}
+                            </select>
                         </div>
+
+                        {isIssue && (
+                            <div>
+                                <label className="mb-1 block text-sm font-medium text-gray-700">Chiến lược xuất kho</label>
+                                <select
+                                    value={allocationStrategy}
+                                    onChange={(event) => setAllocationStrategy(event.target.value as AllocationStrategy)}
+                                    className="w-full rounded-md border border-pink-300 bg-pink-50/50 px-3 py-2 text-sm font-semibold text-pink-800 outline-none focus:ring-2 focus:ring-pink-500"
+                                >
+                                    <option value="FEFO">FEFO - Hết hạn trước xuất trước (Khuyến nghị)</option>
+                                    <option value="FIFO">FIFO - Nhập trước xuất trước</option>
+                                </select>
+                            </div>
+                        )}
+
                         {formData.loai === "NHAP" && (
                             <div>
                                 <label className="mb-1 block text-sm font-medium text-gray-700">Nhà cung cấp</label>
@@ -404,237 +433,433 @@ export default function TransactionModal({
                                 </select>
                             </div>
                         )}
-                        {isIssue && (
+
+                        <div>
+                            <label className="mb-1 block text-sm font-medium text-gray-700">Ngày thực hiện</label>
+                            <input type="date" name="ngay" required value={formData.ngay} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                        </div>
+
+                        {(isIssue || formData.loai === "NHAP") && (
                             <div>
-                                <label className="mb-1 block text-sm font-medium text-gray-700">Mã đơn hàng tham chiếu</label>
-                                <input type="text" name="maDonHangThamChieu" value={formData.maDonHangThamChieu} onChange={handleInputChange} className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                                <label className="mb-1 block text-sm font-medium text-gray-700">
+                                    {isIssue ? "Mã đơn hàng tham chiếu" : "Mã chứng từ / Đơn nhập"}
+                                </label>
+                                <input
+                                    type="text"
+                                    name="maDonHangThamChieu"
+                                    value={formData.maDonHangThamChieu}
+                                    onChange={handleInputChange}
+                                    placeholder={isIssue ? "VD: DH-SHOPEE-01, SO-2026-01 (tùy chọn)" : "VD: PO-2026-001, HĐ-8821 (tùy chọn)"}
+                                    className="w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500"
+                                />
                             </div>
                         )}
-                        <div className="md:col-span-2">
+
+                        <div className="md:col-span-3">
                             <label className="mb-1 block text-sm font-medium text-gray-700">Ghi chú / lý do</label>
-                            <textarea name="lyDo" value={formData.lyDo} onChange={handleInputChange} className="min-h-[72px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
+                            <textarea
+                                name="lyDo"
+                                value={formData.lyDo}
+                                onChange={handleInputChange}
+                                placeholder={isIssue ? "Ghi chú lý do xuất kho..." : isAdjustment ? "Lý do điều chỉnh kiểm kê hoặc chuyển ô..." : "Ghi chú nhập kho..."}
+                                className="min-h-[64px] w-full rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500"
+                            />
                         </div>
                     </div>
 
                     <div className="border-t border-gray-200 pt-4">
                         <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-                            <div>
-                                <label className="block text-sm font-semibold text-pink-700">Dòng hàng chi tiết</label>
+                            <div className="flex flex-wrap items-center gap-2">
+                                <label className="text-sm font-bold text-pink-700">Dòng hàng chi tiết</label>
+                                {isIssue && (
+                                    <span className="rounded-md border border-pink-200 bg-pink-50 px-2 py-0.5 text-xs text-pink-700 font-medium">
+                                        ⚡ Xuất kho tự động phân bổ Lô & Vị trí theo <strong>{allocationStrategy}</strong>. Chỉ cần chọn SP & Số lượng.
+                                    </span>
+                                )}
                                 {formData.loai === "NHAP" && selectedSupplier && (
-                                    <p className="mt-0.5 text-xs text-pink-600 font-medium">
-                                        📌 Đang ưu tiên sản phẩm thuộc <strong>{selectedSupplier.TenNCC}</strong>
-                                    </p>
+                                    <span className="rounded-md border border-pink-200 bg-pink-50 px-2 py-0.5 text-xs text-pink-700 font-medium">
+                                        📌 Ưu tiên sản phẩm thuộc <strong>{selectedSupplier.TenNCC}</strong>
+                                    </span>
                                 )}
                             </div>
-                            <div className="flex flex-wrap items-center gap-2">
-                                <div className="flex flex-wrap items-center gap-2 rounded-lg border border-gray-200 bg-white px-3 py-1.5 text-xs">
-                                    <span className="font-semibold text-gray-600">{isIssue ? "Kho xuất" : isAdjustment ? "Kho điều chỉnh" : "Kho nhập"}</span>
-                                    <select value={selectedWarehouseId} onChange={(event) => setSelectedWarehouseId(event.target.value)} className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-pink-500">
-                                        <option value="">Chọn kho</option>
-                                        {warehouses.map((warehouse) => (
-                                            <option key={warehouse.id} value={warehouse.id}>{warehouse.code} - {warehouse.name ?? "Không tên"}</option>
-                                        ))}
-                                    </select>
-                                    {isIssue && (
-                                        <>
-                                            <span className="font-semibold text-gray-600">Chiến lược xuất</span>
-                                            <select value={allocationStrategy} onChange={(event) => setAllocationStrategy(event.target.value as AllocationStrategy)} className="rounded border border-gray-300 px-2 py-1 text-xs outline-none focus:ring-1 focus:ring-pink-500">
-                                                <option value="FEFO">FEFO - hết hạn trước xuất trước</option>
-                                                <option value="FIFO">FIFO - nhập trước xuất trước</option>
-                                            </select>
-                                        </>
-                                    )}
-                                </div>
-                                <button type="button" onClick={handleAddItemRow} className="rounded-lg border border-pink-200 bg-pink-100 px-3 py-1.5 text-xs font-semibold text-pink-700 shadow-sm hover:bg-pink-200">+ Thêm dòng</button>
-                            </div>
+                            <button
+                                type="button"
+                                onClick={handleAddItemRow}
+                                className="rounded-lg bg-pink-600 px-3 py-1.5 text-xs font-semibold text-white shadow-sm hover:bg-pink-700 transition"
+                            >
+                                + Thêm dòng hàng
+                            </button>
                         </div>
                         <div className="space-y-3">
-                            {items.map((item, index) => (
-                                <div key={index} className="grid grid-cols-12 items-end gap-2 rounded-lg border border-gray-200 bg-gray-50 p-3">
-                                    {/* 
-                                        Variant ID (Mã biến thể sản phẩm):
-                                        - Đại diện cho 1 chủng loại/quy cách cụ thể của sản phẩm (ví dụ: SKU 'SUA-FRISO-3' - Sữa Friso số 3 850g).
-                                        - Quản lý mã SKU, tên biến thể, đơn vị tính, tồn kho tối thiểu/tối đa và quy tắc theo dõi lô/hạn sử dụng.
-                                    */}
-                                    <div className="col-span-12 md:col-span-4">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Sản phẩm / Biến thể (Variant ID)</label>
-                                        <select required value={item.productVariantId} onChange={(e) => handleItemChange(index, "productVariantId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500">
-                                            <option value="">-- Chọn sản phẩm --</option>
-                                            {formData.maNCC && supplierMatchedVariants.length > 0 ? (
-                                                <>
-                                                    <optgroup label={`Sản phẩm thuộc ${selectedSupplier ? selectedSupplier.TenNCC : "Nhà cung cấp đã chọn"}`}>
-                                                        {supplierMatchedVariants.map((pv) => (
-                                                            <option key={pv.id} value={pv.id}>
-                                                                {pv.sku} - {pv.name}
-                                                            </option>
-                                                        ))}
-                                                    </optgroup>
-                                                    {otherVariants.length > 0 && (
-                                                        <optgroup label="Tất cả sản phẩm khác">
-                                                            {otherVariants.map((pv) => (
+                            {items.map((item, index) => {
+                                const variantAvailQty = currentStock
+                                    .filter((s) => (!selectedWarehouseId || String(s.warehouseId) === String(selectedWarehouseId))
+                                        && String(s.productVariantId) === String(item.productVariantId))
+                                    .reduce((sum, r) => sum + Number(r.quantity || 0), 0);
+
+                                return (
+                                    <div key={index} className="rounded-lg border border-gray-200 bg-gray-50 p-3 shadow-xs transition hover:border-gray-300">
+                                        {isIssue ? (
+                                            /* Layout tinh gọn cho Phiếu Xuất Kho */
+                                            <div className="space-y-2">
+                                                <div className="grid grid-cols-12 items-start gap-2">
+                                                    <div className="col-span-12 md:col-span-6">
+                                                        <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                                            Sản phẩm / Biến thể (SKU) <span className="text-pink-600">*</span>
+                                                        </label>
+                                                        <select
+                                                            required
+                                                            value={item.productVariantId}
+                                                            onChange={(e) => handleItemChange(index, "productVariantId", e.target.value)}
+                                                            className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500 font-medium text-gray-800"
+                                                        >
+                                                            <option value="">-- Chọn sản phẩm cần xuất --</option>
+                                                            {productVariants.map((pv) => (
                                                                 <option key={pv.id} value={pv.id}>
                                                                     {pv.sku} - {pv.name}
                                                                 </option>
                                                             ))}
-                                                        </optgroup>
-                                                    )}
-                                                </>
-                                            ) : (
-                                                productVariants.map((pv) => (
-                                                    <option key={pv.id} value={pv.id}>
-                                                        {pv.sku} - {pv.name}
-                                                    </option>
-                                                ))
-                                            )}
-                                        </select>
-                                    </div>
-                                    {/* 
-                                        Batch ID (ID Lô hàng):
-                                        - Quản lý theo số lô nhà sản xuất (lot_number), ngày sản xuất (manufactured_date) và hạn sử dụng (expiry_date).
-                                        - Bắt buộc với các sản phẩm có tính chất date/hạn dùng (sữa, dược phẩm, thực phẩm ăn dặm) để chạy xuất kho FEFO/FIFO.
-                                    */}
-                                    <div className="col-span-6 md:col-span-2">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Mã Lô hàng (Batch ID)</label>
-                                        <input type="number" min="1" value={item.batchId} onChange={(e) => handleItemChange(index, "batchId", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" placeholder="ID Lô (nếu chọn lô có sẵn)" />
-                                    </div>
-                                    {/* 
-                                        Location ID (Vị trí ô kho ID):
-                                        - Địa chỉ ô lưu trữ vật lý duy nhất trong kho (cấu trúc: MãKho-Khu-Kệ-Tầng, ví dụ HCM01-A-A01-01).
-                                        - Giúp thủ kho tìm đúng vị trí khi lấy hàng xuất kho hoặc cất hàng khi nhập kho.
-                                    */}
-                                    {isAdjustment && (
-                                        <div className="col-span-6 md:col-span-2">
-                                            <label className="mb-1 block text-xs font-medium text-gray-600">Kiểu điều chỉnh</label>
-                                            <select
-                                                value={item.adjustmentMode}
-                                                onChange={(e) => handleItemChange(index, "adjustmentMode", e.target.value)}
-                                                className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
-                                            >
-                                                <option value="QUANTITY">Sửa số lượng</option>
-                                                <option value="LOCATION">Chuyển vị trí</option>
-                                                <option value="BOTH">Chuyển vị trí và sửa số</option>
-                                            </select>
-                                        </div>
-                                    )}
-                                    <div className="col-span-12 md:col-span-6">
-                                        {isAdjustment ? (
-                                            <AdjustmentStockPicker
-                                                stockRows={currentStock.filter((row) =>
-                                                    String(row.warehouseId) === String(selectedWarehouseId)
-                                                    && String(row.productVariantId) === String(item.productVariantId),
+                                                        </select>
+                                                        {item.productVariantId && (
+                                                            <div className="mt-1 flex items-center gap-1.5">
+                                                                {variantAvailQty > 0 ? (
+                                                                    <span className="inline-flex items-center rounded bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 border border-emerald-200">
+                                                                        📦 Khả dụng tại kho: {formatQty(variantAvailQty)}
+                                                                    </span>
+                                                                ) : (
+                                                                    <span className="inline-flex items-center rounded bg-rose-50 px-2 py-0.5 text-[11px] font-semibold text-rose-700 border border-rose-200">
+                                                                        ⚠️ Hết hàng khả dụng tại kho này
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        )}
+                                                    </div>
+
+                                                    <div className="col-span-6 md:col-span-2">
+                                                        <label className="mb-1 block text-xs font-semibold text-gray-700">
+                                                            Số lượng xuất <span className="text-pink-600">*</span>
+                                                        </label>
+                                                        <input
+                                                            required
+                                                            type="number"
+                                                            min="0.001"
+                                                            step="0.001"
+                                                            value={item.quantity}
+                                                            onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
+                                                            placeholder="VD: 10"
+                                                            className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500 font-bold text-gray-900"
+                                                        />
+                                                    </div>
+
+                                                    <div className="col-span-6 md:col-span-2">
+                                                        <label className="mb-1 block text-xs font-medium text-gray-600">Ghi chú</label>
+                                                        <input
+                                                            value={item.note}
+                                                            onChange={(e) => handleItemChange(index, "note", e.target.value)}
+                                                            placeholder="Ghi chú dòng"
+                                                            className="w-full rounded-md border border-gray-300 bg-white px-2.5 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                                                        />
+                                                    </div>
+
+                                                    <div className="col-span-12 md:col-span-2 flex items-center justify-end gap-1.5 pt-4 md:pt-5">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handlePreviewAllocation(index)}
+                                                            disabled={previewingItemIndex === index || !item.productVariantId || !item.quantity || Number(item.quantity) <= 0}
+                                                            className="rounded-md border border-emerald-300 bg-emerald-50 px-2.5 py-1.5 text-xs font-semibold text-emerald-700 shadow-xs hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-50 transition"
+                                                            title="Xem trước lộ trình lấy hàng theo FEFO/FIFO"
+                                                        >
+                                                            {previewingItemIndex === index ? "Đang tính..." : "🔍 Xem phân bổ"}
+                                                        </button>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleRemoveItemRow(index)}
+                                                            className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
+                                                            title="Xóa dòng này"
+                                                        >
+                                                            Xóa
+                                                        </button>
+                                                    </div>
+                                                </div>
+
+                                                <div className="text-right">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => setManualPickMap((prev) => ({ ...prev, [index]: !prev[index] }))}
+                                                        className="text-[11px] text-gray-500 hover:text-pink-600 underline decoration-dotted"
+                                                    >
+                                                        {manualPickMap[index] ? "▲ Ẩn chỉ định vị trí/lô thủ công" : "⚙️ Chỉ định vị trí / lô thủ công (nếu không xuất tự động)"}
+                                                    </button>
+                                                </div>
+
+                                                {manualPickMap[index] && (
+                                                    <div className="mt-2 rounded-md border border-gray-200 bg-white p-3 space-y-2">
+                                                        <p className="text-[11px] text-amber-700 font-medium">
+                                                            ⚠️ Khi lưu theo chiến lược {allocationStrategy}, hệ thống sẽ tự động gán vị trí & lô tối ưu nếu các ô dưới đây để trống.
+                                                        </p>
+                                                        <div className="grid grid-cols-12 gap-2">
+                                                            <div className="col-span-12 md:col-span-4">
+                                                                <label className="mb-1 block text-xs font-medium text-gray-600">ID Lô hàng (tùy chọn)</label>
+                                                                <input
+                                                                    type="number"
+                                                                    min="1"
+                                                                    value={item.batchId}
+                                                                    onChange={(e) => handleItemChange(index, "batchId", e.target.value)}
+                                                                    className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                                                                    placeholder="Để trống = tự động"
+                                                                />
+                                                            </div>
+                                                            <div className="col-span-12 md:col-span-8">
+                                                                <label className="mb-1 block text-xs font-medium text-gray-600">Ô xuất thủ công (tùy chọn)</label>
+                                                                <LocationCascadePicker
+                                                                    locations={filteredLocations}
+                                                                    hasWarehouse={Boolean(selectedWarehouseId)}
+                                                                    value={item.locationId}
+                                                                    onChange={(locationId) => handleItemChange(index, "locationId", locationId)}
+                                                                />
+                                                            </div>
+                                                        </div>
+                                                    </div>
                                                 )}
-                                                locations={filteredLocations}
-                                                hasWarehouse={Boolean(selectedWarehouseId)}
-                                                locationId={item.locationId}
-                                                batchId={item.batchId}
-                                                onPick={(locationId, batchId) => {
-                                                    handleItemChange(index, "locationId", locationId);
-                                                    handleItemChange(index, "batchId", batchId);
-                                                }}
-                                            />
+                                            </div>
                                         ) : (
-                                            <LocationCascadePicker
-                                                locations={filteredLocations}
-                                                hasWarehouse={Boolean(selectedWarehouseId)}
-                                                value={item.locationId}
-                                                onChange={(locationId) => handleItemChange(index, "locationId", locationId)}
-                                            />
+                                            /* Layout cho Phiếu Nhập Kho và Phiếu Điều Chỉnh */
+                                            <div className="grid grid-cols-12 items-end gap-2">
+                                                <div className="col-span-12 md:col-span-4">
+                                                    <label className="mb-1 block text-xs font-medium text-gray-600">Sản phẩm / Biến thể (Variant ID)</label>
+                                                    <select
+                                                        required
+                                                        value={item.productVariantId}
+                                                        onChange={(e) => handleItemChange(index, "productVariantId", e.target.value)}
+                                                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                                                    >
+                                                        <option value="">-- Chọn sản phẩm --</option>
+                                                        {formData.maNCC && supplierMatchedVariants.length > 0 ? (
+                                                            <>
+                                                                <optgroup label={`Sản phẩm thuộc ${selectedSupplier ? selectedSupplier.TenNCC : "Nhà cung cấp đã chọn"}`}>
+                                                                    {supplierMatchedVariants.map((pv) => (
+                                                                        <option key={pv.id} value={pv.id}>
+                                                                            {pv.sku} - {pv.name}
+                                                                        </option>
+                                                                    ))}
+                                                                </optgroup>
+                                                                {otherVariants.length > 0 && (
+                                                                    <optgroup label="Tất cả sản phẩm khác">
+                                                                        {otherVariants.map((pv) => (
+                                                                            <option key={pv.id} value={pv.id}>
+                                                                                {pv.sku} - {pv.name}
+                                                                            </option>
+                                                                        ))}
+                                                                    </optgroup>
+                                                                )}
+                                                            </>
+                                                        ) : (
+                                                            productVariants.map((pv) => (
+                                                                <option key={pv.id} value={pv.id}>
+                                                                    {pv.sku} - {pv.name}
+                                                                </option>
+                                                            ))
+                                                        )}
+                                                    </select>
+                                                </div>
+
+                                                {!isAdjustment && (
+                                                    <div className="col-span-6 md:col-span-2">
+                                                        <label className="mb-1 block text-xs font-medium text-gray-600">Mã Lô hàng (Batch ID)</label>
+                                                        <input
+                                                            type="number"
+                                                            min="1"
+                                                            value={item.batchId}
+                                                            onChange={(e) => handleItemChange(index, "batchId", e.target.value)}
+                                                            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                                                            placeholder="ID Lô có sẵn (nếu có)"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {isAdjustment && (
+                                                    <div className="col-span-6 md:col-span-2">
+                                                        <label className="mb-1 block text-xs font-medium text-gray-600">Kiểu điều chỉnh</label>
+                                                        <select
+                                                            value={item.adjustmentMode}
+                                                            onChange={(e) => handleItemChange(index, "adjustmentMode", e.target.value)}
+                                                            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                                                        >
+                                                            <option value="QUANTITY">Sửa số lượng</option>
+                                                            <option value="LOCATION">Chuyển vị trí</option>
+                                                            <option value="BOTH">Chuyển vị trí và sửa số</option>
+                                                        </select>
+                                                    </div>
+                                                )}
+
+                                                <div className={isAdjustment ? "col-span-12 md:col-span-6" : "col-span-12 md:col-span-4"}>
+                                                    {isAdjustment ? (
+                                                        <AdjustmentStockPicker
+                                                            stockRows={currentStock.filter((row) =>
+                                                                String(row.warehouseId) === String(selectedWarehouseId)
+                                                                && String(row.productVariantId) === String(item.productVariantId),
+                                                            )}
+                                                            locations={filteredLocations}
+                                                            hasWarehouse={Boolean(selectedWarehouseId)}
+                                                            locationId={item.locationId}
+                                                            batchId={item.batchId}
+                                                            onPick={(locationId, batchId) => {
+                                                                handleItemChange(index, "locationId", locationId);
+                                                                handleItemChange(index, "batchId", batchId);
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <LocationCascadePicker
+                                                            locations={filteredLocations}
+                                                            hasWarehouse={Boolean(selectedWarehouseId)}
+                                                            value={item.locationId}
+                                                            onChange={(locationId) => handleItemChange(index, "locationId", locationId)}
+                                                        />
+                                                    )}
+                                                </div>
+
+                                                {isAdjustment && item.adjustmentMode !== "QUANTITY" && (
+                                                    <div className="col-span-12 md:col-span-6">
+                                                        <p className="mb-1 text-xs font-semibold text-pink-700">Chuyển đến ô</p>
+                                                        <LocationCascadePicker
+                                                            locations={filteredLocations}
+                                                            hasWarehouse={Boolean(selectedWarehouseId)}
+                                                            value={item.targetLocationId}
+                                                            onChange={(locationId) => handleItemChange(index, "targetLocationId", locationId)}
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                <div className="col-span-6 md:col-span-2">
+                                                    <label className="mb-1 block text-xs font-medium text-gray-600">
+                                                        {isAdjustment && item.adjustmentMode !== "QUANTITY" ? "Số rời ô cũ" : "Số lượng"}
+                                                    </label>
+                                                    <input
+                                                        required
+                                                        type="number"
+                                                        min="0.001"
+                                                        step="0.001"
+                                                        value={item.quantity}
+                                                        onChange={(e) => handleItemChange(index, "quantity", e.target.value)}
+                                                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500 font-bold"
+                                                    />
+                                                </div>
+
+                                                {isAdjustment && item.adjustmentMode === "BOTH" && (
+                                                    <div className="col-span-6 md:col-span-2">
+                                                        <label className="mb-1 block text-xs font-medium text-gray-600">Số vào ô mới</label>
+                                                        <input
+                                                            required
+                                                            type="number"
+                                                            min="0.001"
+                                                            step="0.001"
+                                                            value={item.targetQuantity}
+                                                            onChange={(e) => handleItemChange(index, "targetQuantity", e.target.value)}
+                                                            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                                                        />
+                                                    </div>
+                                                )}
+
+                                                {isAdjustment && item.adjustmentMode === "QUANTITY" && (
+                                                    <div className="col-span-6 md:col-span-2">
+                                                        <label className="mb-1 block text-xs font-medium text-gray-600">Hướng</label>
+                                                        <select
+                                                            value={item.adjustmentDirection}
+                                                            onChange={(e) => handleItemChange(index, "adjustmentDirection", e.target.value as TransactionItem["adjustmentDirection"])}
+                                                            className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                                                        >
+                                                            <option value="IN">Tăng</option>
+                                                            <option value="OUT">Giảm</option>
+                                                        </select>
+                                                    </div>
+                                                )}
+
+                                                <div className={isAdjustment ? "col-span-6 md:col-span-3" : "col-span-6 md:col-span-2"}>
+                                                    <label className="mb-1 block text-xs font-medium text-gray-600">Ghi chú</label>
+                                                    <input
+                                                        value={item.note}
+                                                        onChange={(e) => handleItemChange(index, "note", e.target.value)}
+                                                        placeholder="Ghi chú dòng"
+                                                        className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500"
+                                                    />
+                                                </div>
+
+                                                <div className="col-span-6 md:col-span-1 flex justify-end">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleRemoveItemRow(index)}
+                                                        className="rounded-md border border-red-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50 transition"
+                                                    >
+                                                        Xóa
+                                                    </button>
+                                                </div>
+
+                                                {isAdjustment && (
+                                                    <AdjustmentSummary
+                                                        stockRows={currentStock.filter((row) =>
+                                                            String(row.warehouseId) === String(selectedWarehouseId)
+                                                            && String(row.productVariantId) === String(item.productVariantId),
+                                                        )}
+                                                        item={item}
+                                                    />
+                                                )}
+                                            </div>
                                         )}
                                     </div>
-                                    {isAdjustment && item.adjustmentMode !== "QUANTITY" && (
-                                        <div className="col-span-12 md:col-span-6">
-                                            <p className="mb-1 text-xs font-semibold text-pink-700">Chuyển đến ô</p>
-                                            <LocationCascadePicker
-                                                locations={filteredLocations}
-                                                hasWarehouse={Boolean(selectedWarehouseId)}
-                                                value={item.targetLocationId}
-                                                onChange={(locationId) => handleItemChange(index, "targetLocationId", locationId)}
-                                            />
-                                        </div>
-                                    )}
-                                    <div className="col-span-6 md:col-span-2">
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">
-                                            {isAdjustment && item.adjustmentMode !== "QUANTITY" ? "Số rời ô cũ" : "Số lượng"}
-                                        </label>
-                                        <input required type="number" min="0.001" step="0.001" value={item.quantity} onChange={(e) => handleItemChange(index, "quantity", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" />
-                                    </div>
-                                    {isAdjustment && item.adjustmentMode === "BOTH" && (
-                                        <div className="col-span-6 md:col-span-2">
-                                            <label className="mb-1 block text-xs font-medium text-gray-600">Số vào ô mới</label>
-                                            <input required type="number" min="0.001" step="0.001" value={item.targetQuantity} onChange={(e) => handleItemChange(index, "targetQuantity", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" />
-                                        </div>
-                                    )}
-                                    {isAdjustment && item.adjustmentMode === "QUANTITY" && (
-                                        <div className="col-span-6 md:col-span-2">
-                                            <label className="mb-1 block text-xs font-medium text-gray-600">Hướng</label>
-                                            <select value={item.adjustmentDirection} onChange={(e) => handleItemChange(index, "adjustmentDirection", e.target.value as TransactionItem["adjustmentDirection"])} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500">
-                                                <option value="IN">Tăng</option>
-                                                <option value="OUT">Giảm</option>
-                                            </select>
-                                        </div>
-                                    )}
-                                    <div className={isAdjustment ? "col-span-6 md:col-span-1" : isIssue ? "col-span-6 md:col-span-2" : "col-span-10 md:col-span-1"}>
-                                        <label className="mb-1 block text-xs font-medium text-gray-600">Ghi chú</label>
-                                        <input value={item.note} onChange={(e) => handleItemChange(index, "note", e.target.value)} className="w-full rounded-md border border-gray-300 bg-white px-2 py-1.5 text-xs outline-none focus:ring-1 focus:ring-pink-500" />
-                                    </div>
-                                    {isIssue && (
-                                        <button type="button" onClick={() => handlePreviewAllocation(index)} disabled={previewingItemIndex === index} className="col-span-4 rounded-md border border-green-200 bg-green-50 px-2 py-1.5 text-xs font-semibold text-green-700 hover:bg-green-100 disabled:cursor-not-allowed disabled:opacity-60 md:col-span-1">
-                                            {previewingItemIndex === index ? "Đang xem" : "Xem phân bổ"}
-                                        </button>
-                                    )}
-                                    <button type="button" onClick={() => handleRemoveItemRow(index)} className="col-span-2 rounded p-1.5 text-xs text-red-500 hover:bg-red-50 hover:text-red-700 md:col-span-1">Xóa</button>
-                                    {isAdjustment && (
-                                        <AdjustmentSummary
-                                            stockRows={currentStock.filter((row) =>
-                                                String(row.warehouseId) === String(selectedWarehouseId)
-                                                && String(row.productVariantId) === String(item.productVariantId),
-                                            )}
-                                            item={item}
-                                        />
-                                    )}
-                                </div>
-                            ))}
+                                );
+                            })}
                         </div>
                     </div>
 
                     {isIssue && allocationPreview && (
-                        <div className="rounded-lg border border-green-200 bg-green-50 p-4">
-                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+                        <div className="rounded-xl border border-emerald-200 bg-emerald-50/60 p-4 shadow-sm">
+                            <div className="mb-3 flex flex-wrap items-center justify-between gap-2 border-b border-emerald-200/60 pb-2">
                                 <div>
-                                    <h3 className="text-sm font-semibold text-green-800">Preview phân bổ tồn kho</h3>
-                                    <p className="text-xs text-green-700">
-                                        Chiến lược {allocationPreview.strategy}: yêu cầu {allocationPreview.requestedQuantity}, phân bổ được {allocationPreview.allocatedQuantity}.
+                                    <h3 className="text-sm font-bold text-emerald-900 flex items-center gap-1.5">
+                                        📋 Lộ trình lấy hàng tự động (Picking Route)
+                                        <span className="rounded bg-emerald-600 px-2 py-0.5 text-[11px] font-semibold text-white">
+                                            {allocationPreview.strategy}
+                                        </span>
+                                    </h3>
+                                    <p className="text-xs text-emerald-800 mt-0.5">
+                                        Yêu cầu xuất: <strong>{allocationPreview.requestedQuantity}</strong> — Phân bổ được: <strong>{allocationPreview.allocatedQuantity}</strong>
                                     </p>
                                 </div>
-                                {isShortAllocated && <span className="rounded-full border border-red-200 bg-red-50 px-3 py-1 text-xs font-semibold text-red-700">Không đủ tồn</span>}
+                                {isShortAllocated && (
+                                    <span className="rounded-full border border-rose-300 bg-rose-100 px-3 py-1 text-xs font-bold text-rose-700">
+                                        ⚠️ Kho không đủ tồn (Thiếu {allocationPreview.requestedQuantity - allocationPreview.allocatedQuantity})
+                                    </span>
+                                )}
                             </div>
-                            <div className="overflow-x-auto rounded-lg border border-green-100 bg-white">
+                            <div className="overflow-x-auto rounded-lg border border-emerald-200 bg-white">
                                 <table className="min-w-full text-left text-xs">
-                                    <thead className="bg-green-50 text-green-900">
+                                    <thead className="bg-emerald-100/70 text-emerald-900 font-bold">
                                         <tr>
-                                            <th className="px-3 py-2 font-semibold">Vị trí</th>
-                                            <th className="px-3 py-2 font-semibold">Batch ID</th>
-                                            <th className="px-3 py-2 font-semibold">Lô</th>
-                                            <th className="px-3 py-2 font-semibold">Hạn sử dụng</th>
-                                            <th className="px-3 py-2 font-semibold">Ngày nhập</th>
-                                            <th className="px-3 py-2 text-right font-semibold">Số lượng</th>
+                                            <th className="px-3 py-2.5">Vị trí lấy hàng</th>
+                                            <th className="px-3 py-2.5">Mã Lô</th>
+                                            <th className="px-3 py-2.5">Hạn sử dụng</th>
+                                            <th className="px-3 py-2.5">Ngày nhập</th>
+                                            <th className="px-3 py-2.5 text-right">Số lượng lấy</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-gray-100 text-gray-700">
+                                    <tbody className="divide-y divide-gray-100 text-gray-800">
                                         {allocationPreview.items.length === 0 ? (
                                             <tr>
-                                                <td colSpan={6} className="px-3 py-4 text-center text-gray-500">Backend không tìm thấy tồn khả dụng cho dòng hàng này.</td>
+                                                <td colSpan={5} className="px-3 py-4 text-center text-gray-500 italic">
+                                                    Không tìm thấy tồn kho khả dụng cho sản phẩm này tại kho đã chọn.
+                                                </td>
                                             </tr>
-                                        ) : allocationPreview.items.map((allocation: AllocationPreviewItem) => (
-                                            <tr key={allocation.stockLocationId}>
-                                                <td className="px-3 py-2 font-semibold text-gray-900">{allocation.locationCode}</td>
-                                                <td className="px-3 py-2">{allocation.batchId ?? "Không có"}</td>
-                                                <td className="px-3 py-2">{allocation.lotNumber ?? "Không có"}</td>
-                                                <td className="px-3 py-2">{formatDate(allocation.expiryDate)}</td>
-                                                <td className="px-3 py-2">{formatDate(allocation.receivedDate)}</td>
-                                                <td className="px-3 py-2 text-right font-semibold">{allocation.quantity}</td>
-                                            </tr>
-                                        ))}
+                                        ) : (
+                                            allocationPreview.items.map((allocation: AllocationPreviewItem) => (
+                                                <tr key={allocation.stockLocationId} className="hover:bg-emerald-50/40">
+                                                    <td className="px-3 py-2.5 font-bold text-pink-700">{allocation.locationCode}</td>
+                                                    <td className="px-3 py-2.5">{allocation.lotNumber ? `Lô ${allocation.lotNumber}` : (allocation.batchId ? `#${allocation.batchId}` : "Không có")}</td>
+                                                    <td className="px-3 py-2.5">{formatDate(allocation.expiryDate)}</td>
+                                                    <td className="px-3 py-2.5">{formatDate(allocation.receivedDate)}</td>
+                                                    <td className="px-3 py-2.5 text-right font-bold text-emerald-700">{allocation.quantity}</td>
+                                                </tr>
+                                            ))
+                                        )}
                                     </tbody>
                                 </table>
                             </div>
@@ -642,8 +867,12 @@ export default function TransactionModal({
                     )}
 
                     <div className="flex gap-3 border-t border-gray-100 pt-4">
-                        <button type="button" onClick={onClose} className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Hủy</button>
-                        <button type="submit" className="flex-1 rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700">Lưu giao dịch</button>
+                        <button type="button" onClick={onClose} className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 transition">
+                            Hủy
+                        </button>
+                        <button type="submit" className="flex-1 rounded-md bg-pink-600 px-4 py-2 text-sm font-bold text-white hover:bg-pink-700 shadow-sm transition">
+                            Lưu giao dịch
+                        </button>
                     </div>
                 </form>
             </div>
