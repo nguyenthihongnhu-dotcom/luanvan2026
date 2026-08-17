@@ -1,4 +1,5 @@
 import { HttpError } from '../../common/http';
+import { syncInventoryAlerts } from '../alerts/alerts.service';
 import type {
   ConfirmGoodsIssueInput,
   ConfirmGoodsIssueResult,
@@ -83,7 +84,11 @@ export async function confirmGoodsIssue(
   input: ConfirmGoodsIssueInput,
 ): Promise<ConfirmGoodsIssueResult> {
   try {
-    return await confirmGoodsIssueTransaction(input);
+    const result = await confirmGoodsIssueTransaction(input);
+    // Xuất hàng là lúc tồn tụt xuống, cũng là lúc dễ chạm ngưỡng tồn thấp hoặc
+    // hết sạch nhất, nên quét cảnh báo ngay thay vì chờ bấm nút thủ công.
+    await syncInventoryAlerts('confirmGoodsIssue');
+    return result;
   } catch (error) {
     if (error instanceof Error && confirmErrorMap[error.message]) {
       throw confirmErrorMap[error.message];
@@ -97,7 +102,9 @@ export async function reverseGoodsIssue(
   input: ReverseGoodsIssueInput,
 ): Promise<ReverseGoodsIssueResult> {
   try {
-    return await reverseGoodsIssueTransaction(input);
+    const result = await reverseGoodsIssueTransaction(input);
+    await syncInventoryAlerts('reverseGoodsIssue');
+    return result;
   } catch (error) {
     if (error instanceof Error && confirmErrorMap[error.message]) {
       throw confirmErrorMap[error.message];

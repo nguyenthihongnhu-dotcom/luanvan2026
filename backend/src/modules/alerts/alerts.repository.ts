@@ -72,8 +72,16 @@ export async function generateInventoryAlerts(): Promise<{
       END,
       CONCAT(product_name, ' / ', variant_name, ' available ', total_available_quantity, ', minimum ', min_stock_level)
     FROM vw_product_total_stock v
-    WHERE v.min_stock_level > 0
-      AND v.total_available_quantity <= v.min_stock_level
+    -- Hết sạch hàng thì luôn phải báo, kể cả SKU để tồn tối thiểu bằng 0. Trước đây
+    -- điều kiện min_stock_level > 0 nuốt luôn nhóm này: hàng về 0 mà màn cảnh báo
+    -- vẫn im. Còn cảnh báo tồn thấp thì vẫn cần có ngưỡng mới so sánh được.
+    WHERE (
+        v.total_available_quantity <= 0
+        OR (
+          v.min_stock_level > 0
+          AND v.total_available_quantity <= v.min_stock_level
+        )
+      )
       AND NOT EXISTS (
         SELECT 1
         FROM alerts a

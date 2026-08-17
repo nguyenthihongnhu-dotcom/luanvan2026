@@ -71,9 +71,14 @@ function nextZoneCode(zones: WarehouseZone[]) {
     return `K${zones.length + 1}`;
 }
 
-/** Số ô khu chiếm trên mặt bằng: ưu tiên grid_size đã lưu, không có thì lấy theo số kệ. */
+/**
+ * Số ô khu chiếm trên mặt bằng: bám theo số kệ thực tế. grid_size trong CSDL chỉ
+ * được ghi lúc tạo khu và lúc lưu layout, nên nếu ưu tiên nó thì khu thêm/bớt kệ
+ * về sau vẫn giữ kích thước cũ — hai khu cùng 2 kệ lại vẽ to nhỏ khác nhau.
+ * grid_size chỉ còn dùng khi khu chưa có kệ nào.
+ */
 function sizeOf(zone: WarehouseZone) {
-    return Math.max(1, zone.gridSize ?? zone.shelfCount ?? 1);
+    return Math.max(1, zone.shelfCount || zone.gridSize || 1);
 }
 
 function cellsOf(zone: WarehouseZone, row: number, col: number, orientation: ZoneOrientation) {

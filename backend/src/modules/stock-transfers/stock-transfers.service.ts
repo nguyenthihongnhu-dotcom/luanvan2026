@@ -1,4 +1,5 @@
 import { HttpError } from '../../common/http';
+import { syncInventoryAlerts } from '../alerts/alerts.service';
 import type {
   ConfirmStockTransferInput,
   ConfirmStockTransferResult,
@@ -89,7 +90,9 @@ export async function confirmStockTransfer(
   input: ConfirmStockTransferInput,
 ): Promise<ConfirmStockTransferResult> {
   try {
-    return await confirmStockTransferTransaction(input);
+    const result = await confirmStockTransferTransaction(input);
+    await syncInventoryAlerts('confirmStockTransfer');
+    return result;
   } catch (error) {
     if (error instanceof Error && confirmErrorMap[error.message]) {
       throw confirmErrorMap[error.message];
@@ -103,7 +106,9 @@ export async function reverseStockTransfer(
   input: ReverseStockTransferInput,
 ): Promise<ReverseStockTransferResult> {
   try {
-    return await reverseStockTransferTransaction(input);
+    const result = await reverseStockTransferTransaction(input);
+    await syncInventoryAlerts('reverseStockTransfer');
+    return result;
   } catch (error) {
     if (error instanceof Error && confirmErrorMap[error.message]) {
       throw confirmErrorMap[error.message];

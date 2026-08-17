@@ -1,4 +1,5 @@
 import { HttpError } from '../../common/http';
+import { syncInventoryAlerts } from '../alerts/alerts.service';
 import type {
   ApproveStockAdjustmentInput,
   ApproveStockAdjustmentResult,
@@ -95,7 +96,10 @@ export async function approveStockAdjustment(
   input: ApproveStockAdjustmentInput,
 ): Promise<ApproveStockAdjustmentResult> {
   try {
-    return await approveStockAdjustmentTransaction(input);
+    const result = await approveStockAdjustmentTransaction(input);
+    // Duyệt phiếu điều chỉnh mới là lúc tồn thật sự đổi, tạo phiếu thì chưa.
+    await syncInventoryAlerts('approveStockAdjustment');
+    return result;
   } catch (error) {
     if (error instanceof Error && approveErrorMap[error.message]) {
       throw approveErrorMap[error.message];
