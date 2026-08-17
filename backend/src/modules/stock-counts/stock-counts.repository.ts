@@ -85,6 +85,20 @@ export async function findStockCounts(
   return rows;
 }
 
+/** Kho của phiếu kiểm kê, dùng để kiểm tra phạm vi trước khi cho thao tác. */
+export async function findStockCountWarehouseId(
+  stockCountId: number,
+): Promise<number | null> {
+  const [rows] = await db.query<
+    Array<RowDataPacket & { warehouse_id: number }>
+  >({
+    sql: `SELECT warehouse_id FROM ${tableName} WHERE id = :stockCountId LIMIT 1`,
+    values: { stockCountId },
+  });
+
+  return rows[0] ? Number(rows[0].warehouse_id) : null;
+}
+
 export async function findStockCountItems(
   stockCountId: number,
 ): Promise<StockCountItemRow[]> {

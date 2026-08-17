@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import {
+  findWarehouseIdByLocation,
   isWarehouseInScope,
   resolveWarehouseScope,
 } from '../../common/access/warehouse-scope';
@@ -34,7 +35,20 @@ export async function getGoodsReceiptDetailController(
   res: Response,
 ): Promise<void> {
   const receiptId = parseGoodsReceiptId(req.params.id);
-  res.json({ data: await getGoodsReceiptDetail(receiptId) });
+  const detail = await getGoodsReceiptDetail(receiptId);
+  // Có token vẫn chưa đủ: id chứng từ đoán được, không kiểm phạm vi thì nhân viên
+  // kho này đọc trọn chi tiết phiếu của kho khác.
+  const warehouseScope = await resolveWarehouseScope(req.user);
+  const header = detail.header as { warehouse_id?: number } | null;
+  if (!isWarehouseInScope(warehouseScope, header?.warehouse_id)) {
+    throw new HttpError(
+      403,
+      'Chứng từ này thuộc kho bạn không phụ trách',
+      'WAREHOUSE_OUT_OF_SCOPE',
+    );
+  }
+
+  res.json({ data: detail });
 }
 export async function confirmGoodsReceiptController(
   req: Request,
@@ -77,7 +91,12 @@ export async function createGoodsReceiptController(
 ): Promise<void> {
   const input = parseCreateGoodsReceipt(req.body);
   const warehouseScope = await resolveWarehouseScope(req.user);
-  if (!isWarehouseInScope(warehouseScope, input.warehouseId)) {
+  // Client được phép bỏ trống warehouseId và để backend suy từ vị trí dòng hàng,
+  // nên phần kiểm tra phạm vi phải suy y hệt, không thì phiếu hợp lệ vẫn bị chặn.
+  const targetWarehouseId =
+    input.warehouseId ??
+    (await findWarehouseIdByLocation(input.items?.[0]?.locationId));
+  if (!isWarehouseInScope(warehouseScope, targetWarehouseId)) {
     throw new HttpError(
       403,
       'Bạn không phụ trách kho này nên không tạo được chứng từ cho nó',

@@ -158,6 +158,10 @@ function mapItems(input: Transaction) {
 export async function createTransaction(input: Transaction): Promise<void> {
     // Ô "Ngày thực hiện" chỉ chọn được ngày, phần giờ lấy theo đồng hồ lúc lưu.
     const performedAt = withCurrentTime(input.ngay);
+    // Kho phải gửi tường minh: backend kiểm tra người tạo có phụ trách kho đó
+    // không, và với phiếu xuất tự phân bổ thì dòng hàng không có vị trí nào để
+    // backend suy ngược ra kho.
+    const warehouseId = input.maTonKho ? Number(input.maTonKho) : undefined;
 
     if (input.loai === 'NHAP') {
         await httpClient.post('/goods-receipts', {
@@ -165,6 +169,7 @@ export async function createTransaction(input: Transaction): Promise<void> {
             supplierId: input.maNCC ? Number(input.maNCC) : undefined,
             referenceNo: input.maDonHangThamChieu || undefined,
             receivedAt: performedAt,
+            warehouseId,
             note: input.lyDo || undefined,
             items: mapItems(input),
         });
@@ -176,6 +181,7 @@ export async function createTransaction(input: Transaction): Promise<void> {
             issueCode: input.soPhieu || undefined,
             referenceNo: input.maDonHangThamChieu || undefined,
             issuedAt: performedAt,
+            warehouseId,
             note: input.lyDo || undefined,
             items: mapItems(input),
         });
@@ -187,6 +193,7 @@ export async function createTransaction(input: Transaction): Promise<void> {
     await httpClient.post('/stock-adjustments', {
         adjustmentCode: input.soPhieu || undefined,
         reasonCode: input.lyDo || 'DIEU_CHINH_THU_CONG',
+        warehouseId,
         note: input.lyDo || undefined,
         items: mapItems(input),
     });

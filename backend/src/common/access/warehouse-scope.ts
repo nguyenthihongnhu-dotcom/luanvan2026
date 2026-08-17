@@ -57,6 +57,33 @@ export async function resolveWarehouseScope(
   };
 }
 
+/**
+ * Suy ra kho từ một ô lưu trữ. Một số chứng từ cho phép bỏ trống warehouseId và
+ * để backend tự suy từ vị trí dòng hàng đầu tiên, nên phần kiểm tra phạm vi cũng
+ * phải suy được y như vậy, nếu không nhân viên gửi phiếu hợp lệ vẫn bị chặn.
+ */
+export async function findWarehouseIdByLocation(
+  locationId: number | null | undefined,
+): Promise<number | null> {
+  if (!locationId) return null;
+
+  const [rows] = await db.query<
+    Array<RowDataPacket & { warehouse_id: number }>
+  >({
+    sql: `
+        SELECT wz.warehouse_id
+        FROM warehouse_locations wl
+        JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
+        JOIN warehouse_zones wz ON wz.id = ws.zone_id
+        WHERE wl.id = :locationId
+        LIMIT 1
+      `,
+    values: { locationId },
+  });
+
+  return rows[0] ? Number(rows[0].warehouse_id) : null;
+}
+
 /** Người dùng có được phép thao tác trên kho này không. */
 export function isWarehouseInScope(
   scope: WarehouseScope,

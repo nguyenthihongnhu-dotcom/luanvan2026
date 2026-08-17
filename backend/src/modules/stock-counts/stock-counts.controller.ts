@@ -6,6 +6,7 @@ import {
 import { HttpError } from '../../common/http';
 import {
   approveStockCount,
+  getStockCountWarehouseId,
   rejectStockCount,
   createStockCount,
   listStockCountItems,
@@ -22,6 +23,28 @@ import {
   parseStockCountItemId,
   parseStockCountsFilters,
 } from './stock-counts.validation';
+
+/**
+ * Mọi thao tác trên một phiếu kiểm kê đã có id đều phải kiểm tra phiếu đó thuộc
+ * kho người dùng phụ trách: quyền stock_counts:count và :submit được cấp cho nhân
+ * viên kho, không chặn theo kho thì họ đếm và gửi duyệt được phiếu của kho khác.
+ */
+async function assertStockCountInScope(
+  req: Request,
+  stockCountId: number,
+): Promise<void> {
+  const scope = await resolveWarehouseScope(req.user);
+  if (scope.unrestricted) return;
+
+  const warehouseId = await getStockCountWarehouseId(stockCountId);
+  if (!isWarehouseInScope(scope, warehouseId)) {
+    throw new HttpError(
+      403,
+      'Phiếu kiểm kê này thuộc kho bạn không phụ trách',
+      'WAREHOUSE_OUT_OF_SCOPE',
+    );
+  }
+}
 
 function requireAuthenticatedUser(req: Request): number {
   if (!req.user) {
@@ -46,6 +69,7 @@ export async function listStockCountItemsController(
   res: Response,
 ): Promise<void> {
   const stockCountId = parseStockCountId(req.params.id);
+  await assertStockCountInScope(req, stockCountId);
 
   res.json({ data: await listStockCountItems(stockCountId) });
 }
@@ -74,6 +98,7 @@ export async function startStockCountController(
 ): Promise<void> {
   const userId = requireAuthenticatedUser(req);
   const stockCountId = parseStockCountId(req.params.id);
+  await assertStockCountInScope(req, stockCountId);
 
   res.json({
     data: await startStockCount({ stockCountId, startedBy: userId }),
@@ -86,6 +111,7 @@ export async function recordStockCountItemController(
 ): Promise<void> {
   const userId = requireAuthenticatedUser(req);
   const stockCountId = parseStockCountId(req.params.id);
+  await assertStockCountInScope(req, stockCountId);
   const itemId = parseStockCountItemId(req.params.itemId);
   const input = parseRecordStockCountItem(
     req.body,
@@ -103,6 +129,7 @@ export async function submitStockCountController(
 ): Promise<void> {
   const userId = requireAuthenticatedUser(req);
   const stockCountId = parseStockCountId(req.params.id);
+  await assertStockCountInScope(req, stockCountId);
 
   res.json({
     data: await submitStockCount({ stockCountId, submittedBy: userId }),
@@ -115,6 +142,7 @@ export async function rejectStockCountController(
 ): Promise<void> {
   const userId = requireAuthenticatedUser(req);
   const stockCountId = parseStockCountId(req.params.id);
+  await assertStockCountInScope(req, stockCountId);
   const { rejectionReason } = parseRejectStockCount(req.body);
 
   res.json({
@@ -132,6 +160,7 @@ export async function approveStockCountController(
 ): Promise<void> {
   const userId = requireAuthenticatedUser(req);
   const stockCountId = parseStockCountId(req.params.id);
+  await assertStockCountInScope(req, stockCountId);
 
   res.json({
     data: await approveStockCount({ stockCountId, approvedBy: userId }),

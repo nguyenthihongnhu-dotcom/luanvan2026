@@ -18,6 +18,7 @@ import {
   approveStockCountTransaction,
   createStockCountTransaction,
   findStockCountItems as findStockCountItemsRepository,
+  findStockCountWarehouseId as findStockCountWarehouseIdRepository,
   findStockCounts as findStockCountsRepository,
   recordStockCountItemTransaction,
   startStockCountTransaction,
@@ -90,6 +91,12 @@ export async function listStockCounts(
   filters: StockCountsFilters,
 ): Promise<StockCountsRow[]> {
   return findStockCountsRepository(filters);
+}
+
+export async function getStockCountWarehouseId(
+  stockCountId: number,
+): Promise<number | null> {
+  return findStockCountWarehouseIdRepository(stockCountId);
 }
 
 export async function listStockCountItems(
