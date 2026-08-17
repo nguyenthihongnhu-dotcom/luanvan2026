@@ -144,39 +144,59 @@ async function lockCountItem(
   return rows[0];
 }
 
-function buildSnapshotScopeWhere(input: CreateStockCountInput): {
-  sql: string;
-  params: Array<number>;
-} {
-  const where = ['w.id = ?'];
-  const params = [input.warehouseId];
+type SnapshotScope = {
+  /** Điều kiện lọc theo chỗ chứa: kho, khu, kệ, ô. */
+  locationSql: string;
+  locationParams: Array<number>;
+  /** Điều kiện lọc theo hàng hóa: SKU hoặc nhóm hàng. Rỗng nghĩa là không giới hạn. */
+  variantSql: string;
+  variantParams: Array<number>;
+};
+
+/**
+ * Tách phạm vi kiểm kê thành hai vế vì hai câu truy vấn snapshot dùng bảng khác
+ * nhau: câu chính join đủ cả tồn lẫn sản phẩm, còn câu dự phòng chỉ đi từ danh
+ * sách ô lưu trữ nên không có `pv`/`p` để lọc. Gộp chung một chuỗi WHERE như
+ * trước làm câu dự phòng vỡ với phạm vi Nhóm hàng (không có cột p.category_id)
+ * và ghép nhầm SKU với phạm vi SKU.
+ */
+function buildSnapshotScopeWhere(input: CreateStockCountInput): SnapshotScope {
+  const locationSql = ['w.id = ?'];
+  const locationParams = [input.warehouseId];
+  const variantSql: string[] = [];
+  const variantParams: Array<number> = [];
 
   if (input.scopeType === 'ZONE') {
-    where.push('wz.id = ?');
-    params.push(Number(input.scopeReferenceId));
+    locationSql.push('wz.id = ?');
+    locationParams.push(Number(input.scopeReferenceId));
   }
 
   if (input.scopeType === 'SHELF') {
-    where.push('ws.id = ?');
-    params.push(Number(input.scopeReferenceId));
+    locationSql.push('ws.id = ?');
+    locationParams.push(Number(input.scopeReferenceId));
   }
 
   if (input.scopeType === 'LOCATION') {
-    where.push('wl.id = ?');
-    params.push(Number(input.scopeReferenceId));
+    locationSql.push('wl.id = ?');
+    locationParams.push(Number(input.scopeReferenceId));
   }
 
   if (input.scopeType === 'SKU') {
-    where.push('pv.id = ?');
-    params.push(Number(input.scopeReferenceId));
+    variantSql.push('pv.id = ?');
+    variantParams.push(Number(input.scopeReferenceId));
   }
 
   if (input.scopeType === 'CATEGORY') {
-    where.push('p.category_id = ?');
-    params.push(Number(input.scopeReferenceId));
+    variantSql.push('p.category_id = ?');
+    variantParams.push(Number(input.scopeReferenceId));
   }
 
-  return { sql: where.join(' AND '), params };
+  return {
+    locationSql: locationSql.join(' AND '),
+    locationParams,
+    variantSql: variantSql.join(' AND '),
+    variantParams,
+  };
 }
 
 async function getSnapshotRows(
@@ -184,6 +204,9 @@ async function getSnapshotRows(
   input: CreateStockCountInput,
 ): Promise<SnapshotStockRow[]> {
   const scope = buildSnapshotScopeWhere(input);
+  const scopeSql = [scope.locationSql, scope.variantSql]
+    .filter(Boolean)
+    .join(' AND ');
   const [rows] = await connection.query<SnapshotStockRow[]>(
     `
       SELECT
@@ -198,18 +221,26 @@ async function getSnapshotRows(
       JOIN warehouse_shelves ws ON ws.id = wl.shelf_id
       JOIN warehouse_zones wz ON wz.id = ws.zone_id
       JOIN warehouses w ON w.id = wz.warehouse_id
-      WHERE ${scope.sql}
+      WHERE ${scopeSql}
         AND sl.quantity > 0
       ORDER BY wl.id, pv.id, sl.batch_id
       FOR UPDATE
     `,
-    scope.params,
+    [...scope.locationParams, ...scope.variantParams],
   );
 
   if (rows.length > 0) return rows;
 
-  // Fallback: If no stock_locations with quantity > 0 exist in this scope,
-  // query available locations and active product variants so users can count empty/new locations.
+  // Phạm vi không có ô nào đang giữ hàng: vẫn dựng phiếu từ danh sách ô trong
+  // phạm vi để người kiểm đếm xác nhận là ô trống thật, hoặc phát hiện hàng nằm
+  // đó mà chưa vào sổ.
+  //
+  // Sản phẩm ghép vào các ô trống đó phải bám theo phạm vi: chọn phạm vi SKU thì
+  // đúng SKU đó, chọn Nhóm hàng thì các SKU trong nhóm. Không có ràng buộc hàng
+  // hóa thì lấy một SKU làm chỗ giữ dòng, vì ghép mọi SKU với mọi ô sẽ nổ ra
+  // hàng nghìn dòng vô nghĩa.
+  const variantWhere = scope.variantSql ? `AND ${scope.variantSql}` : '';
+  const variantLimit = scope.variantSql ? 50 : 1;
   const [fallbackRows] = await connection.query<SnapshotStockRow[]>(
     `
       SELECT
@@ -222,13 +253,21 @@ async function getSnapshotRows(
       JOIN warehouse_zones wz ON wz.id = ws.zone_id
       JOIN warehouses w ON w.id = wz.warehouse_id
       CROSS JOIN (
-        SELECT id FROM product_variants WHERE status = 'ACTIVE' LIMIT 1
+        SELECT pv.id
+        FROM product_variants pv
+        JOIN products p ON p.id = pv.product_id
+        WHERE pv.status = 'ACTIVE'
+          AND pv.deleted_at IS NULL
+          ${variantWhere}
+        ORDER BY pv.id
+        LIMIT ${variantLimit}
       ) pv
-      WHERE ${scope.sql}
-      ORDER BY wl.id
+      WHERE ${scope.locationSql}
+        AND wl.deleted_at IS NULL
+      ORDER BY wl.id, pv.id
       LIMIT 50
     `,
-    scope.params,
+    [...scope.variantParams, ...scope.locationParams],
   );
 
   return fallbackRows;

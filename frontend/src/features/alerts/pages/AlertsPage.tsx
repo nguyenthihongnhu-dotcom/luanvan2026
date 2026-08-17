@@ -8,7 +8,43 @@ import type { AlertSeverity, AlertStatus, AlertType, InventoryAlert, Notificatio
 import { transferService, type CurrentStockItem, type WarehouseLocationOption } from "@/features/transfers/services/transferService";
 import { userService, type User } from "@/features/staff/services/userService";
 
-type ActiveTab = "alerts" | "notifications";
+/**
+ * Cảnh báo và thông báo nằm chung một danh sách: cùng là việc cần người vận hành
+ * để mắt tới, tách hai tab chỉ khiến phải nhớ mở cả hai. Phân biệt bằng màu —
+ * cảnh báo đỏ, thông báo xanh.
+ */
+type FeedKind = "ALERT" | "NOTIFICATION";
+
+type FeedRow = {
+    /** Id trùng nhau giữa hai bảng nên khóa dòng phải kèm loại. */
+    key: string;
+    kind: FeedKind;
+    id: number;
+    title: string;
+    message: string;
+    typeText: string;
+    severity: AlertSeverity | null;
+    statusText: string;
+    statusBadgeClass: string;
+    contextText: string;
+    createdAt: string | null;
+    /** Giữ bản ghi gốc để cột thao tác biết gọi API nào. */
+    alert: InventoryAlert | null;
+    notification: NotificationItem | null;
+};
+
+const kindMeta: Record<FeedKind, { label: string; badgeClass: string; barClass: string }> = {
+    ALERT: {
+        label: "Cảnh báo",
+        badgeClass: "border-red-200 bg-red-50 text-red-700",
+        barClass: "bg-red-500",
+    },
+    NOTIFICATION: {
+        label: "Thông báo",
+        badgeClass: "border-emerald-200 bg-emerald-50 text-emerald-700",
+        barClass: "bg-emerald-500",
+    },
+};
 
 const statusOptions: Array<{ value: AlertStatus | ""; label: string }> = [
     { value: "", label: "Tất cả trạng thái" },
@@ -80,7 +116,6 @@ function statusClass(status: AlertStatus): string {
 }
 
 export default function AlertsPage() {
-    const [activeTab, setActiveTab] = useState<ActiveTab>("alerts");
     const [alerts, setAlerts] = useState<InventoryAlert[]>([]);
     const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [locations, setLocations] = useState<WarehouseLocationOption[]>([]);
@@ -89,7 +124,8 @@ export default function AlertsPage() {
     const [searchTerm, setSearchTerm] = useState("");
     const [statusFilter, setStatusFilter] = useState<AlertStatus | "">("OPEN");
     const [isLoading, setIsLoading] = useState(false);
-    const [isGenerating, setIsGenerating] = useState(false);
+    /** Đang chạy một thao tác trên dòng (đánh dấu đã đọc, xử lý) — khóa nút để khỏi bấm chồng. */
+    const [isActing, setIsActing] = useState(false);
     const [message, setMessage] = useState<string | null>(null);
     const [error, setError] = useState<string | null>(null);
 
@@ -182,7 +218,7 @@ export default function AlertsPage() {
      * @param successMessage - Thông báo hiển thị khi thành công.
      */
     async function runAction(action: () => Promise<void>, successMessage: string) {
-        setIsGenerating(true);
+        setIsActing(true);
         setError(null);
         setMessage(null);
         try {
@@ -193,30 +229,8 @@ export default function AlertsPage() {
             console.error(err);
             setError(getHttpErrorMessage(err, "Không thực hiện được thao tác. Kiểm tra backend rồi thử lại."));
         } finally {
-            setIsGenerating(false);
+            setIsActing(false);
         }
-    }
-
-    /**
-     * Kích hoạt thủ công việc quét và sinh cảnh báo tồn kho (LOW_STOCK, NEAR_EXPIRY, ...).
-     * Yêu cầu quyền `alerts:generate`.
-     */
-    async function handleGenerateAlerts() {
-        await runAction(async () => {
-            const result = await alertService.generateAlerts();
-            setMessage(`Đã sinh ${result.createdCount.toLocaleString("vi-VN")} cảnh báo mới.`);
-        }, "Đã sinh cảnh báo.");
-    }
-
-    /**
-     * Kích hoạt thủ công việc sinh thông báo gửi đến người dùng.
-     * Yêu cầu quyền `notifications:generate`.
-     */
-    async function handleGenerateNotifications() {
-        await runAction(async () => {
-            const result = await alertService.generateNotifications();
-            setMessage(`Đã sinh ${result.createdCount.toLocaleString("vi-VN")} thông báo mới.`);
-        }, "Đã sinh thông báo.");
     }
 
     const summary = useMemo(() => ({
@@ -225,48 +239,91 @@ export default function AlertsPage() {
         unread: notifications.filter((item) => !item.is_read).length,
     }), [alerts, notifications]);
 
-    const alertColumns: ColumnProps<InventoryAlert>[] = [
-        { key: "title", title: "Cảnh báo", className: "font-semibold text-gray-900", render: (_, record) => (
-            <div>
-                <div className="font-semibold text-gray-900">{record.title}</div>
-                <div className="text-xs text-gray-500">{record.message}</div>
+    /** Trộn cảnh báo và thông báo thành một dòng thời gian chung, mới nhất lên trước. */
+    const feedRows = useMemo<FeedRow[]>(() => {
+        const alertRows: FeedRow[] = alerts.map((alert) => ({
+            key: `alert-${alert.id}`,
+            kind: "ALERT",
+            id: alert.id,
+            title: alert.title,
+            message: alert.message,
+            typeText: alertTypeLabel(alert.alert_type),
+            severity: alert.severity,
+            statusText: statusLabel(alert.status),
+            statusBadgeClass: statusClass(alert.status),
+            contextText: [
+                alert.warehouse_id ? warehouseMap.get(alert.warehouse_id) || `Kho #${alert.warehouse_id}` : "",
+                alert.product_variant_id ? variantMap.get(alert.product_variant_id) || `SKU #${alert.product_variant_id}` : "",
+            ].filter(Boolean).join(" · ") || "Toàn hệ thống",
+            createdAt: alert.created_at ?? null,
+            alert,
+            notification: null,
+        }));
+
+        const notificationRows: FeedRow[] = notifications.map((notification) => ({
+            key: `notification-${notification.id}`,
+            kind: "NOTIFICATION",
+            id: notification.id,
+            title: notification.title,
+            message: notification.message,
+            typeText: notification.type,
+            severity: null,
+            statusText: notification.is_read ? "Đã đọc" : "Chưa đọc",
+            statusBadgeClass: notification.is_read
+                ? "border-gray-200 bg-gray-50 text-gray-700"
+                : "border-pink-200 bg-pink-50 text-pink-700",
+            contextText: notification.user_id
+                ? userMap.get(notification.user_id) || `Người dùng #${notification.user_id}`
+                : "Hệ thống",
+            createdAt: notification.created_at ?? null,
+            alert: null,
+            notification,
+        }));
+
+        return [...alertRows, ...notificationRows].sort((a, b) => {
+            const left = a.createdAt ? new Date(a.createdAt).getTime() : 0;
+            const right = b.createdAt ? new Date(b.createdAt).getTime() : 0;
+            return right - left;
+        });
+    }, [alerts, notifications, warehouseMap, variantMap, userMap]);
+
+    const feedColumns: ColumnProps<FeedRow>[] = [
+        { key: "title", title: "Nội dung", render: (_, record) => (
+            <div className="flex gap-2">
+                <span aria-hidden className={`mt-0.5 w-1 shrink-0 rounded-full ${kindMeta[record.kind].barClass}`} />
+                <div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <span className={`rounded border px-2 py-0.5 text-[11px] font-semibold ${kindMeta[record.kind].badgeClass}`}>
+                            {kindMeta[record.kind].label}
+                        </span>
+                        <span className="font-semibold text-gray-900">{record.title}</span>
+                    </div>
+                    <div className="text-xs text-gray-500">{record.message}</div>
+                </div>
             </div>
         ) },
-        { key: "alert_type", title: "Loại", render: (value) => alertTypeLabel(String(value)) },
-        { key: "severity", title: "Mức độ", render: (value) => {
-            const severity = value as AlertSeverity;
-            return <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${severityClass(severity)}`}>{severityLabel(severity)}</span>;
-        } },
-        { key: "status", title: "Trạng thái", render: (value) => {
-            const status = value as AlertStatus;
-            return <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${statusClass(status)}`}>{statusLabel(status)}</span>;
-        } },
-        { key: "warehouse_id", title: "Kho", render: (value) => value ? (warehouseMap.get(Number(value)) || `Kho #${String(value)}`) : "-" },
-        { key: "product_variant_id", title: "Sản phẩm / Variant", render: (value) => value ? (variantMap.get(Number(value)) || `SKU #${String(value)}`) : "-" },
-        { key: "created_at", title: "Thời gian", render: (value) => formatDateTime(value as string) },
+        { key: "typeText", title: "Phân loại" },
+        { key: "severity", title: "Mức độ", render: (_, record) => (
+            record.severity
+                ? <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${severityClass(record.severity)}`}>{severityLabel(record.severity)}</span>
+                : <span className="text-xs text-gray-400">-</span>
+        ) },
+        { key: "statusText", title: "Trạng thái", render: (_, record) => (
+            <span className={`rounded border px-2 py-0.5 text-xs font-semibold ${record.statusBadgeClass}`}>{record.statusText}</span>
+        ) },
+        { key: "contextText", title: "Liên quan / Người nhận" },
+        { key: "createdAt", title: "Thời gian", render: (value) => formatDateTime(value as string | null) },
         { key: "actions", title: "Thao tác", width: "140px", render: (_, record) => (
             <div className="flex flex-wrap gap-1">
-                {record.status === "OPEN" && <button type="button" onClick={() => void runAction(() => alertService.markAlertRead(record.id), "Đã đánh dấu cảnh báo là đã đọc.")} className="btn-action btn-blue">Đã đọc</button>}
-                {record.status !== "RESOLVED" && <button type="button" onClick={() => void runAction(() => alertService.resolveAlert(record.id), "Đã xử lý cảnh báo.")} className="btn-action btn-green">Xử lý</button>}
-            </div>
-        ) },
-    ];
-
-    const notificationColumns: ColumnProps<NotificationItem>[] = [
-        { key: "title", title: "Thông báo", className: "font-semibold text-gray-900", render: (_, record) => (
-            <div>
-                <div className="font-semibold text-gray-900">{record.title}</div>
-                <div className="text-xs text-gray-500">{record.message}</div>
-            </div>
-        ) },
-        { key: "user_id", title: "Người nhận", render: (value) => value ? (userMap.get(Number(value)) || `Người dùng #${String(value)}`) : "Hệ thống" },
-        { key: "type", title: "Loại" },
-        { key: "is_read", title: "Trạng thái", render: (value) => value ? "Đã đọc" : "Chưa đọc" },
-        { key: "reference_id", title: "Tham chiếu", render: (_, record) => record.reference_type ? `${record.reference_type} #${record.reference_id ?? ""}` : "-" },
-        { key: "created_at", title: "Thời gian", render: (value) => formatDateTime(value as string) },
-        { key: "actions", title: "Thao tác", width: "120px", render: (_, record) => (
-            <div className="flex flex-wrap gap-1">
-                {!record.is_read && <button type="button" onClick={() => void runAction(() => alertService.markNotificationRead(record.id), "Đã đánh dấu thông báo là đã đọc.")} className="btn-action btn-blue">Đã đọc</button>}
+                {record.alert && record.alert.status === "OPEN" && (
+                    <button type="button" onClick={() => void runAction(() => alertService.markAlertRead(record.id), "Đã đánh dấu cảnh báo là đã đọc.")} disabled={isActing} className="btn-action btn-blue disabled:opacity-60">Đã đọc</button>
+                )}
+                {record.alert && record.alert.status !== "RESOLVED" && (
+                    <button type="button" onClick={() => void runAction(() => alertService.resolveAlert(record.id), "Đã xử lý cảnh báo.")} disabled={isActing} className="btn-action btn-green disabled:opacity-60">Xử lý</button>
+                )}
+                {record.notification && !record.notification.is_read && (
+                    <button type="button" onClick={() => void runAction(() => alertService.markNotificationRead(record.id), "Đã đánh dấu thông báo là đã đọc.")} disabled={isActing} className="btn-action btn-blue disabled:opacity-60">Đã đọc</button>
+                )}
             </div>
         ) },
     ];
@@ -290,28 +347,22 @@ export default function AlertsPage() {
                 {error && <div className="rounded-md border border-red-200 bg-red-50 px-4 py-2 text-sm text-red-700">{error}</div>}
 
                 <div className="rounded-lg border border-gray-200 bg-white p-4 shadow-sm">
-                    <div className="grid grid-cols-1 gap-3 md:grid-cols-5">
-                        <div className="flex rounded-md border border-gray-200 bg-gray-50 p-1 md:col-span-2">
-                            <button type="button" onClick={() => setActiveTab("alerts")} className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold ${activeTab === "alerts" ? "bg-white text-pink-600 shadow-sm" : "text-gray-600"}`}>Cảnh báo</button>
-                            <button type="button" onClick={() => setActiveTab("notifications")} className={`flex-1 rounded px-3 py-1.5 text-sm font-semibold ${activeTab === "notifications" ? "bg-white text-pink-600 shadow-sm" : "text-gray-600"}`}>Thông báo</button>
-                        </div>
+                    <div className="grid grid-cols-1 gap-3 md:grid-cols-3">
                         <input value={searchTerm} onChange={(event) => setSearchTerm(event.target.value)} placeholder="Tìm theo tiêu đề..." className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500" />
-                        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as AlertStatus | "")} disabled={activeTab !== "alerts"} className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500 disabled:bg-gray-50 disabled:text-gray-400">
+                        <select value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as AlertStatus | "")} className="rounded-md border border-gray-300 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-pink-500">
                             {statusOptions.map((option) => <option key={option.value || "ALL"} value={option.value}>{option.label}</option>)}
                         </select>
                         <button type="button" onClick={() => void loadData()} disabled={isLoading} className="rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700 disabled:opacity-60">{isLoading ? "Đang tải" : "Lọc"}</button>
                     </div>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                        <button type="button" onClick={() => void handleGenerateAlerts()} disabled={isGenerating} className="rounded-md border border-pink-200 bg-pink-50 px-3 py-1.5 text-xs font-semibold text-pink-700 hover:bg-pink-100 disabled:opacity-60">Sinh cảnh báo</button>
-                        <button type="button" onClick={() => void handleGenerateNotifications()} disabled={isGenerating} className="rounded-md border border-blue-200 bg-blue-50 px-3 py-1.5 text-xs font-semibold text-blue-700 hover:bg-blue-100 disabled:opacity-60">Sinh thông báo</button>
+                    <div className="mt-3 flex flex-wrap items-center gap-3 text-xs text-gray-500">
+                        <span className="inline-flex items-center gap-1.5"><span aria-hidden className="h-2 w-2 rounded-full bg-red-500" />Cảnh báo tồn kho</span>
+                        <span className="inline-flex items-center gap-1.5"><span aria-hidden className="h-2 w-2 rounded-full bg-emerald-500" />Thông báo gửi tới người dùng</span>
+                        <span className="text-gray-400">Cả hai được sinh tự động sau mỗi lần tồn kho thay đổi, không cần bấm tay.</span>
                     </div>
+                    <p className="mt-1 text-[11px] text-gray-400">Bộ lọc trạng thái áp cho cảnh báo; thông báo luôn hiển thị theo từ khóa tìm kiếm.</p>
                 </div>
 
-                {activeTab === "alerts" ? (
-                    <Tablelayout columns={alertColumns} dataSource={alerts} rowKey="id" isLoading={isLoading} />
-                ) : (
-                    <Tablelayout columns={notificationColumns} dataSource={notifications} rowKey="id" isLoading={isLoading} />
-                )}
+                <Tablelayout columns={feedColumns} dataSource={feedRows} rowKey="key" isLoading={isLoading} />
             </div>
         </DashboardLayout>
     );

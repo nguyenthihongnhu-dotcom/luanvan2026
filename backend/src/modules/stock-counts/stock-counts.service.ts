@@ -38,7 +38,7 @@ const stockCountErrorMap: Record<string, HttpError> = {
   ),
   STOCK_COUNT_SNAPSHOT_EMPTY: new HttpError(
     422,
-    'Phạm vi kiểm kê không có tồn kho để kiểm đếm',
+    'Phạm vi kiểm kê không có ô lưu trữ hoặc mặt hàng nào để kiểm đếm. Kiểm tra lại kho đã có ô lưu trữ chưa, hoặc nhóm hàng đã chọn có mặt hàng nào không.',
     'STOCK_COUNT_SNAPSHOT_EMPTY',
   ),
   STOCK_COUNT_NOT_STARTABLE: new HttpError(
