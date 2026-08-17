@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { resolveWarehouseScope } from '../../common/access/warehouse-scope';
 import {
   listInventoryMovementReport,
   listInventoryTransactionReport,
@@ -13,8 +14,11 @@ export async function listReportsController(
   res: Response,
 ): Promise<void> {
   const filters = parseReportsFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listReports(filters) });
+  res.json({
+    data: await listReports({ ...filters, warehouseScope }),
+  });
 }
 
 export async function listProductStockReportController(
@@ -22,8 +26,11 @@ export async function listProductStockReportController(
   res: Response,
 ): Promise<void> {
   const filters = parseReportsFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listProductStockReport(filters) });
+  res.json({
+    data: await listProductStockReport({ ...filters, warehouseScope }),
+  });
 }
 
 export async function listNearExpiryReportController(
@@ -31,8 +38,11 @@ export async function listNearExpiryReportController(
   res: Response,
 ): Promise<void> {
   const filters = parseReportsFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listNearExpiryReport(filters) });
+  res.json({
+    data: await listNearExpiryReport({ ...filters, warehouseScope }),
+  });
 }
 
 export async function listInventoryMovementReportController(
@@ -40,8 +50,11 @@ export async function listInventoryMovementReportController(
   res: Response,
 ): Promise<void> {
   const filters = parseReportsFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listInventoryMovementReport(filters) });
+  res.json({
+    data: await listInventoryMovementReport({ ...filters, warehouseScope }),
+  });
 }
 
 export async function listInventoryTransactionReportController(
@@ -49,6 +62,9 @@ export async function listInventoryTransactionReportController(
   res: Response,
 ): Promise<void> {
   const filters = parseReportsFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listInventoryTransactionReport(filters) });
+  res.json({
+    data: await listInventoryTransactionReport({ ...filters, warehouseScope }),
+  });
 }

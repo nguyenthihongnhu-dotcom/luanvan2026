@@ -30,6 +30,7 @@ export const ordersRouter = Router();
  */
 ordersRouter.get(
   '/',
+  asyncHandler(verifyToken),
   asyncHandler(listOrdersController),
 );
 
@@ -56,6 +57,7 @@ ordersRouter.post(
  */
 ordersRouter.get(
   '/:id/items',
+  asyncHandler(verifyToken),
   asyncHandler(getOrderItemsController),
 );
 
@@ -65,6 +67,7 @@ ordersRouter.get(
  */
 ordersRouter.get(
   '/:id/goods-issues',
+  asyncHandler(verifyToken),
   asyncHandler(getOrderGoodsIssuesController),
 );
 
@@ -90,6 +93,7 @@ ordersRouter.post(
  */
 ordersRouter.get(
   '/:id',
+  asyncHandler(verifyToken),
   asyncHandler(getOrderDetailController),
 );
 

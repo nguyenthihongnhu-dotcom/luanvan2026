@@ -15,8 +15,18 @@ import {
 
 export const catalogRouter = Router();
 
-catalogRouter.get('/', asyncHandler(listCatalogController));
-catalogRouter.get('/categories', asyncHandler(listCategoriesController));
+catalogRouter.get(
+  '/',
+
+  asyncHandler(verifyToken),
+
+  asyncHandler(listCatalogController),
+);
+catalogRouter.get(
+  '/categories',
+  asyncHandler(verifyToken),
+  asyncHandler(listCategoriesController),
+);
 // Thêm/sửa/xóa danh mục và sản phẩm bắt buộc phải đăng nhập.
 catalogRouter.post(
   '/categories',
@@ -33,7 +43,11 @@ catalogRouter.delete(
   asyncHandler(verifyToken),
   asyncHandler(deleteCategoryController),
 );
-catalogRouter.get('/products', asyncHandler(listProductsController));
+catalogRouter.get(
+  '/products',
+  asyncHandler(verifyToken),
+  asyncHandler(listProductsController),
+);
 catalogRouter.post(
   '/products',
   asyncHandler(verifyToken),

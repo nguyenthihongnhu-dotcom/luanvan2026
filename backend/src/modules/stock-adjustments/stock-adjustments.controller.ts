@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import {
+  assertDocumentWarehouseInScope,
   findWarehouseIdByLocation,
   isWarehouseInScope,
   resolveWarehouseScope,
@@ -61,6 +62,11 @@ export async function approveStockAdjustmentController(
   }
 
   const adjustmentId = parseStockAdjustmentId(req.params.id);
+  await assertDocumentWarehouseInScope(
+    req.user,
+    'stock_adjustments',
+    adjustmentId,
+  );
 
   res.json({
     data: await approveStockAdjustment({
@@ -79,6 +85,11 @@ export async function rejectStockAdjustmentController(
   }
 
   const adjustmentId = parseStockAdjustmentId(req.params.id);
+  await assertDocumentWarehouseInScope(
+    req.user,
+    'stock_adjustments',
+    adjustmentId,
+  );
   const input = parseRejectStockAdjustment(
     req.body,
     adjustmentId,
@@ -97,6 +108,11 @@ export async function cancelStockAdjustmentController(
   }
 
   const adjustmentId = parseStockAdjustmentId(req.params.id);
+  await assertDocumentWarehouseInScope(
+    req.user,
+    'stock_adjustments',
+    adjustmentId,
+  );
 
   res.json({
     data: await cancelStockAdjustment({

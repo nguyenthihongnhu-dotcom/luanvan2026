@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import {
+  assertDocumentWarehouseInScope,
   findWarehouseIdByLocation,
   isWarehouseInScope,
   resolveWarehouseScope,
@@ -59,6 +60,7 @@ export async function confirmGoodsReceiptController(
   }
 
   const receiptId = parseGoodsReceiptId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'goods_receipts', receiptId);
 
   res.json({
     data: await confirmGoodsReceipt({
@@ -77,6 +79,7 @@ export async function reverseGoodsReceiptController(
   }
 
   const receiptId = parseGoodsReceiptId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'goods_receipts', receiptId);
 
   res.json({
     data: await reverseGoodsReceipt({

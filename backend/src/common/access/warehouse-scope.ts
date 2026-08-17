@@ -1,4 +1,5 @@
 import type { RowDataPacket } from 'mysql2/promise';
+import { HttpError } from '../http';
 import { db } from '../../database/db';
 import type { AuthUser } from '../../modules/auth/auth.model';
 
@@ -126,4 +127,65 @@ export function warehouseScopeWhere(
   // Cảnh báo mức toàn hệ thống không gắn kho nào (warehouse_id NULL) vẫn phải
   // hiển thị cho mọi người, nếu không thì nhóm cảnh báo đó không ai thấy.
   return options.includeNull ? `(${inClause} OR ${column} IS NULL)` : inClause;
+}
+
+/**
+ * Cột kho của từng loại chứng từ. Danh sách cố định này vừa là bản đồ tra cứu vừa
+ * là hàng rào: tên bảng và tên cột ghép vào SQL nên không được nhận chuỗi tự do.
+ */
+const DOCUMENT_WAREHOUSE_COLUMNS = {
+  goods_receipts: ['warehouse_id'],
+  goods_issues: ['warehouse_id'],
+  stock_adjustments: ['warehouse_id'],
+  stock_counts: ['warehouse_id'],
+  stock_transfers: ['source_warehouse_id', 'destination_warehouse_id'],
+} as const;
+
+export type DocumentTable = keyof typeof DOCUMENT_WAREHOUSE_COLUMNS;
+
+export async function findDocumentWarehouseIds(
+  table: DocumentTable,
+  documentId: number,
+): Promise<number[]> {
+  const columns = DOCUMENT_WAREHOUSE_COLUMNS[table];
+  const [rows] = await db.query<RowDataPacket[]>({
+    sql: `SELECT ${columns.join(', ')} FROM ${table} WHERE id = :documentId LIMIT 1`,
+    values: { documentId },
+  });
+
+  const row = rows[0];
+  if (!row) return [];
+
+  return columns
+    .map((column) => Number(row[column]))
+    .filter((warehouseId) => Number.isFinite(warehouseId) && warehouseId > 0);
+}
+
+/**
+ * Chặn thao tác trên chứng từ của kho mình không phụ trách. Xác nhận, đảo phiếu
+ * hay duyệt đều làm thay đổi tồn thật, nên chỉ kiểm quyền là chưa đủ: quyền nói
+ * "được làm việc này", phạm vi kho mới nói "được làm ở kho nào".
+ *
+ * Phiếu chuyển kho có hai đầu và cả hai đều bị tác động, nên phải phụ trách cả hai.
+ */
+export async function assertDocumentWarehouseInScope(
+  user: AuthUser | undefined,
+  table: DocumentTable,
+  documentId: number,
+): Promise<void> {
+  const scope = await resolveWarehouseScope(user);
+  if (scope.unrestricted) return;
+
+  const warehouseIds = await findDocumentWarehouseIds(table, documentId);
+  const allowed =
+    warehouseIds.length > 0 &&
+    warehouseIds.every((warehouseId) => isWarehouseInScope(scope, warehouseId));
+
+  if (!allowed) {
+    throw new HttpError(
+      403,
+      'Chứng từ này thuộc kho bạn không phụ trách',
+      'WAREHOUSE_OUT_OF_SCOPE',
+    );
+  }
 }

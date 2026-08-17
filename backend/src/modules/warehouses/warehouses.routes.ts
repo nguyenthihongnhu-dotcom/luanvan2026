@@ -10,7 +10,13 @@ import {
 
 export const warehousesRouter = Router();
 
-warehousesRouter.get('/', asyncHandler(listWarehousesController));
+warehousesRouter.get(
+  '/',
+
+  asyncHandler(verifyToken),
+
+  asyncHandler(listWarehousesController),
+);
 warehousesRouter.post(
   '/',
   asyncHandler(verifyToken),

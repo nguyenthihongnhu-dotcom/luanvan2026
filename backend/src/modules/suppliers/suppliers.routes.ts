@@ -10,7 +10,13 @@ import {
 
 export const suppliersRouter = Router();
 
-suppliersRouter.get('/', asyncHandler(listSuppliersController));
+suppliersRouter.get(
+  '/',
+
+  asyncHandler(verifyToken),
+
+  asyncHandler(listSuppliersController),
+);
 // Thêm/sửa/xóa nhà cung cấp bắt buộc phải đăng nhập.
 suppliersRouter.post(
   '/',

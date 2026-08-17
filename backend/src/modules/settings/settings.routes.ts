@@ -9,7 +9,13 @@ import {
 
 export const settingsRouter = Router();
 
-settingsRouter.get('/', asyncHandler(listSettingsController));
+settingsRouter.get(
+  '/',
+
+  asyncHandler(verifyToken),
+
+  asyncHandler(listSettingsController),
+);
 settingsRouter.post(
   '/seed-defaults',
   asyncHandler(verifyToken),

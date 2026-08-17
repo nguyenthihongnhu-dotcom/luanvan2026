@@ -1,3 +1,7 @@
+import {
+  UNRESTRICTED_SCOPE,
+  warehouseScopeWhere,
+} from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
 import type { QueryParams, ReportsFilters, ReportsRow } from './reports.model';
 
@@ -15,6 +19,15 @@ function appendCommonFilters(
     where.push('product_variant_id = :productVariantId');
     params.productVariantId = filters.productVariantId;
   }
+
+  // Cả bốn báo cáo đều đi qua đây và nguồn nào cũng có cột warehouse_id, nên chỉ
+  // cần chặn một chỗ là không báo cáo nào lọt dữ liệu kho ngoài phạm vi.
+  const scopeWhere = warehouseScopeWhere(
+    filters.warehouseScope ?? UNRESTRICTED_SCOPE,
+    'warehouse_id',
+    params,
+  );
+  if (scopeWhere) where.push(scopeWhere);
 }
 
 export async function findReports(

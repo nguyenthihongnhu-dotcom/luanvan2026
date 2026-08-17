@@ -10,7 +10,13 @@ import {
 
 export const batchesRouter = Router();
 
-batchesRouter.get('/', asyncHandler(listBatchesController));
+batchesRouter.get(
+  '/',
+
+  asyncHandler(verifyToken),
+
+  asyncHandler(listBatchesController),
+);
 // Thêm/sửa/xóa lô hàng bắt buộc phải đăng nhập.
 batchesRouter.post(
   '/',

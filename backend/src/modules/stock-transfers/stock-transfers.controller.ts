@@ -1,5 +1,6 @@
 import type { Request, Response } from 'express';
 import {
+  assertDocumentWarehouseInScope,
   isWarehouseInScope,
   resolveWarehouseScope,
 } from '../../common/access/warehouse-scope';
@@ -35,6 +36,7 @@ export async function confirmStockTransferController(
   }
 
   const transferId = parseStockTransferId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'stock_transfers', transferId);
 
   res.json({
     data: await confirmStockTransfer({
@@ -53,6 +55,7 @@ export async function reverseStockTransferController(
   }
 
   const transferId = parseStockTransferId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'stock_transfers', transferId);
 
   res.json({
     data: await reverseStockTransfer({
