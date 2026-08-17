@@ -4,50 +4,47 @@ import { generateDocumentCode } from '../../common/code/document-code';
 import { db } from '../../database/db';
 
 import type {
-    CreateOrderGoodsIssueInput,
-    CreateOrderGoodsIssueResult,
-    CreateOrderInput,
-    OrderGoodsIssueRow,
-    OrderItemRow,
-    OrderRow,
-    OrdersFilters,
-    QueryParams,
-    UpdateOrderInput,
+  CreateOrderGoodsIssueInput,
+  CreateOrderGoodsIssueResult,
+  CreateOrderInput,
+  OrderGoodsIssueRow,
+  OrderItemRow,
+  OrderRow,
+  OrdersFilters,
+  QueryParams,
+  UpdateOrderInput,
 } from './orders.model';
 
-export async function findOrders(
-    filters: OrdersFilters,
-): Promise<OrderRow[]> {
-    const where: string[] = [];
-    const params: QueryParams = {};
+export async function findOrders(filters: OrdersFilters): Promise<OrderRow[]> {
+  const where: string[] = [];
+  const params: QueryParams = {};
 
-    if (filters.id) {
-        where.push('o.id = :id');
-        params.id = filters.id;
-    }
+  if (filters.id) {
+    where.push('o.id = :id');
+    params.id = filters.id;
+  }
 
-    if (filters.search) {
-        where.push(
-            '(o.order_code LIKE :search OR o.customer_name LIKE :search OR o.customer_phone LIKE :search)',
-        );
-        params.search = `%${filters.search}%`;
-    }
+  if (filters.search) {
+    where.push(
+      '(o.order_code LIKE :search OR o.customer_name LIKE :search OR o.customer_phone LIKE :search)',
+    );
+    params.search = `%${filters.search}%`;
+  }
 
-    if (filters.status) {
-        where.push('o.status = :status');
-        params.status = filters.status;
-    }
+  if (filters.status) {
+    where.push('o.status = :status');
+    params.status = filters.status;
+  }
 
-    if (filters.warehouseId) {
-        where.push('o.warehouse_id = :warehouseId');
-        params.warehouseId = filters.warehouseId;
-    }
+  if (filters.warehouseId) {
+    where.push('o.warehouse_id = :warehouseId');
+    params.warehouseId = filters.warehouseId;
+  }
 
-    const whereSql =
-        where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
+  const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 
-    const [rows] = await db.query<OrderRow[]>({
-        sql: `
+  const [rows] = await db.query<OrderRow[]>({
+    sql: `
       SELECT
         o.*,
         w.code AS warehouse_code,
@@ -62,23 +59,21 @@ export async function findOrders(
       ORDER BY o.id DESC
       LIMIT 100
     `,
-        values: params,
-    });
+    values: params,
+  });
 
-    return rows;
+  return rows;
 }
 
-export async function findOrderDetail(
-    id: number,
-): Promise<
-    | {
-        header: RowDataPacket;
-        items: RowDataPacket[];
+export async function findOrderDetail(id: number): Promise<
+  | {
+      header: RowDataPacket;
+      items: RowDataPacket[];
     }
-    | undefined
+  | undefined
 > {
-    const [headers] = await db.query<RowDataPacket[]>(
-        `
+  const [headers] = await db.query<RowDataPacket[]>(
+    `
       SELECT
         o.*,
         w.code AS warehouse_code,
@@ -92,17 +87,17 @@ export async function findOrderDetail(
       WHERE o.id = ?
       LIMIT 1
     `,
-        [id],
-    );
+    [id],
+  );
 
-    const header = headers[0];
+  const header = headers[0];
 
-    if (!header) {
-        return undefined;
-    }
+  if (!header) {
+    return undefined;
+  }
 
-    const [items] = await db.query<RowDataPacket[]>(
-        `
+  const [items] = await db.query<RowDataPacket[]>(
+    `
       SELECT
         oi.*,
         pv.sku,
@@ -118,20 +113,18 @@ export async function findOrderDetail(
       WHERE oi.order_id = ?
       ORDER BY oi.id
     `,
-        [id],
-    );
+    [id],
+  );
 
-    return {
-        header,
-        items,
-    };
+  return {
+    header,
+    items,
+  };
 }
 
-export async function findOrderItems(
-    orderId: number,
-): Promise<OrderItemRow[]> {
-    const [rows] = await db.query<OrderItemRow[]>(
-        `
+export async function findOrderItems(orderId: number): Promise<OrderItemRow[]> {
+  const [rows] = await db.query<OrderItemRow[]>(
+    `
       SELECT
         oi.*,
         pv.sku,
@@ -145,17 +138,17 @@ export async function findOrderItems(
       WHERE oi.order_id = ?
       ORDER BY oi.id
     `,
-        [orderId],
-    );
+    [orderId],
+  );
 
-    return rows;
+  return rows;
 }
 
 export async function findOrderGoodsIssues(
-    orderId: number,
+  orderId: number,
 ): Promise<OrderGoodsIssueRow[]> {
-    const [rows] = await db.query<OrderGoodsIssueRow[]>(
-        `
+  const [rows] = await db.query<OrderGoodsIssueRow[]>(
+    `
       SELECT
         gi.id,
         gi.issue_code,
@@ -169,39 +162,32 @@ export async function findOrderGoodsIssues(
       WHERE gi.order_id = ?
       ORDER BY gi.id DESC
     `,
-        [orderId],
-    );
+    [orderId],
+  );
 
-    return rows;
+  return rows;
 }
 
 export async function insertOrder(
-    input: CreateOrderInput,
+  input: CreateOrderInput,
 ): Promise<{ id: number; orderCode: string }> {
-    const connection = await db.getConnection();
+  const connection = await db.getConnection();
 
-    try {
-        await connection.beginTransaction();
+  try {
+    await connection.beginTransaction();
 
-        const orderCode =
-            input.orderCode ??
-            (await generateDocumentCode(
-                connection,
-                'orders',
-                'order_code',
-                'DH',
-            ));
+    const orderCode =
+      input.orderCode ??
+      (await generateDocumentCode(connection, 'orders', 'order_code', 'DH'));
 
-        const discountAmount = input.discountAmount ?? 0;
-        const shippingFee = input.shippingFee ?? 0;
+    const discountAmount = input.discountAmount ?? 0;
+    const shippingFee = input.shippingFee ?? 0;
 
-        let subtotal = 0;
+    let subtotal = 0;
 
-        for (const item of input.items) {
-            const [stockRows] = await connection.query<
-                RowDataPacket[]
-            >(
-                `
+    for (const item of input.items) {
+      const [stockRows] = await connection.query<RowDataPacket[]>(
+        `
         SELECT
             COALESCE(
                 SUM(sl.available_quantity),
@@ -217,31 +203,24 @@ export async function insertOrder(
         WHERE sl.product_variant_id = ?
           AND wz.warehouse_id = ?
         `,
-                [
-                    item.productVariantId,
-                    input.warehouseId,
-                ],
-            );
+        [item.productVariantId, input.warehouseId],
+      );
 
-            const availableQuantity = Number(
-                stockRows[0]?.available_quantity ?? 0,
-            );
+      const availableQuantity = Number(stockRows[0]?.available_quantity ?? 0);
 
-            if (availableQuantity < item.quantity) {
-                throw new Error(
-                    `INSUFFICIENT_ORDER_STOCK:${item.productVariantId}:${availableQuantity}`,
-                );
-            }
+      if (availableQuantity < item.quantity) {
+        throw new Error(
+          `INSUFFICIENT_ORDER_STOCK:${item.productVariantId}:${availableQuantity}`,
+        );
+      }
 
-            subtotal +=
-                item.quantity * item.unitPrice;
-        }
+      subtotal += item.quantity * item.unitPrice;
+    }
 
-        const totalAmount =
-            subtotal - discountAmount + shippingFee;
+    const totalAmount = subtotal - discountAmount + shippingFee;
 
-        const [result] = await connection.query<ResultSetHeader>(
-            `
+    const [result] = await connection.query<ResultSetHeader>(
+      `
         INSERT INTO orders (
           order_code,
           customer_name,
@@ -264,28 +243,28 @@ export async function insertOrder(
         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'DRAFT',
                 ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP(3))
       `,
-            [
-                orderCode,
-                input.customerName,
-                input.customerPhone ?? null,
-                input.customerEmail ?? null,
-                input.shippingAddress ?? null,
-                input.shippingWard ?? null,
-                input.shippingDistrict ?? null,
-                input.shippingProvince ?? null,
-                input.warehouseId,
-                subtotal,
-                discountAmount,
-                shippingFee,
-                totalAmount,
-                input.note ?? null,
-                input.createdBy ?? null,
-            ],
-        );
+      [
+        orderCode,
+        input.customerName,
+        input.customerPhone ?? null,
+        input.customerEmail ?? null,
+        input.shippingAddress ?? null,
+        input.shippingWard ?? null,
+        input.shippingDistrict ?? null,
+        input.shippingProvince ?? null,
+        input.warehouseId,
+        subtotal,
+        discountAmount,
+        shippingFee,
+        totalAmount,
+        input.note ?? null,
+        input.createdBy ?? null,
+      ],
+    );
 
-        for (const item of input.items) {
-            await connection.query(
-                `
+    for (const item of input.items) {
+      await connection.query(
+        `
           INSERT INTO order_items (
             order_id,
             product_variant_id,
@@ -297,174 +276,169 @@ export async function insertOrder(
           )
           VALUES (?, ?, ?, 0, ?, ?, ?)
         `,
-                [
-                    result.insertId,
-                    item.productVariantId,
-                    item.quantity,
-                    item.unitPrice,
-                    item.quantity * item.unitPrice,
-                    item.note ?? null,
-                ],
-            );
-        }
-
-        await connection.commit();
-
-        return {
-            id: result.insertId,
-            orderCode,
-        };
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
+        [
+          result.insertId,
+          item.productVariantId,
+          item.quantity,
+          item.unitPrice,
+          item.quantity * item.unitPrice,
+          item.note ?? null,
+        ],
+      );
     }
+
+    await connection.commit();
+
+    return {
+      id: result.insertId,
+      orderCode,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function updateOrder(
-    id: number,
-    input: UpdateOrderInput,
+  id: number,
+  input: UpdateOrderInput,
 ): Promise<void> {
-    const connection = await db.getConnection();
+  const connection = await db.getConnection();
 
-    try {
-        await connection.beginTransaction();
+  try {
+    await connection.beginTransaction();
 
-        const [orders] = await connection.query<OrderRow[]>(
-            `
+    const [orders] = await connection.query<OrderRow[]>(
+      `
         SELECT *
         FROM orders
         WHERE id = ?
         FOR UPDATE
       `,
-            [id],
-        );
+      [id],
+    );
 
-        const order = orders[0];
+    const order = orders[0];
 
-        if (!order) {
-            throw new Error('ORDER_NOT_FOUND');
-        }
+    if (!order) {
+      throw new Error('ORDER_NOT_FOUND');
+    }
 
-        if (
-            !['DRAFT', 'PENDING'].includes(order.status)
-        ) {
-            throw new Error('ORDER_NOT_EDITABLE');
-        }
+    if (!['DRAFT', 'PENDING'].includes(order.status)) {
+      throw new Error('ORDER_NOT_EDITABLE');
+    }
 
-        const fields: string[] = [];
-        const values: unknown[] = [];
+    const fields: string[] = [];
+    const values: unknown[] = [];
 
-        const addField = (
-            field: string,
-            value: unknown,
-        ) => {
-            fields.push(`${field} = ?`);
-            values.push(value);
-        };
+    const addField = (field: string, value: unknown) => {
+      fields.push(`${field} = ?`);
+      values.push(value);
+    };
 
-        if (input.customerName !== undefined) {
-            addField('customer_name', input.customerName);
-        }
+    if (input.customerName !== undefined) {
+      addField('customer_name', input.customerName);
+    }
 
-        if (input.customerPhone !== undefined) {
-            addField('customer_phone', input.customerPhone);
-        }
+    if (input.customerPhone !== undefined) {
+      addField('customer_phone', input.customerPhone);
+    }
 
-        if (input.customerEmail !== undefined) {
-            addField('customer_email', input.customerEmail);
-        }
+    if (input.customerEmail !== undefined) {
+      addField('customer_email', input.customerEmail);
+    }
 
-        if (input.shippingAddress !== undefined) {
-            addField('shipping_address', input.shippingAddress);
-        }
+    if (input.shippingAddress !== undefined) {
+      addField('shipping_address', input.shippingAddress);
+    }
 
-        if (input.shippingWard !== undefined) {
-            addField('shipping_ward', input.shippingWard);
-        }
+    if (input.shippingWard !== undefined) {
+      addField('shipping_ward', input.shippingWard);
+    }
 
-        if (input.shippingDistrict !== undefined) {
-            addField('shipping_district', input.shippingDistrict);
-        }
+    if (input.shippingDistrict !== undefined) {
+      addField('shipping_district', input.shippingDistrict);
+    }
 
-        if (input.shippingProvince !== undefined) {
-            addField('shipping_province', input.shippingProvince);
-        }
+    if (input.shippingProvince !== undefined) {
+      addField('shipping_province', input.shippingProvince);
+    }
 
-        if (input.discountAmount !== undefined) {
-            addField('discount_amount', input.discountAmount);
-        }
+    if (input.discountAmount !== undefined) {
+      addField('discount_amount', input.discountAmount);
+    }
 
-        if (input.shippingFee !== undefined) {
-            addField('shipping_fee', input.shippingFee);
-        }
+    if (input.shippingFee !== undefined) {
+      addField('shipping_fee', input.shippingFee);
+    }
 
-        if (input.note !== undefined) {
-            addField('note', input.note);
-        }
+    if (input.note !== undefined) {
+      addField('note', input.note);
+    }
 
-        if (fields.length > 0) {
-            values.push(id);
+    if (fields.length > 0) {
+      values.push(id);
 
-            await connection.query(
-                `
+      await connection.query(
+        `
           UPDATE orders
           SET ${fields.join(', ')},
               updated_by = ?
           WHERE id = ?
         `,
-                [...values.slice(0, -1), input.updatedBy, id],
-            );
-        }
+        [...values.slice(0, -1), input.updatedBy, id],
+      );
+    }
 
-        await connection.query(
-            `
+    await connection.query(
+      `
         UPDATE orders
         SET total_amount =
           subtotal - discount_amount + shipping_fee
         WHERE id = ?
       `,
-            [id],
-        );
+      [id],
+    );
 
-        await connection.commit();
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 async function updateOrderStatus(
-    id: number,
-    status: string,
-    userId: number,
+  id: number,
+  status: string,
+  userId: number,
 ): Promise<void> {
-    const connection = await db.getConnection();
+  const connection = await db.getConnection();
 
-    try {
-        await connection.beginTransaction();
+  try {
+    await connection.beginTransaction();
 
-        const [rows] = await connection.query<OrderRow[]>(
-            `
+    const [rows] = await connection.query<OrderRow[]>(
+      `
         SELECT *
         FROM orders
         WHERE id = ?
         FOR UPDATE
       `,
-            [id],
-        );
+      [id],
+    );
 
-        const order = rows[0];
+    const order = rows[0];
 
-        if (!order) {
-            throw new Error('ORDER_NOT_FOUND');
-        }
+    if (!order) {
+      throw new Error('ORDER_NOT_FOUND');
+    }
 
-        await connection.query(
-            `
+    await connection.query(
+      `
         UPDATE orders
         SET
           status = ?,
@@ -489,197 +463,150 @@ async function updateOrderStatus(
             END
         WHERE id = ?
       `,
-            [status, userId, status, status, status, id],
-        );
+      [status, userId, status, status, status, id],
+    );
 
-        await connection.commit();
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
+    await connection.commit();
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
-export async function confirmOrder(
-    id: number,
-    userId: number,
-): Promise<void> {
-    const [rows] = await db.query<OrderRow[]>(
-        `
+export async function confirmOrder(id: number, userId: number): Promise<void> {
+  const [rows] = await db.query<OrderRow[]>(
+    `
       SELECT *
       FROM orders
       WHERE id = ?
       LIMIT 1
     `,
-        [id],
-    );
+    [id],
+  );
 
-    if (!rows[0]) {
-        throw new Error('ORDER_NOT_FOUND');
-    }
+  if (!rows[0]) {
+    throw new Error('ORDER_NOT_FOUND');
+  }
 
-    if (!['DRAFT', 'PENDING'].includes(rows[0].status)) {
-        throw new Error('ORDER_NOT_CONFIRMABLE');
-    }
+  if (!['DRAFT', 'PENDING'].includes(rows[0].status)) {
+    throw new Error('ORDER_NOT_CONFIRMABLE');
+  }
 
-    await updateOrderStatus(
-        id,
-        'CONFIRMED',
-        userId,
-    );
+  await updateOrderStatus(id, 'CONFIRMED', userId);
 }
 
-export async function processOrder(
-    id: number,
-    userId: number,
-): Promise<void> {
-    const [rows] = await db.query<OrderRow[]>(
-        `
+export async function processOrder(id: number, userId: number): Promise<void> {
+  const [rows] = await db.query<OrderRow[]>(
+    `
       SELECT *
       FROM orders
       WHERE id = ?
       LIMIT 1
     `,
-        [id],
-    );
+    [id],
+  );
 
-    if (!rows[0]) {
-        throw new Error('ORDER_NOT_FOUND');
-    }
+  if (!rows[0]) {
+    throw new Error('ORDER_NOT_FOUND');
+  }
 
-    if (
-        !['CONFIRMED', 'PARTIALLY_ISSUED'].includes(
-            rows[0].status,
-        )
-    ) {
-        throw new Error('ORDER_NOT_PROCESSABLE');
-    }
+  if (!['CONFIRMED', 'PARTIALLY_ISSUED'].includes(rows[0].status)) {
+    throw new Error('ORDER_NOT_PROCESSABLE');
+  }
 
-    await updateOrderStatus(
-        id,
-        'PROCESSING',
-        userId,
-    );
+  await updateOrderStatus(id, 'PROCESSING', userId);
 }
 
-export async function cancelOrder(
-    id: number,
-    userId: number,
-): Promise<void> {
-    const [rows] = await db.query<OrderRow[]>(
-        `
+export async function cancelOrder(id: number, userId: number): Promise<void> {
+  const [rows] = await db.query<OrderRow[]>(
+    `
       SELECT *
       FROM orders
       WHERE id = ?
       LIMIT 1
     `,
-        [id],
-    );
+    [id],
+  );
 
-    if (!rows[0]) {
-        throw new Error('ORDER_NOT_FOUND');
-    }
+  if (!rows[0]) {
+    throw new Error('ORDER_NOT_FOUND');
+  }
 
-    if (
-        ['COMPLETED', 'CANCELLED', 'ISSUED'].includes(
-            rows[0].status,
-        )
-    ) {
-        throw new Error('ORDER_NOT_CANCELLABLE');
-    }
+  if (['COMPLETED', 'CANCELLED', 'ISSUED'].includes(rows[0].status)) {
+    throw new Error('ORDER_NOT_CANCELLABLE');
+  }
 
-    await updateOrderStatus(
-        id,
-        'CANCELLED',
-        userId,
-    );
+  await updateOrderStatus(id, 'CANCELLED', userId);
 }
 
-export async function completeOrder(
-    id: number,
-    userId: number,
-): Promise<void> {
-    const [rows] = await db.query<OrderRow[]>(
-        `
+export async function completeOrder(id: number, userId: number): Promise<void> {
+  const [rows] = await db.query<OrderRow[]>(
+    `
       SELECT *
       FROM orders
       WHERE id = ?
       LIMIT 1
     `,
-        [id],
-    );
+    [id],
+  );
 
-    if (!rows[0]) {
-        throw new Error('ORDER_NOT_FOUND');
-    }
+  if (!rows[0]) {
+    throw new Error('ORDER_NOT_FOUND');
+  }
 
-    if (rows[0].status !== 'ISSUED') {
-        throw new Error('ORDER_NOT_COMPLETEABLE');
-    }
+  if (rows[0].status !== 'ISSUED') {
+    throw new Error('ORDER_NOT_COMPLETEABLE');
+  }
 
-    await updateOrderStatus(
-        id,
-        'COMPLETED',
-        userId,
-    );
+  await updateOrderStatus(id, 'COMPLETED', userId);
 }
 
 export async function insertGoodsIssueFromOrder(
-    input: CreateOrderGoodsIssueInput,
+  input: CreateOrderGoodsIssueInput,
 ): Promise<CreateOrderGoodsIssueResult> {
-    const connection = await db.getConnection();
+  const connection = await db.getConnection();
 
-    try {
-        await connection.beginTransaction();
+  try {
+    await connection.beginTransaction();
 
-        const [orders] = await connection.query<OrderRow[]>(
-            `
+    const [orders] = await connection.query<OrderRow[]>(
+      `
         SELECT *
         FROM orders
         WHERE id = ?
         FOR UPDATE
       `,
-            [input.orderId],
-        );
+      [input.orderId],
+    );
 
-        const order = orders[0];
+    const order = orders[0];
 
-        if (!order) {
-            throw new Error('ORDER_NOT_FOUND');
-        }
+    if (!order) {
+      throw new Error('ORDER_NOT_FOUND');
+    }
 
-        if (
-            ![
-                'CONFIRMED',
-                'PROCESSING',
-                'PARTIALLY_ISSUED',
-            ].includes(order.status)
-        ) {
-            throw new Error('ORDER_NOT_READY_FOR_ISSUE');
-        }
+    if (
+      !['CONFIRMED', 'PROCESSING', 'PARTIALLY_ISSUED'].includes(order.status)
+    ) {
+      throw new Error('ORDER_NOT_READY_FOR_ISSUE');
+    }
 
-        const itemParams: unknown[] = [
-            input.orderId,
-        ];
+    const itemParams: unknown[] = [input.orderId];
 
-        let itemCondition = '';
+    let itemCondition = '';
 
-        if (
-            input.orderItemIds &&
-            input.orderItemIds.length > 0
-        ) {
-            itemCondition = `
-        AND oi.id IN (${input.orderItemIds
-                    .map(() => '?')
-                    .join(',')})
+    if (input.orderItemIds && input.orderItemIds.length > 0) {
+      itemCondition = `
+        AND oi.id IN (${input.orderItemIds.map(() => '?').join(',')})
       `;
 
-            itemParams.push(...input.orderItemIds);
-        }
+      itemParams.push(...input.orderItemIds);
+    }
 
-        const [items] = await connection.query<OrderItemRow[]>(
-            `
+    const [items] = await connection.query<OrderItemRow[]>(
+      `
         SELECT *
         FROM order_items oi
         WHERE oi.order_id = ?
@@ -687,23 +614,22 @@ export async function insertGoodsIssueFromOrder(
           ${itemCondition}
         FOR UPDATE
       `,
-            itemParams,
-        );
+      itemParams,
+    );
 
-        if (items.length === 0) {
-            throw new Error('ORDER_HAS_NO_REMAINING_ITEMS');
-        }
+    if (items.length === 0) {
+      throw new Error('ORDER_HAS_NO_REMAINING_ITEMS');
+    }
 
-        const issueCode = await generateDocumentCode(
-            connection,
-            'goods_issues',
-            'issue_code',
-            'PX',
-        );
+    const issueCode = await generateDocumentCode(
+      connection,
+      'goods_issues',
+      'issue_code',
+      'PX',
+    );
 
-        const [issueResult] =
-            await connection.query<ResultSetHeader>(
-                `
+    const [issueResult] = await connection.query<ResultSetHeader>(
+      `
           INSERT INTO goods_issues (
             issue_code,
             warehouse_id,
@@ -715,23 +641,22 @@ export async function insertGoodsIssueFromOrder(
           )
           VALUES (?, ?, ?, 'DRAFT', ?, ?, ?)
         `,
-                [
-                    issueCode,
-                    order.warehouse_id,
-                    order.id,
-                    order.order_code,
-                    input.note ?? null,
-                    input.createdBy,
-                ],
-            );
+      [
+        issueCode,
+        order.warehouse_id,
+        order.id,
+        order.order_code,
+        input.note ?? null,
+        input.createdBy,
+      ],
+    );
 
-        for (const item of items) {
-            const remaining =
-                Number(item.ordered_quantity) -
-                Number(item.issued_quantity);
+    for (const item of items) {
+      const remaining =
+        Number(item.ordered_quantity) - Number(item.issued_quantity);
 
-            await connection.query(
-                `
+      await connection.query(
+        `
           INSERT INTO goods_issue_items (
             goods_issue_id,
             order_item_id,
@@ -743,37 +668,37 @@ export async function insertGoodsIssueFromOrder(
           )
           VALUES (?, ?, ?, NULL, 1, ?, ?)
         `,
-                [
-                    issueResult.insertId,
-                    item.id,
-                    item.product_variant_id,
-                    remaining,
-                    item.note,
-                ],
-            );
-        }
+        [
+          issueResult.insertId,
+          item.id,
+          item.product_variant_id,
+          remaining,
+          item.note,
+        ],
+      );
+    }
 
-        await connection.query(
-            `
+    await connection.query(
+      `
         UPDATE orders
         SET
           status = 'PARTIALLY_ISSUED',
           updated_by = ?
         WHERE id = ?
       `,
-            [input.createdBy, order.id],
-        );
+      [input.createdBy, order.id],
+    );
 
-        await connection.commit();
+    await connection.commit();
 
-        return {
-            goodsIssueId: issueResult.insertId,
-            goodsIssueCode: issueCode,
-        };
-    } catch (error) {
-        await connection.rollback();
-        throw error;
-    } finally {
-        connection.release();
-    }
+    return {
+      goodsIssueId: issueResult.insertId,
+      goodsIssueCode: issueCode,
+    };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }

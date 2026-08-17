@@ -20,6 +20,7 @@ type InventoryTransactionRow = RowDataPacket & {
 type StockLocationRow = RowDataPacket & {
   id: number;
   quantity: number;
+  reserved_quantity: number;
 };
 
 export type ReverseInventoryReferenceInput = {
@@ -136,7 +137,7 @@ async function lockStockLocation(
 ): Promise<StockLocationRow | undefined> {
   const [rows] = await connection.query<StockLocationRow[]>(
     `
-      SELECT id, quantity
+      SELECT id, quantity, reserved_quantity
       FROM stock_locations
       WHERE product_variant_id = ?
         AND location_id = ?
@@ -168,7 +169,11 @@ async function ensureStockLocation(
     [transaction.product_variant_id, locationId, transaction.batch_id],
   );
 
-  return { id: insertResult.insertId, quantity: 0 } as StockLocationRow;
+  return {
+    id: insertResult.insertId,
+    quantity: 0,
+    reserved_quantity: 0,
+  } as StockLocationRow;
 }
 
 export async function reverseInventoryReference(
@@ -187,6 +192,12 @@ export async function reverseInventoryReference(
   );
 
   let reversalCount = 0;
+  const pendingReservedReturns: Array<{
+    productVariantId: number;
+    locationId: number;
+    batchId: number | null;
+    amount: number;
+  }> = [];
 
   for (const transaction of originals) {
     const locationId = reversalLocationId(transaction);
@@ -207,23 +218,51 @@ export async function reverseInventoryReference(
       throw new Error('REVERSAL_INSUFFICIENT_STOCK');
     }
 
-    // Rút hàng khỏi ô có thể kéo tồn xuống dưới phần đang giữ chỗ (phiếu chuyển
-    // được phép dời cả hàng giữ chỗ sang ô mới). Kẹp lại để không vỡ ràng buộc
+    // Rút hàng khỏi ô có thể kéo tồn xuống dưới phần đang giữ chỗ, vì phiếu chuyển
+    // được phép dời cả hàng giữ chỗ sang ô mới. Kẹp lại để không vỡ ràng buộc
     // chk_stock_available (reserved_quantity <= quantity) của bảng.
+    const reservedBefore = Number(stockLocation.reserved_quantity ?? 0);
+    const reservedAfter = addsStock
+      ? reservedBefore
+      : Math.min(reservedBefore, after);
+    const reservedToReturn = reservedBefore - reservedAfter;
+
     const [updateResult] = await connection.query<ResultSetHeader>(
       `
         UPDATE stock_locations
         SET quantity = ?,
-            reserved_quantity = LEAST(reserved_quantity, ?),
+            reserved_quantity = ?,
             version = version + 1
         WHERE id = ?
           AND ? >= 0
       `,
-      [after, after, stockLocation.id, after],
+      [after, reservedAfter, stockLocation.id, after],
     );
 
     if (updateResult.affectedRows !== 1) {
       throw new Error('CONCURRENT_STOCK_UPDATE');
+    }
+
+    // Phần giữ chỗ vừa bị kẹp phải theo hàng quay về ô đối ứng, nếu không thì đảo
+    // một phiếu chuyển làm đơn đặt trước mất chỗ giữ mà không ai hay. Ô đối ứng
+    // của phiếu chuyển là ô ban đầu; phiếu nhập bị đảo thì không có chỗ để trả về.
+    //
+    // Ghi nhận lại đây và chỉ áp dụng sau khi chạy hết vòng lặp: hai dòng của một
+    // phiếu chuyển được xử lý theo thứ tự id giảm dần, nên lúc trừ ở ô đích thì ô
+    // nguồn còn chưa nhận lại hàng, cộng giữ chỗ vào đó sẽ bị chính trần
+    // reserved <= quantity cắt mất.
+    const counterpartLocationId =
+      locationId === transaction.destination_location_id
+        ? transaction.source_location_id
+        : transaction.destination_location_id;
+
+    if (reservedToReturn > 0 && counterpartLocationId) {
+      pendingReservedReturns.push({
+        productVariantId: transaction.product_variant_id,
+        locationId: counterpartLocationId,
+        batchId: transaction.batch_id,
+        amount: reservedToReturn,
+      });
     }
 
     await connection.query(
@@ -268,6 +307,27 @@ export async function reverseInventoryReference(
     );
 
     reversalCount += 1;
+  }
+
+  // Tồn của mọi ô đã về đúng chỗ, giờ mới trả phần giữ chỗ; LEAST vẫn giữ để
+  // không bao giờ vượt tồn thực của ô nhận.
+  for (const pending of pendingReservedReturns) {
+    await connection.query(
+      `
+        UPDATE stock_locations
+        SET reserved_quantity = LEAST(quantity, reserved_quantity + ?),
+            version = version + 1
+        WHERE product_variant_id = ?
+          AND location_id = ?
+          AND (batch_id <=> ?)
+      `,
+      [
+        pending.amount,
+        pending.productVariantId,
+        pending.locationId,
+        pending.batchId,
+      ],
+    );
   }
 
   return reversalCount;

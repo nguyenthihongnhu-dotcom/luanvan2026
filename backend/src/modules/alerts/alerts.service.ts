@@ -15,7 +15,10 @@ export async function listAlerts(filters: AlertsFilters): Promise<AlertsRow[]> {
   return findAlertsRepository(filters);
 }
 
-export async function generateAlerts(): Promise<{ createdCount: number }> {
+export async function generateAlerts(): Promise<{
+  createdCount: number;
+  resolvedCount: number;
+}> {
   return generateInventoryAlertsRepository();
 }
 

@@ -87,17 +87,12 @@ export async function createOrderController(
   res: Response,
 ): Promise<void> {
   if (!req.user) {
-    throw new HttpError(
-      401,
-      'Authentication required',
-      'AUTH_REQUIRED',
-    );
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
   }
 
   const input = parseCreateOrder(req.body);
 
-  const createdBy =
-    input.createdBy ?? Number(req.user.id);
+  const createdBy = input.createdBy ?? Number(req.user.id);
 
   res.status(201).json({
     data: await createOrder({
@@ -115,11 +110,7 @@ export async function updateOrderController(
   res: Response,
 ): Promise<void> {
   if (!req.user) {
-    throw new HttpError(
-      401,
-      'Authentication required',
-      'AUTH_REQUIRED',
-    );
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
   }
 
   const orderId = parseOrderId(req.params.id);
@@ -143,19 +134,12 @@ export async function confirmOrderController(
   res: Response,
 ): Promise<void> {
   if (!req.user) {
-    throw new HttpError(
-      401,
-      'Authentication required',
-      'AUTH_REQUIRED',
-    );
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
   }
 
   const orderId = parseOrderId(req.params.id);
 
-  await confirmOrder(
-    orderId,
-    Number(req.user.id),
-  );
+  await confirmOrder(orderId, Number(req.user.id));
 
   res.json({
     data: null,
@@ -170,19 +154,12 @@ export async function processOrderController(
   res: Response,
 ): Promise<void> {
   if (!req.user) {
-    throw new HttpError(
-      401,
-      'Authentication required',
-      'AUTH_REQUIRED',
-    );
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
   }
 
   const orderId = parseOrderId(req.params.id);
 
-  await processOrder(
-    orderId,
-    Number(req.user.id),
-  );
+  await processOrder(orderId, Number(req.user.id));
 
   res.json({
     data: null,
@@ -197,19 +174,12 @@ export async function cancelOrderController(
   res: Response,
 ): Promise<void> {
   if (!req.user) {
-    throw new HttpError(
-      401,
-      'Authentication required',
-      'AUTH_REQUIRED',
-    );
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
   }
 
   const orderId = parseOrderId(req.params.id);
 
-  await cancelOrder(
-    orderId,
-    Number(req.user.id),
-  );
+  await cancelOrder(orderId, Number(req.user.id));
 
   res.json({
     data: null,
@@ -224,19 +194,12 @@ export async function completeOrderController(
   res: Response,
 ): Promise<void> {
   if (!req.user) {
-    throw new HttpError(
-      401,
-      'Authentication required',
-      'AUTH_REQUIRED',
-    );
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
   }
 
   const orderId = parseOrderId(req.params.id);
 
-  await completeOrder(
-    orderId,
-    Number(req.user.id),
-  );
+  await completeOrder(orderId, Number(req.user.id));
 
   res.json({
     data: null,
@@ -251,28 +214,28 @@ export async function createGoodsIssueFromOrderController(
   res: Response,
 ): Promise<void> {
   if (!req.user) {
-    throw new HttpError(
-      401,
-      'Authentication required',
-      'AUTH_REQUIRED',
-    );
+    throw new HttpError(401, 'Authentication required', 'AUTH_REQUIRED');
   }
 
   const orderId = parseOrderId(req.params.id);
 
-  let orderItemIds: number[] | undefined;
-
-  if (req.body?.orderItemIds !== undefined) {
-    orderItemIds = parseOrderItemIds(
-      req.body.orderItemIds,
-    );
-  }
+  // req.body là any, đọc thẳng từng thuộc tính khiến eslint không kiểm soát được
+  // kiểu. Ép về một hình dạng đã biết rồi mới bóc, phần giá trị vẫn do
+  // parseOrderItemIds kiểm tra như cũ.
+  const body = (req.body ?? {}) as {
+    orderItemIds?: unknown;
+    note?: unknown;
+  };
+  const orderItemIds =
+    body.orderItemIds === undefined
+      ? undefined
+      : parseOrderItemIds(body.orderItemIds);
 
   res.status(201).json({
     data: await createGoodsIssueFromOrder({
       orderId,
       orderItemIds,
-      note: req.body?.note,
+      note: typeof body.note === 'string' ? body.note : undefined,
       createdBy: Number(req.user.id),
     }),
   });

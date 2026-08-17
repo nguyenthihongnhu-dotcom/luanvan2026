@@ -67,15 +67,10 @@ export function parseOrdersFilters(input: unknown): OrdersFilters {
 }
 
 export function parseOrderId(input: unknown): number {
-  return validateInput(
-    z.coerce.number().int().positive(),
-    input,
-  );
+  return validateInput(z.coerce.number().int().positive(), input);
 }
 
-export function parseCreateOrder(
-  input: unknown,
-): CreateOrderInput {
+export function parseCreateOrder(input: unknown): CreateOrderInput {
   return validateInput(createOrderSchema, input);
 }
 
@@ -86,8 +81,5 @@ export function parseUpdateOrder(
 }
 
 export function parseOrderItemIds(input: unknown): number[] {
-  return validateInput(
-    z.array(z.coerce.number().int().positive()),
-    input,
-  );
+  return validateInput(z.array(z.coerce.number().int().positive()), input);
 }
