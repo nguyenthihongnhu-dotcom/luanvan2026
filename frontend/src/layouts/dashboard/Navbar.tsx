@@ -23,6 +23,7 @@ import {
     TeamOutlined,
     UserOutlined,
 } from '@ant-design/icons';
+import { getHttpErrorMessage } from '@/shared/services/httpClient';
 import { notificationService } from '@/features/notifications/services/notificationService';
 import type { NotificationItem } from '@/features/notifications/services/notificationService';
 import { getNotificationSocket } from '@/shared/services/socketClient';
@@ -78,6 +79,7 @@ export default function Navbar(): ReactNode {
     const [isNotificationOpen, setNotificationOpen] = useState(false);
     const [isMarkingAllRead, setMarkingAllRead] = useState(false);
     const [markingNotificationId, setMarkingNotificationId] = useState<number | null>(null);
+    const [loadError, setLoadError] = useState<string | null>(null);
     const navRef = useRef<HTMLDivElement>(null);
     const unreadCount = notifications.filter((n) => !n.is_read).length;
     const previewNotifications = notifications.slice(0, 5);
@@ -85,8 +87,11 @@ export default function Navbar(): ReactNode {
     async function fetchNotifications() {
         try {
             setNotifications(await notificationService.listNotifications());
-        } catch {
-            // Ignore silently if token missing.
+            setLoadError(null);
+        } catch (err) {
+            // Nuốt lỗi ở đây khiến chuông hiện "chưa có thông báo" y như lúc rỗng
+            // thật, không phân biệt được với 403 hay backend chết.
+            setLoadError(getHttpErrorMessage(err, "Không tải được thông báo."));
         }
     }
 
@@ -124,9 +129,11 @@ export default function Navbar(): ReactNode {
         async function fetchUnreadCount() {
             try {
                 const list = await notificationService.listNotifications();
-                if (isMounted) setNotifications(list);
-            } catch {
-                // Ignore silently if token missing.
+                if (!isMounted) return;
+                setNotifications(list);
+                setLoadError(null);
+            } catch (err) {
+                if (isMounted) setLoadError(getHttpErrorMessage(err, "Không tải được thông báo."));
             }
         }
         void fetchUnreadCount();
@@ -290,7 +297,9 @@ export default function Navbar(): ReactNode {
                                             </div>
 
                                             <div className="max-h-80 overflow-y-auto p-2">
-                                                {previewNotifications.length === 0 ? (
+                                                {loadError ? (
+                                                    <div className="px-3 py-6 text-center text-sm text-rose-600">{loadError}</div>
+                                                ) : previewNotifications.length === 0 ? (
                                                     <div className="px-3 py-6 text-center text-sm text-slate-500">Chưa có thông báo.</div>
                                                 ) : (
                                                     previewNotifications.map((notification) => {

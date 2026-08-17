@@ -10,10 +10,13 @@ import {
 
 export const notificationsRouter = Router();
 
+// Ba route dưới đây chỉ đụng tới thông báo của chính người đăng nhập: controller
+// ép user_id = req.user.id và repository lọc theo cột đó. Thêm requirePermission
+// chỉ chặn nhầm chính người nhận (vai trò STAFF không được cấp quyền nên nhận
+// được thông báo mà không đọc nổi), chứ không bảo vệ thêm dữ liệu của ai.
 notificationsRouter.get(
   '/',
   asyncHandler(verifyToken),
-  requirePermission('notifications:read'),
   asyncHandler(listNotificationsController),
 );
 notificationsRouter.post(
@@ -25,12 +28,10 @@ notificationsRouter.post(
 notificationsRouter.post(
   '/read-all',
   asyncHandler(verifyToken),
-  requirePermission('notifications:read'),
   asyncHandler(markAllNotificationsReadController),
 );
 notificationsRouter.patch(
   '/:id/read',
   asyncHandler(verifyToken),
-  requirePermission('notifications:read'),
   asyncHandler(markNotificationReadController),
 );
