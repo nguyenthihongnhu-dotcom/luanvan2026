@@ -13,7 +13,6 @@ import {
     FileSearchOutlined,
     HistoryOutlined,
     InboxOutlined,
-    NotificationOutlined,
     PartitionOutlined,
     RetweetOutlined,
     SafetyOutlined,
@@ -64,9 +63,10 @@ const navbarGroups = [
     },
 ];
 
+// Cảnh báo và thông báo dùng chung một trang nên header cũng chỉ còn một chuông,
+// thay vì hai biểu tượng dẫn về cùng một chỗ.
 const headerActions = [
-    { label: 'Cảnh báo', path: '/alerts', icon: BellOutlined },
-    { label: 'Thông báo', path: '/notifications', icon: NotificationOutlined, isNotification: true },
+    { label: 'Cảnh báo & thông báo', path: '/alerts', icon: BellOutlined, isNotification: true },
     { label: 'Cấu hình', path: '/settings', icon: SettingOutlined },
 ];
 
@@ -116,7 +116,7 @@ export default function Navbar(): ReactNode {
 
     function handleViewAllNotifications() {
         setNotificationOpen(false);
-        navigate('/notifications');
+        navigate('/alerts');
     }
 
     useEffect(() => {
@@ -275,7 +275,7 @@ export default function Navbar(): ReactNode {
                                         <div className="absolute right-0 top-full z-50 mt-2 w-88 max-w-[calc(100vw-24px)] overflow-hidden rounded-xl border border-slate-200 bg-white shadow-xl">
                                             <div className="flex items-center justify-between border-b border-slate-100 px-4 py-3">
                                                 <div>
-                                                    <div className="text-sm font-bold text-slate-900">Thông báo</div>
+                                                    <div className="text-sm font-bold text-slate-900">Cảnh báo & thông báo</div>
                                                     <div className="text-xs text-slate-500">{unreadCount} chưa đọc</div>
                                                 </div>
                                                 <button

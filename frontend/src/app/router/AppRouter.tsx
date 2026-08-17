@@ -21,7 +21,6 @@ const InventoryTransactionsPage = lazy(() => import('@/features/inventory-transa
 const ReportsPage = lazy(() => import('@/features/reports/pages/ReportsPage'));
 const AuditLogsPage = lazy(() => import('@/features/audit-logs/pages/AuditLogsPage'));
 const AttachmentsPage = lazy(() => import('@/features/attachments/pages/AttachmentsPage'));
-const NotificationsPage = lazy(() => import('@/features/notifications/pages/NotificationsPage'));
 const OrderPage = lazy(() => import('@/features/orders/pages/OrderPage'));
 const SettingsPage = lazy(() => import('@/features/settings/pages/SettingsPage'));
 
@@ -52,7 +51,8 @@ export default function AppRouter() {
         <Route path="/inventory-transactions" element={<InventoryTransactionsPage />} />
         <Route path="/batches" element={<BatchesPage />} />
         <Route path="/alerts" element={<AlertsPage />} />
-        <Route path="/notifications" element={<NotificationsPage />} />
+        {/* Thông báo đã nằm chung trang cảnh báo; giữ đường dẫn cũ cho link đã lưu. */}
+        <Route path="/notifications" element={<Navigate to="/alerts" replace />} />
         <Route path="/transfers" element={<TransfersPage />} />
         <Route path="/stock-counts" element={<StockCountsPage />} />
         <Route path="/partners" element={<PartnersPage />} />
