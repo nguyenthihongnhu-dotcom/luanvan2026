@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { resolveWarehouseScope } from '../../common/access/warehouse-scope';
 import {
   listCurrentStock,
   listNearExpiryStock,
@@ -17,8 +18,9 @@ export async function listCurrentStockController(
   res: Response,
 ): Promise<void> {
   const filters = parseStockFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listCurrentStock(filters) });
+  res.json({ data: await listCurrentStock({ ...filters, warehouseScope }) });
 }
 
 export async function listNearExpiryStockController(
@@ -26,8 +28,9 @@ export async function listNearExpiryStockController(
   res: Response,
 ): Promise<void> {
   const filters = parseNearExpiryFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listNearExpiryStock(filters) });
+  res.json({ data: await listNearExpiryStock({ ...filters, warehouseScope }) });
 }
 
 export async function previewStockAllocationController(

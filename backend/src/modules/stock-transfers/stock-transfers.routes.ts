@@ -10,7 +10,11 @@ import {
 
 export const stockTransfersRouter = Router();
 
-stockTransfersRouter.get('/', asyncHandler(listStockTransfersController));
+stockTransfersRouter.get(
+  '/',
+  asyncHandler(verifyToken),
+  asyncHandler(listStockTransfersController),
+);
 // Tạo phiếu chuyển kho cũng phải đăng nhập, đồng bộ với confirm/reverse bên dưới.
 stockTransfersRouter.post(
   '/',

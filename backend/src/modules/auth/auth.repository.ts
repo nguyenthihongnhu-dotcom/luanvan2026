@@ -620,15 +620,72 @@ export async function listUsers(): Promise<UserListRow[]> {
       u.phone,
       u.status,
       r.code AS role_code,
-      r.name AS role_name
+      r.name AS role_name,
+      -- Kho phụ trách gom thành chuỗi để danh sách nhân viên chỉ cần một truy vấn.
+      GROUP_CONCAT(
+        uw.warehouse_id ORDER BY uw.is_primary DESC, uw.warehouse_id SEPARATOR ','
+      ) AS warehouse_ids,
+      GROUP_CONCAT(
+        w.code ORDER BY uw.is_primary DESC, uw.warehouse_id SEPARATOR ', '
+      ) AS warehouse_codes,
+      MAX(CASE WHEN uw.is_primary THEN uw.warehouse_id END) AS primary_warehouse_id
     FROM users u
     JOIN roles r ON r.id = u.role_id
+    LEFT JOIN user_warehouses uw ON uw.user_id = u.id
+    LEFT JOIN warehouses w ON w.id = uw.warehouse_id
     WHERE u.deleted_at IS NULL
+    GROUP BY
+      u.id, u.employee_code, u.full_name, u.email, u.phone, u.status,
+      r.code, r.name
     ORDER BY u.id
     LIMIT 100
   `);
 
   return rows;
+}
+
+/**
+ * Ghi lại toàn bộ danh sách kho phụ trách của một nhân viên. Xóa hết rồi chèn lại
+ * trong cùng giao dịch: bảng chỉ có khóa chính (user_id, warehouse_id) nên cách
+ * này vừa gọn vừa xử lý được cả việc bỏ gán.
+ */
+export async function replaceUserWarehouses(input: {
+  userId: number;
+  warehouseIds: number[];
+  primaryWarehouseId?: number | null;
+}): Promise<{ assignedCount: number }> {
+  const connection = await db.getConnection();
+
+  try {
+    await connection.beginTransaction();
+
+    await connection.query('DELETE FROM user_warehouses WHERE user_id = ?', [
+      input.userId,
+    ]);
+
+    for (const warehouseId of input.warehouseIds) {
+      await connection.query(
+        `
+          INSERT INTO user_warehouses (user_id, warehouse_id, is_primary)
+          VALUES (?, ?, ?)
+        `,
+        [
+          input.userId,
+          warehouseId,
+          input.primaryWarehouseId === warehouseId ? 1 : 0,
+        ],
+      );
+    }
+
+    await connection.commit();
+
+    return { assignedCount: input.warehouseIds.length };
+  } catch (error) {
+    await connection.rollback();
+    throw error;
+  } finally {
+    connection.release();
+  }
 }
 
 export async function createUser(input: {

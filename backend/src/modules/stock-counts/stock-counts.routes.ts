@@ -14,9 +14,14 @@ import {
 
 export const stockCountsRouter = Router();
 
-stockCountsRouter.get('/', asyncHandler(listStockCountsController));
+stockCountsRouter.get(
+  '/',
+  asyncHandler(verifyToken),
+  asyncHandler(listStockCountsController),
+);
 stockCountsRouter.get(
   '/:id/items',
+  asyncHandler(verifyToken),
   asyncHandler(listStockCountItemsController),
 );
 stockCountsRouter.post(

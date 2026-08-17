@@ -1,5 +1,9 @@
 import type { ResultSetHeader, RowDataPacket } from 'mysql2';
 import type { PoolConnection } from 'mysql2/promise';
+import {
+  UNRESTRICTED_SCOPE,
+  warehouseScopeWhere,
+} from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
 import type {
   CreateLocationInput,
@@ -31,6 +35,13 @@ export async function findLocations(
     where.push('w.id = :warehouseId');
     params.warehouseId = filters.warehouseId;
   }
+
+  const scopeWhere = warehouseScopeWhere(
+    filters.warehouseScope ?? UNRESTRICTED_SCOPE,
+    'w.id',
+    params,
+  );
+  if (scopeWhere) where.push(scopeWhere);
 
   if (filters.status) {
     where.push('wl.status = :status');

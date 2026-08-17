@@ -116,3 +116,32 @@ const updateUserSchema = z.object({
 export function parseUpdateUserInput(input: unknown): UpdateUserInput {
   return validateInput(updateUserSchema, input);
 }
+
+const assignUserWarehousesSchema = z
+  .object({
+    warehouseIds: z.array(z.coerce.number().int().positive()).max(50),
+    primaryWarehouseId: z.coerce
+      .number()
+      .int()
+      .positive()
+      .nullable()
+      .optional(),
+  })
+  // Kho chính phải nằm trong danh sách được gán, nếu không thì cột is_primary
+  // không bao giờ được đặt và người dùng tưởng đã chọn xong.
+  .refine(
+    (value) =>
+      !value.primaryWarehouseId ||
+      value.warehouseIds.includes(value.primaryWarehouseId),
+    {
+      message: 'Kho chính phải nằm trong danh sách kho được gán',
+      path: ['primaryWarehouseId'],
+    },
+  );
+
+export function parseAssignUserWarehousesInput(input: unknown): {
+  warehouseIds: number[];
+  primaryWarehouseId?: number | null;
+} {
+  return validateInput(assignUserWarehousesSchema, input);
+}

@@ -1,4 +1,8 @@
 import type { Request, Response } from 'express';
+import {
+  isWarehouseInScope,
+  resolveWarehouseScope,
+} from '../../common/access/warehouse-scope';
 import { HttpError } from '../../common/http';
 import {
   approveStockCount,
@@ -32,8 +36,9 @@ export async function listStockCountsController(
   res: Response,
 ): Promise<void> {
   const filters = parseStockCountsFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listStockCounts(filters) });
+  res.json({ data: await listStockCounts({ ...filters, warehouseScope }) });
 }
 
 export async function listStockCountItemsController(
@@ -51,6 +56,14 @@ export async function createStockCountController(
 ): Promise<void> {
   const userId = requireAuthenticatedUser(req);
   const input = parseCreateStockCount(req.body, userId);
+  const warehouseScope = await resolveWarehouseScope(req.user);
+  if (!isWarehouseInScope(warehouseScope, input.warehouseId)) {
+    throw new HttpError(
+      403,
+      'Bạn không phụ trách kho này nên không tạo được chứng từ cho nó',
+      'WAREHOUSE_OUT_OF_SCOPE',
+    );
+  }
 
   res.status(201).json({ data: await createStockCount(input) });
 }

@@ -8,6 +8,7 @@ import { requirePermission } from '../../common/middleware/require-permission.mi
 import { verifyToken } from './auth.middleware';
 import {
   approvePasswordResetRequestController,
+  assignUserWarehousesController,
   createPasswordResetRequestController,
   createUserController,
   deleteUserController,
@@ -41,6 +42,13 @@ authRouter.put(
   asyncHandler(verifyToken),
   requirePermission('users:update'),
   asyncHandler(updateUserController),
+);
+// Gán kho phụ trách: quyết định nhân viên nhìn thấy và thao tác được trên kho nào.
+authRouter.put(
+  '/users/:id/warehouses',
+  asyncHandler(verifyToken),
+  requirePermission('users:update'),
+  asyncHandler(assignUserWarehousesController),
 );
 authRouter.delete(
   '/users/:id',

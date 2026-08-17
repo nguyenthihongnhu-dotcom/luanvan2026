@@ -1,3 +1,4 @@
+import type { WarehouseScope } from '../../common/access/warehouse-scope';
 import type { RowDataPacket } from 'mysql2';
 import type { AllocationStrategy } from '../stock/stock.model';
 
@@ -7,6 +8,8 @@ export type GoodsIssuesFilters = {
   id?: number;
   search?: string;
   status?: string;
+  /** Giới hạn theo kho người dùng phụ trách; bỏ trống nghĩa là không giới hạn. */
+  warehouseScope?: WarehouseScope;
 };
 
 export type GoodsIssueStatus = 'DRAFT' | 'PENDING' | 'CONFIRMED' | 'CANCELLED';

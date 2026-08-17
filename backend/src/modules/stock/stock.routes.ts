@@ -10,9 +10,21 @@ import {
 
 export const stockRouter = Router();
 
-stockRouter.get('/current', asyncHandler(listCurrentStockController));
-stockRouter.get('/near-expiry', asyncHandler(listNearExpiryStockController));
-stockRouter.get('/allocation', asyncHandler(previewStockAllocationController));
+stockRouter.get(
+  '/current',
+  asyncHandler(verifyToken),
+  asyncHandler(listCurrentStockController),
+);
+stockRouter.get(
+  '/near-expiry',
+  asyncHandler(verifyToken),
+  asyncHandler(listNearExpiryStockController),
+);
+stockRouter.get(
+  '/allocation',
+  asyncHandler(verifyToken),
+  asyncHandler(previewStockAllocationController),
+);
 // Nhập nhanh làm tăng tồn kho thật nên bắt buộc phải đăng nhập.
 stockRouter.post(
   '/quick-receive',

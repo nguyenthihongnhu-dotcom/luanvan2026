@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { resolveWarehouseScope } from '../../common/access/warehouse-scope';
 import {
   createLocation,
   createLayer,
@@ -37,8 +38,9 @@ export async function listLocationsController(
   res: Response,
 ): Promise<void> {
   const filters = parseLocationFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listLocations(filters) });
+  res.json({ data: await listLocations({ ...filters, warehouseScope }) });
 }
 
 export async function addLocationController(

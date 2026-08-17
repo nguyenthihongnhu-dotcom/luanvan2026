@@ -6,6 +6,10 @@ import type {
 import { insertAuditLog } from '../../common/audit/audit.repository';
 import { buildUniqueCode } from '../../common/code/code-generator';
 import { reverseInventoryReference } from '../../common/inventory/reversal.repository';
+import {
+  UNRESTRICTED_SCOPE,
+  warehouseScopeWhere,
+} from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
 import type {
   ConfirmStockTransferInput,
@@ -48,6 +52,27 @@ export async function findStockTransfers(
   if (filters.status) {
     where.push('status = :status');
     params.status = filters.status;
+  }
+
+  // Phiếu chuyển dính tới hai kho, chỉ cần một đầu nằm trong phạm vi là người dùng
+  // phải thấy: bên gửi cần theo dõi hàng đi, bên nhận cần biết hàng sắp tới.
+  const scope = filters.warehouseScope ?? UNRESTRICTED_SCOPE;
+  const sourceWhere = warehouseScopeWhere(
+    scope,
+    'source_warehouse_id',
+    params,
+    {
+      paramPrefix: 'scopeSource',
+    },
+  );
+  const destinationWhere = warehouseScopeWhere(
+    scope,
+    'destination_warehouse_id',
+    params,
+    { paramPrefix: 'scopeDestination' },
+  );
+  if (sourceWhere && destinationWhere) {
+    where.push(`(${sourceWhere} OR ${destinationWhere})`);
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';

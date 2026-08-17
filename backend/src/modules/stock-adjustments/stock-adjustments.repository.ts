@@ -6,6 +6,10 @@ import type {
 import { insertAuditLog } from '../../common/audit/audit.repository';
 import { buildUniqueCode } from '../../common/code/code-generator';
 import { generateDocumentCode } from '../../common/code/document-code';
+import {
+  UNRESTRICTED_SCOPE,
+  warehouseScopeWhere,
+} from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
 import type {
   ApproveStockAdjustmentInput,
@@ -71,6 +75,13 @@ export async function findStockAdjustments(
     where.push('sa.status = :status');
     params.status = filters.status;
   }
+
+  const scopeWhere = warehouseScopeWhere(
+    filters.warehouseScope ?? UNRESTRICTED_SCOPE,
+    'sa.warehouse_id',
+    params,
+  );
+  if (scopeWhere) where.push(scopeWhere);
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 

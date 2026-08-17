@@ -1,4 +1,8 @@
 import type { Request, Response } from 'express';
+import {
+  isWarehouseInScope,
+  resolveWarehouseScope,
+} from '../../common/access/warehouse-scope';
 import { HttpError } from '../../common/http';
 import {
   confirmStockTransfer,
@@ -17,8 +21,9 @@ export async function listStockTransfersController(
   res: Response,
 ): Promise<void> {
   const filters = parseStockTransfersFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listStockTransfers(filters) });
+  res.json({ data: await listStockTransfers({ ...filters, warehouseScope }) });
 }
 
 export async function confirmStockTransferController(
@@ -62,6 +67,19 @@ export async function createStockTransferController(
   res: Response,
 ): Promise<void> {
   const input = parseCreateStockTransferInput(req.body);
+  const warehouseScope = await resolveWarehouseScope(req.user);
+  // Chuyển kho đụng vào tồn của cả hai đầu nên phải phụ trách cả hai mới tạo được.
+  const outOfScope = [
+    input.sourceWarehouseId,
+    input.destinationWarehouseId,
+  ].some((warehouseId) => !isWarehouseInScope(warehouseScope, warehouseId));
+  if (outOfScope) {
+    throw new HttpError(
+      403,
+      'Bạn phải phụ trách cả kho nguồn và kho đích mới tạo được phiếu chuyển',
+      'WAREHOUSE_OUT_OF_SCOPE',
+    );
+  }
 
   res.status(201).json({ data: await createStockTransfer(input) });
 }

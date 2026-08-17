@@ -23,7 +23,7 @@ export async function listCurrentStock(
 }
 
 export async function listNearExpiryStock(
-  filters: Pick<StockFilters, 'warehouseId'>,
+  filters: Pick<StockFilters, 'warehouseId' | 'warehouseScope'>,
 ): Promise<NearExpiryStockRow[]> {
   return findNearExpiryStockRepository(filters);
 }

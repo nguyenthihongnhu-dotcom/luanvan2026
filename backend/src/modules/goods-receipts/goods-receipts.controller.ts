@@ -1,4 +1,8 @@
 import type { Request, Response } from 'express';
+import {
+  isWarehouseInScope,
+  resolveWarehouseScope,
+} from '../../common/access/warehouse-scope';
 import { HttpError } from '../../common/http';
 import {
   confirmGoodsReceipt,
@@ -18,8 +22,11 @@ export async function listGoodsReceiptsController(
   res: Response,
 ): Promise<void> {
   const filters = parseGoodsReceiptsFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listGoodsReceipts(filters) });
+  res.json({
+    data: await listGoodsReceipts({ ...filters, warehouseScope }),
+  });
 }
 
 export async function getGoodsReceiptDetailController(
@@ -69,6 +76,15 @@ export async function createGoodsReceiptController(
   res: Response,
 ): Promise<void> {
   const input = parseCreateGoodsReceipt(req.body);
+  const warehouseScope = await resolveWarehouseScope(req.user);
+  if (!isWarehouseInScope(warehouseScope, input.warehouseId)) {
+    throw new HttpError(
+      403,
+      'Bạn không phụ trách kho này nên không tạo được chứng từ cho nó',
+      'WAREHOUSE_OUT_OF_SCOPE',
+    );
+  }
+
   const createdBy =
     input.createdBy ?? (req.user ? Number(req.user.id) : undefined);
   res.status(201).json({

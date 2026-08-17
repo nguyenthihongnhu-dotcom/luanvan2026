@@ -64,35 +64,60 @@ export async function generateNotificationsFromAlerts(): Promise<{
       reference_id
     )
     SELECT
-      COALESCE(a.assigned_to, wu.user_id, admin_users.id) AS user_id,
+      r.user_id,
       CONCAT('ALERT_', a.alert_type),
       a.title,
       a.message,
       'ALERT',
       a.id
     FROM alerts a
-    LEFT JOIN user_warehouses wu
-      ON wu.warehouse_id = a.warehouse_id
-      AND wu.is_primary = TRUE
-    LEFT JOIN users admin_users
-      ON admin_users.id = (
-        SELECT u.id
-        FROM users u
-        JOIN roles r ON r.id = u.role_id
-        WHERE r.code IN ('ADMIN', 'WAREHOUSE_MANAGER')
-          AND u.status = 'ACTIVE'
-          AND u.deleted_at IS NULL
-        ORDER BY CASE WHEN r.code = 'ADMIN' THEN 0 ELSE 1 END, u.id
-        LIMIT 1
-      )
+    -- Một cảnh báo nay sinh một thông báo cho MỖI người liên quan, thay vì chỉ
+    -- một người như trước (cảnh báo kho nào cũng dồn về một admin duy nhất).
+    JOIN (
+      -- 1. Người được gán đích danh xử lý cảnh báo.
+      SELECT a1.id AS alert_id, a1.assigned_to AS user_id
+      FROM alerts a1
+      WHERE a1.assigned_to IS NOT NULL
+
+      UNION
+
+      -- 2. Mọi nhân viên đang phụ trách kho của cảnh báo đó.
+      SELECT a2.id, uw.user_id
+      FROM alerts a2
+      JOIN user_warehouses uw ON uw.warehouse_id = a2.warehouse_id
+      JOIN users u ON u.id = uw.user_id
+      WHERE a2.assigned_to IS NULL
+        AND u.status = 'ACTIVE'
+        AND u.deleted_at IS NULL
+
+      UNION
+
+      -- 3. Không ai được gán và kho cũng chưa có người phụ trách (hoặc cảnh báo
+      --    mức toàn hệ thống, warehouse_id NULL) thì chuyển cho quản trị và quản
+      --    lý kho, để cảnh báo không rơi vào khoảng không.
+      SELECT a3.id, u2.id
+      FROM alerts a3
+      JOIN users u2 ON u2.status = 'ACTIVE' AND u2.deleted_at IS NULL
+      JOIN roles r2 ON r2.id = u2.role_id
+      WHERE a3.assigned_to IS NULL
+        AND r2.code IN ('ADMIN', 'WAREHOUSE_MANAGER')
+        AND NOT EXISTS (
+          SELECT 1
+          FROM user_warehouses uw2
+          JOIN users u3 ON u3.id = uw2.user_id
+          WHERE uw2.warehouse_id = a3.warehouse_id
+            AND u3.status = 'ACTIVE'
+            AND u3.deleted_at IS NULL
+        )
+    ) r ON r.alert_id = a.id
     WHERE a.status = 'OPEN'
-      AND COALESCE(a.assigned_to, wu.user_id, admin_users.id) IS NOT NULL
+      AND r.user_id IS NOT NULL
       AND NOT EXISTS (
         SELECT 1
         FROM notifications n
         WHERE n.reference_type = 'ALERT'
           AND n.reference_id = a.id
-          AND n.user_id = COALESCE(a.assigned_to, wu.user_id, admin_users.id)
+          AND n.user_id = r.user_id
       )
   `);
 

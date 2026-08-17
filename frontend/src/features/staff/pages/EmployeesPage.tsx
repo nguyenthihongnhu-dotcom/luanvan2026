@@ -7,6 +7,8 @@ import type { ColumnProps } from "@/shared/ui/Table/types";
 import { DEFAULT_RESET_PASSWORD, roleLabel, userService } from "@/features/staff/services/userService";
 import { getHttpErrorMessage } from "@/shared/services/httpClient";
 import { usePermissions } from "@/shared/auth/usePermissions";
+import { warehouseService } from "@/features/warehouses/services/warehouseService";
+import type { WarehouseOption } from "@/features/warehouses/services/warehouseService";
 import type { PasswordResetRequest, User, UserRoleCode } from "@/features/staff/services/userService";
 
 const roleOptions: Array<{ code: UserRoleCode; label: string }> = [
@@ -37,6 +39,13 @@ export default function EmployeesPage() {
     const [showModal, setShowModal] = useState(false);
     const [editingUser, setEditingUser] = useState<User | null>(null);
     const [formData, setFormData] = useState(initialFormState);
+    const [warehouses, setWarehouses] = useState<WarehouseOption[]>([]);
+    // Modal gán kho tách khỏi modal sửa thông tin: hai việc khác nhau, gộp lại thì
+    // mỗi lần đổi số điện thoại cũng phải ngó lại danh sách kho.
+    const [assigningUser, setAssigningUser] = useState<User | null>(null);
+    const [assignedWarehouseIds, setAssignedWarehouseIds] = useState<number[]>([]);
+    const [primaryWarehouseId, setPrimaryWarehouseId] = useState<number | null>(null);
+    const [isAssigning, setIsAssigning] = useState(false);
 
     // Hàng đợi yêu cầu "Quên mật khẩu" nhân viên tự gửi từ màn hình đăng nhập.
     const [resetRequests, setResetRequests] = useState<PasswordResetRequest[]>([]);
@@ -80,6 +89,16 @@ export default function EmployeesPage() {
     }, [canApproveReset]);
 
     useEffect(() => { void loadUsers(); }, []);
+    useEffect(() => {
+        // Danh sách kho dùng cho cả cột hiển thị lẫn modal gán, tải một lần là đủ.
+        void (async () => {
+            try {
+                setWarehouses(await warehouseService.listWarehouses());
+            } catch (err) {
+                console.error(err);
+            }
+        })();
+    }, []);
     useEffect(() => { void loadResetRequests(); }, [loadResetRequests]);
 
     /**
@@ -144,6 +163,45 @@ export default function EmployeesPage() {
     }, [setExtraContent, roleFilter]);
 
     /** Mở modal tạo mới nhân viên — reset form về trạng thái rỗng, mặc định vai trò STAFF. */
+    const openAssignModal = (user: User) => {
+        setAssigningUser(user);
+        setAssignedWarehouseIds(user.warehouseIds);
+        setPrimaryWarehouseId(user.primaryWarehouseId);
+        setError(null);
+    };
+
+    const toggleAssignedWarehouse = (warehouseId: number) => {
+        setAssignedWarehouseIds((current) => {
+            const next = current.includes(warehouseId)
+                ? current.filter((id) => id !== warehouseId)
+                : [...current, warehouseId];
+            // Bỏ chọn kho đang là kho chính thì phải gỡ luôn, backend từ chối kho
+            // chính không nằm trong danh sách.
+            setPrimaryWarehouseId((primary) => (primary && next.includes(primary) ? primary : null));
+            return next;
+        });
+    };
+
+    const handleSaveAssignment = async () => {
+        if (!assigningUser) return;
+        setIsAssigning(true);
+        setError(null);
+        try {
+            await userService.assignUserWarehouses(
+                assigningUser.MaNguoiDung,
+                assignedWarehouseIds,
+                primaryWarehouseId,
+            );
+            setAssigningUser(null);
+            await loadUsers();
+        } catch (err) {
+            console.error(err);
+            setError(getHttpErrorMessage(err, "Không lưu được kho phụ trách"));
+        } finally {
+            setIsAssigning(false);
+        }
+    };
+
     const openCreateModal = () => {
         setEditingUser(null);
         setFormData(initialFormState);
@@ -239,6 +297,38 @@ export default function EmployeesPage() {
         { key: "SoDienThoai", title: "Số điện thoại" },
         { key: "VaiTro", title: "Vai trò" },
         {
+            key: "warehouseIds",
+            title: "Kho phụ trách",
+            render: (_, record) => {
+                // Quản trị, quản lý kho và kiểm toán xem được mọi kho nên không cần gán.
+                if (record.roleCode !== "STAFF") {
+                    return <span className="text-xs text-gray-500">Toàn bộ kho</span>;
+                }
+                if (record.warehouseIds.length === 0) {
+                    return <span className="text-xs font-medium text-amber-600">Chưa gán kho</span>;
+                }
+                return (
+                    <div className="flex flex-wrap gap-1">
+                        {record.warehouseIds.map((warehouseId) => {
+                            const warehouse = warehouses.find((item) => item.id === warehouseId);
+                            const isPrimary = record.primaryWarehouseId === warehouseId;
+                            return (
+                                <span
+                                    key={warehouseId}
+                                    title={isPrimary ? "Kho chính" : undefined}
+                                    className={`rounded border px-2 py-0.5 text-[11px] font-semibold ${isPrimary
+                                        ? "border-pink-200 bg-pink-50 text-pink-700"
+                                        : "border-gray-200 bg-gray-50 text-gray-600"}`}
+                                >
+                                    {warehouse?.code ?? `Kho #${warehouseId}`}{isPrimary ? " ★" : ""}
+                                </span>
+                            );
+                        })}
+                    </div>
+                );
+            },
+        },
+        {
             key: "TrangThai",
             title: "Trạng thái",
             render: (val) => {
@@ -261,6 +351,9 @@ export default function EmployeesPage() {
                 return (
                     <div className="flex flex-wrap gap-1">
                         <button type="button" onClick={() => openEditModal(record)} className="btn-action btn-blue">Sửa</button>
+                        {record.roleCode === "STAFF" && (
+                            <button type="button" onClick={() => openAssignModal(record)} className="btn-action btn-green">Gán kho</button>
+                        )}
                         {canApproveReset && (
                             <button
                                 type="button"
@@ -384,6 +477,72 @@ export default function EmployeesPage() {
                 </div>
                 {isLoading ? <div className="rounded-lg border border-gray-200 bg-white p-6 text-sm text-gray-500">Đang tải nhân viên...</div> : <Tablelayout columns={columns} dataSource={filteredData} rowKey="MaNguoiDung" />}
             </div>
+
+            {assigningUser && (
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md">
+                    <div className="w-full max-w-lg overflow-hidden rounded-xl bg-white shadow-xl">
+                        <div className="flex items-center justify-between border-b border-gray-100 bg-pink-50 px-6 py-4">
+                            <div>
+                                <h2 className="text-lg font-bold text-pink-700">Gán kho phụ trách</h2>
+                                <p className="text-xs text-gray-500">{assigningUser.HoTen} ({assigningUser.MaNhanVien})</p>
+                            </div>
+                            <button type="button" onClick={() => setAssigningUser(null)} className="text-gray-400 hover:text-gray-600" aria-label="Đóng">×</button>
+                        </div>
+                        <div className="space-y-3 p-6">
+                            <p className="text-xs text-gray-500">
+                                Nhân viên chỉ thấy tồn kho, chứng từ và cảnh báo của kho được gán, và chỉ tạo được
+                                chứng từ cho những kho đó. Cảnh báo của kho cũng gửi thông báo cho mọi người phụ trách kho.
+                            </p>
+                            {warehouses.length === 0 ? (
+                                <div className="rounded-md border border-gray-200 bg-gray-50 px-3 py-4 text-sm text-gray-500">Chưa có kho nào trong hệ thống.</div>
+                            ) : (
+                                <div className="space-y-2">
+                                    {warehouses.map((warehouse) => {
+                                        const checked = assignedWarehouseIds.includes(warehouse.id);
+                                        return (
+                                            <label key={warehouse.id} className={`flex items-center justify-between gap-3 rounded-md border px-3 py-2 ${checked ? "border-pink-200 bg-pink-50" : "border-gray-200"}`}>
+                                                <span className="flex items-center gap-2 text-sm">
+                                                    <input
+                                                        type="checkbox"
+                                                        checked={checked}
+                                                        onChange={() => toggleAssignedWarehouse(warehouse.id)}
+                                                        className="h-4 w-4 accent-pink-600"
+                                                    />
+                                                    <span className="font-medium text-gray-800">{warehouse.code}</span>
+                                                    <span className="text-gray-500">{warehouse.name ?? ""}</span>
+                                                </span>
+                                                {checked && (
+                                                    <label className="flex items-center gap-1.5 text-xs text-gray-600">
+                                                        <input
+                                                            type="radio"
+                                                            name="primaryWarehouse"
+                                                            checked={primaryWarehouseId === warehouse.id}
+                                                            onChange={() => setPrimaryWarehouseId(warehouse.id)}
+                                                            className="h-3.5 w-3.5 accent-pink-600"
+                                                        />
+                                                        Kho chính
+                                                    </label>
+                                                )}
+                                            </label>
+                                        );
+                                    })}
+                                </div>
+                            )}
+                            {assignedWarehouseIds.length === 0 && (
+                                <p className="text-xs font-medium text-amber-600">
+                                    Không chọn kho nào nghĩa là nhân viên này sẽ không thấy dữ liệu vận hành nào.
+                                </p>
+                            )}
+                        </div>
+                        <div className="flex gap-3 border-t border-gray-100 px-6 py-4">
+                            <button type="button" onClick={() => setAssigningUser(null)} className="flex-1 rounded-md border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50">Hủy</button>
+                            <button type="button" onClick={() => void handleSaveAssignment()} disabled={isAssigning} className="flex-1 rounded-md bg-pink-600 px-4 py-2 text-sm font-medium text-white hover:bg-pink-700 disabled:opacity-60">
+                                {isAssigning ? "Đang lưu" : "Lưu"}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {showModal && (
                 <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 backdrop-blur-md">

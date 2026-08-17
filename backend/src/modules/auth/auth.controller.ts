@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-call */
 import type { Request, Response } from 'express';
 import { HttpError } from '../../common/http';
 import {
@@ -12,6 +10,7 @@ import {
   requestPasswordResetApproval,
   resetUserPassword,
   register,
+  assignUserWarehouses,
   createManagedUser,
   listUsers,
   updateUser,
@@ -26,6 +25,7 @@ import {
   parseRefreshInput,
   parseRejectPasswordResetRequestInput,
   parseRegisterInput,
+  parseAssignUserWarehousesInput,
   parseCreateUserInput,
   parseUpdateUserInput,
   parseUserId,
@@ -170,6 +170,16 @@ export async function updateUserController(
   const input = parseUpdateUserInput(req.body);
 
   res.json({ data: await updateUser(id, input) });
+}
+
+export async function assignUserWarehousesController(
+  req: Request,
+  res: Response,
+): Promise<void> {
+  const id = Number(req.params.id);
+  const input = parseAssignUserWarehousesInput(req.body);
+
+  res.json({ data: await assignUserWarehouses(id, input) });
 }
 
 export async function deleteUserController(

@@ -1,3 +1,7 @@
+import {
+  UNRESTRICTED_SCOPE,
+  warehouseScopeWhere,
+} from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
 import type {
   InventoryTransactionsFilters,
@@ -27,6 +31,13 @@ export async function findInventoryTransactions(
     );
     params.search = `%${filters.search}%`;
   }
+
+  const scopeWhere = warehouseScopeWhere(
+    filters.warehouseScope ?? UNRESTRICTED_SCOPE,
+    'it.warehouse_id',
+    params,
+  );
+  if (scopeWhere) where.push(scopeWhere);
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 

@@ -12,9 +12,14 @@ import {
 
 export const stockAdjustmentsRouter = Router();
 
-stockAdjustmentsRouter.get('/', asyncHandler(listStockAdjustmentsController));
+stockAdjustmentsRouter.get(
+  '/',
+  asyncHandler(verifyToken),
+  asyncHandler(listStockAdjustmentsController),
+);
 stockAdjustmentsRouter.get(
   '/:id',
+  asyncHandler(verifyToken),
   asyncHandler(getStockAdjustmentDetailController),
 );
 stockAdjustmentsRouter.post(

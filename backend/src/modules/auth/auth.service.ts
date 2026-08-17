@@ -1,5 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unsafe-assignment */
-/* eslint-disable @typescript-eslint/no-unsafe-member-access */
 import { randomBytes, createHash } from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
@@ -46,6 +44,7 @@ import {
   resetUserPasswordTransaction,
   createUser,
   listUsers as listUsersRepository,
+  replaceUserWarehouses as replaceUserWarehousesRepository,
   updateUserRepository,
   deleteUserRepository,
   rotateRefreshSession,
@@ -448,6 +447,27 @@ export async function updateUser(
     throw new HttpError(404, 'User not found', 'USER_NOT_FOUND');
   }
   return { affectedRows };
+}
+
+/**
+ * Gán kho phụ trách cho nhân viên. Đây là dữ liệu quyết định nhân viên nhìn thấy
+ * kho nào và nhận cảnh báo của kho nào, nên phải chắc user tồn tại trước khi ghi.
+ */
+export async function assignUserWarehouses(
+  userId: number,
+  input: { warehouseIds: number[]; primaryWarehouseId?: number | null },
+): Promise<{ assignedCount: number }> {
+  const users = await listUsersRepository();
+
+  if (!users.some((user) => Number(user.id) === userId)) {
+    throw new HttpError(404, 'User not found', 'USER_NOT_FOUND');
+  }
+
+  return replaceUserWarehousesRepository({
+    userId,
+    warehouseIds: [...new Set(input.warehouseIds)],
+    primaryWarehouseId: input.primaryWarehouseId ?? null,
+  });
 }
 
 export async function deleteUser(id: number): Promise<UserMutationResult> {

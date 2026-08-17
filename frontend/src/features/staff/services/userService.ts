@@ -11,6 +11,9 @@ export interface User {
     VaiTro: string;
     TrangThai: string;
     roleCode: UserRoleCode;
+    /** Kho nhân viên phụ trách; quyết định dữ liệu kho nào họ nhìn thấy. */
+    warehouseIds: number[];
+    primaryWarehouseId: number | null;
 }
 
 export interface UpdateUserInput {
@@ -38,6 +41,9 @@ type UserRow = {
     phone: string | null;
     status: string;
     role_code: string;
+    /** Backend trả về dạng "1,2" do GROUP_CONCAT. */
+    warehouse_ids: string | null;
+    primary_warehouse_id: number | null;
 };
 
 export function roleLabel(code: string): string {
@@ -63,7 +69,27 @@ export async function listUsers(): Promise<User[]> {
         VaiTro: roleLabel(row.role_code),
         TrangThai: row.status === 'ACTIVE' ? 'HoatDong' : 'TamKhoa',
         roleCode: normalizeRoleCode(row.role_code),
+        warehouseIds: (row.warehouse_ids ?? '')
+            .split(',')
+            .map((value) => Number(value))
+            .filter((value) => Number.isFinite(value) && value > 0),
+        primaryWarehouseId: row.primary_warehouse_id ?? null,
     }));
+}
+
+/**
+ * Gán kho phụ trách cho nhân viên. Danh sách gửi lên thay thế toàn bộ danh sách
+ * cũ, gửi mảng rỗng nghĩa là gỡ hết kho khỏi người đó.
+ */
+export async function assignUserWarehouses(
+    userId: number,
+    warehouseIds: number[],
+    primaryWarehouseId?: number | null,
+): Promise<void> {
+    await httpClient.put(`/auth/users/${userId}/warehouses`, {
+        warehouseIds,
+        primaryWarehouseId: primaryWarehouseId ?? null,
+    });
 }
 
 /**
@@ -174,6 +200,7 @@ export const userService = {
     createUser,
     updateUser,
     deleteUser,
+    assignUserWarehouses,
     resetUserPassword,
     listPasswordResetRequests,
     approvePasswordResetRequest,

@@ -1,4 +1,5 @@
 import type { Request, Response } from 'express';
+import { resolveWarehouseScope } from '../../common/access/warehouse-scope';
 import { HttpError } from '../../common/http';
 import {
   generateAlerts,
@@ -13,8 +14,9 @@ export async function listAlertsController(
   res: Response,
 ): Promise<void> {
   const filters = parseAlertsFilters(req.query);
+  const warehouseScope = await resolveWarehouseScope(req.user);
 
-  res.json({ data: await listAlerts(filters) });
+  res.json({ data: await listAlerts({ ...filters, warehouseScope }) });
 }
 
 export async function generateAlertsController(

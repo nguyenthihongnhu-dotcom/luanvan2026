@@ -7,6 +7,10 @@ import { insertAuditLog } from '../../common/audit/audit.repository';
 import { buildUniqueCode } from '../../common/code/code-generator';
 import { generateDocumentCode } from '../../common/code/document-code';
 import { reverseInventoryReference } from '../../common/inventory/reversal.repository';
+import {
+  UNRESTRICTED_SCOPE,
+  warehouseScopeWhere,
+} from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
 import type {
   ConfirmGoodsReceiptInput,
@@ -48,6 +52,13 @@ export async function findGoodsReceipts(
     where.push('gr.status = :status');
     params.status = filters.status;
   }
+
+  const scopeWhere = warehouseScopeWhere(
+    filters.warehouseScope ?? UNRESTRICTED_SCOPE,
+    'gr.warehouse_id',
+    params,
+  );
+  if (scopeWhere) where.push(scopeWhere);
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 

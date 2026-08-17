@@ -178,6 +178,16 @@ export type UserListRow = RowDataPacket & {
   status: string;
   role_code: string;
   role_name: string;
+  /** Danh sách kho phụ trách, dạng "1,2" do GROUP_CONCAT trả về. */
+  warehouse_ids: string | null;
+  warehouse_codes: string | null;
+  primary_warehouse_id: number | null;
+};
+
+export type AssignUserWarehousesInput = {
+  userId: number;
+  warehouseIds: number[];
+  primaryWarehouseId?: number | null;
 };
 
 export type UpdateUserInput = {

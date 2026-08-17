@@ -11,8 +11,16 @@ import {
 
 export const goodsReceiptsRouter = Router();
 
-goodsReceiptsRouter.get('/', asyncHandler(listGoodsReceiptsController));
-goodsReceiptsRouter.get('/:id', asyncHandler(getGoodsReceiptDetailController));
+goodsReceiptsRouter.get(
+  '/',
+  asyncHandler(verifyToken),
+  asyncHandler(listGoodsReceiptsController),
+);
+goodsReceiptsRouter.get(
+  '/:id',
+  asyncHandler(verifyToken),
+  asyncHandler(getGoodsReceiptDetailController),
+);
 goodsReceiptsRouter.post(
   '/',
   asyncHandler(verifyToken),

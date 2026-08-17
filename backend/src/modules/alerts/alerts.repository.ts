@@ -1,4 +1,5 @@
 import type { ResultSetHeader } from 'mysql2';
+import { warehouseScopeWhere } from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
 import type {
   AlertMutationResult,
@@ -26,6 +27,18 @@ export async function findAlerts(filters: AlertsFilters): Promise<AlertsRow[]> {
   if (filters.status) {
     where.push('status = :status');
     params.status = filters.status;
+  }
+
+  if (filters.warehouseScope) {
+    // Cảnh báo không gắn kho (SKU chưa nhập kho nào) là chuyện toàn hệ thống nên
+    // vẫn hiện cho mọi người, chứ không rơi vào khoảng trống không ai thấy.
+    const scopeWhere = warehouseScopeWhere(
+      filters.warehouseScope,
+      'warehouse_id',
+      params,
+      { includeNull: true },
+    );
+    if (scopeWhere) where.push(scopeWhere);
   }
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';

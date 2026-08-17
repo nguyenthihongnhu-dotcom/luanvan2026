@@ -5,6 +5,10 @@ import type {
 } from 'mysql2/promise';
 import { insertAuditLog } from '../../common/audit/audit.repository';
 import { generateDocumentCode } from '../../common/code/document-code';
+import {
+  UNRESTRICTED_SCOPE,
+  warehouseScopeWhere,
+} from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
 import type {
   ApproveStockCountInput,
@@ -52,6 +56,13 @@ export async function findStockCounts(
     where.push('sc.status = :status');
     params.status = filters.status;
   }
+
+  const scopeWhere = warehouseScopeWhere(
+    filters.warehouseScope ?? UNRESTRICTED_SCOPE,
+    'sc.warehouse_id',
+    params,
+  );
+  if (scopeWhere) where.push(scopeWhere);
 
   const whereSql = where.length > 0 ? `WHERE ${where.join(' AND ')}` : '';
 

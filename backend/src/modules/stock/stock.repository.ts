@@ -1,3 +1,7 @@
+import {
+  UNRESTRICTED_SCOPE,
+  warehouseScopeWhere,
+} from '../../common/access/warehouse-scope';
 import { db } from '../../database/db';
 import type { ResultSetHeader, RowDataPacket } from 'mysql2/promise';
 import type {
@@ -93,6 +97,13 @@ export async function findCurrentStock(
     params.productVariantId = filters.productVariantId;
   }
 
+  const scopeWhere = warehouseScopeWhere(
+    filters.warehouseScope ?? UNRESTRICTED_SCOPE,
+    'warehouse_id',
+    params,
+  );
+  if (scopeWhere) where.push(scopeWhere);
+
   const [rows] = await db.query<CurrentStockRow[]>({
     sql: `
       SELECT *
@@ -107,7 +118,7 @@ export async function findCurrentStock(
 }
 
 export async function findNearExpiryStock(
-  filters: Pick<StockFilters, 'warehouseId'>,
+  filters: Pick<StockFilters, 'warehouseId' | 'warehouseScope'>,
 ): Promise<NearExpiryStockRow[]> {
   const where: string[] = ['quantity > 0'];
   const params: QueryParams = {};
@@ -116,6 +127,13 @@ export async function findNearExpiryStock(
     where.push('warehouse_id = :warehouseId');
     params.warehouseId = filters.warehouseId;
   }
+
+  const scopeWhere = warehouseScopeWhere(
+    filters.warehouseScope ?? UNRESTRICTED_SCOPE,
+    'warehouse_id',
+    params,
+  );
+  if (scopeWhere) where.push(scopeWhere);
 
   const [rows] = await db.query<NearExpiryStockRow[]>({
     sql: `
