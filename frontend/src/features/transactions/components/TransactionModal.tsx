@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
+import { formatQuantity } from "@/shared/utils/number";
 import type { Transaction, TransactionItem } from "@/features/transactions/hooks/useTransactions";
 import type { AllocationPreviewItem, AllocationPreviewResult, AllocationStrategy, CurrentStockRow } from "@/features/transactions/services/transactionService";
 import { batchService } from "@/features/batches/services/batchService";
@@ -234,7 +235,7 @@ function AdjustmentStockPicker({
                             <option key={keyOf(row)} value={keyOf(row)}>
                                 {row.locationCode}
                                 {row.batchId ? ` — Lô #${row.batchId}${row.lotNumber ? ` (${row.lotNumber})` : ""}` : " — Không theo lô"}
-                                {` — tồn ${row.quantity}`}
+                                {` — tồn ${formatQuantity(row.quantity)}`}
                             </option>
                         ))}
                         <option value="__manual__">-- Chọn ô khác (thêm vào ô trống) --</option>
@@ -995,7 +996,7 @@ export default function TransactionModal({
                                                     <td className="px-3 py-2.5">{allocation.lotNumber ? `Lô ${allocation.lotNumber}` : (allocation.batchId ? `#${allocation.batchId}` : "Không có")}</td>
                                                     <td className="px-3 py-2.5">{formatDate(allocation.expiryDate)}</td>
                                                     <td className="px-3 py-2.5">{formatDate(allocation.receivedDate)}</td>
-                                                    <td className="px-3 py-2.5 text-right font-bold text-emerald-700">{allocation.quantity}</td>
+                                                    <td className="px-3 py-2.5 text-right font-bold text-emerald-700">{formatQuantity(allocation.quantity)}</td>
                                                 </tr>
                                             ))
                                         )}

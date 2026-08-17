@@ -1,3 +1,4 @@
+import { formatQuantity, toQuantityInputValue } from "@/shared/utils/number";
 import { useEffect, useMemo, useState } from "react";
 import type { FormEvent } from "react";
 import { Link } from "react-router-dom";
@@ -44,10 +45,6 @@ function scopeLabel(scope: StockCountScopeType): string {
         CATEGORY: "Theo danh mục",
     };
     return labels[scope] ?? scope;
-}
-
-function formatNumber(value: unknown): string {
-    return Number(value ?? 0).toLocaleString("vi-VN");
 }
 
 function warehouseLabel(warehouse: WarehouseOption): string {
@@ -200,7 +197,7 @@ export default function StockCountsPage() {
             const rows = await stockCountService.listStockCountItems(count.id);
             setItems(rows);
             setItemDrafts(Object.fromEntries(rows.map((item) => [item.id, {
-                actualQuantity: item.actual_quantity == null ? "" : String(item.actual_quantity),
+                actualQuantity: toQuantityInputValue(item.actual_quantity),
                 reasonCode: item.reason_code ?? "",
                 note: item.note ?? "",
             }])));
@@ -341,7 +338,7 @@ export default function StockCountsPage() {
                 // nguyên những gì người dùng đang gõ.
                 if (row.id !== item.id && typed) return [row.id, typed];
                 return [row.id, {
-                    actualQuantity: row.actual_quantity == null ? "" : String(row.actual_quantity),
+                    actualQuantity: toQuantityInputValue(row.actual_quantity),
                     reasonCode: row.reason_code ?? "",
                     note: row.note ?? "",
                 }];
@@ -554,7 +551,7 @@ export default function StockCountsPage() {
                                                         {item.product_name && <div className="text-xs text-gray-500">{item.product_name}</div>}
                                                     </td>
                                                     <td className="whitespace-nowrap px-3 py-3 font-mono text-xs text-gray-600">{item.location_code || `#${item.location_id}`}</td>
-                                                    <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-gray-600">{formatNumber(item.system_quantity)}</td>
+                                                    <td className="whitespace-nowrap px-3 py-3 text-right tabular-nums text-gray-600">{formatQuantity(item.system_quantity)}</td>
                                                     <td className="whitespace-nowrap px-3 py-3 text-right">
                                                         {canEditRow ? (
                                                             <input
@@ -568,7 +565,7 @@ export default function StockCountsPage() {
                                                             />
                                                         ) : (
                                                             <span className="font-semibold tabular-nums text-gray-900">
-                                                                {item.actual_quantity == null ? "—" : formatNumber(item.actual_quantity)}
+                                                                {item.actual_quantity == null ? "—" : formatQuantity(item.actual_quantity)}
                                                             </span>
                                                         )}
                                                     </td>
@@ -578,7 +575,7 @@ export default function StockCountsPage() {
                                                             <span className="text-gray-300">—</span>
                                                         ) : (
                                                             <span className={`inline-block rounded-full px-2 py-0.5 text-xs font-bold tabular-nums ${difference < 0 ? "bg-red-50 text-red-700" : difference > 0 ? "bg-green-50 text-green-700" : "bg-gray-100 text-gray-500"}`}>
-                                                                {difference > 0 ? `+${formatNumber(difference)}` : formatNumber(difference)}
+                                                                {difference > 0 ? `+${formatQuantity(difference)}` : formatQuantity(difference)}
                                                             </span>
                                                         )}
                                                     </td>

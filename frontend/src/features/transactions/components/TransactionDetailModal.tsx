@@ -1,3 +1,4 @@
+import { formatQuantity } from '@/shared/utils/number';
 import { useDateFormatter } from "@/shared/hooks";
 import type { Transaction } from "@/features/transactions/hooks/useTransactions";
 
@@ -44,7 +45,7 @@ export default function TransactionDetailModal({ selectedTransaction, onClose }:
                                         <span className="font-semibold text-gray-800">Variant #{item.productVariantId}</span>
                                         <span>Batch: {item.batchId || "-"}</span>
                                         <span>Vị trí: #{item.locationId}</span>
-                                        <span>SL: {item.quantity}</span>
+                                        <span>SL: {formatQuantity(item.quantity)}</span>
                                         <span>{selectedTransaction.loai === "DIEU_CHINH" ? (item.adjustmentDirection === "IN" ? "Tăng" : "Giảm") : item.note}</span>
                                     </div>
                                 ))

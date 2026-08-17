@@ -1,3 +1,4 @@
+import { formatQuantity } from '@/shared/utils/number';
 import { useState } from "react";
 // import QRCode from "qrcode";
 import type { ViTriKho } from "@/features/locations/hooks/useWarehouse";
@@ -173,7 +174,7 @@ export default function LocationDetailSidebar({
                                 <ul className="mt-1 space-y-1 text-sm font-semibold text-gray-700">
                                     {storedProducts.map((product) => (
                                         <li key={product} className="rounded-md bg-gray-50 px-2 py-1 leading-snug">
-                                            {product.replace(/(\d+)\.000(?=\))/g, "$1")}
+                                            {product.replace(/(\d+(?:\.\d+)?)(?=\))/g, (match) => formatQuantity(match))}
                                         </li>
                                     ))}
                                 </ul>
