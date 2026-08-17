@@ -1,5 +1,9 @@
 import type { Request, Response } from 'express';
-import { resolveWarehouseScope } from '../../common/access/warehouse-scope';
+import {
+  assertDocumentWarehouseInScope,
+  isWarehouseInScope,
+  resolveWarehouseScope,
+} from '../../common/access/warehouse-scope';
 import { HttpError } from '../../common/http';
 
 import {
@@ -47,6 +51,7 @@ export async function getOrderDetailController(
   res: Response,
 ): Promise<void> {
   const orderId = parseOrderId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'orders', orderId);
 
   res.json({
     data: await getOrderDetail(orderId),
@@ -61,6 +66,7 @@ export async function getOrderItemsController(
   res: Response,
 ): Promise<void> {
   const orderId = parseOrderId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'orders', orderId);
 
   res.json({
     data: await getOrderItems(orderId),
@@ -75,6 +81,7 @@ export async function getOrderGoodsIssuesController(
   res: Response,
 ): Promise<void> {
   const orderId = parseOrderId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'orders', orderId);
 
   res.json({
     data: await getOrderGoodsIssues(orderId),
@@ -93,6 +100,15 @@ export async function createOrderController(
   }
 
   const input = parseCreateOrder(req.body);
+
+  const warehouseScope = await resolveWarehouseScope(req.user);
+  if (!isWarehouseInScope(warehouseScope, input.warehouseId)) {
+    throw new HttpError(
+      403,
+      'Bạn không phụ trách kho này nên không tạo được đơn cho nó',
+      'WAREHOUSE_OUT_OF_SCOPE',
+    );
+  }
 
   const createdBy = input.createdBy ?? Number(req.user.id);
 
@@ -116,6 +132,7 @@ export async function updateOrderController(
   }
 
   const orderId = parseOrderId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'orders', orderId);
   const input = parseUpdateOrder(req.body);
 
   await updateOrder(orderId, {
@@ -140,6 +157,7 @@ export async function confirmOrderController(
   }
 
   const orderId = parseOrderId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'orders', orderId);
 
   await confirmOrder(orderId, Number(req.user.id));
 
@@ -160,6 +178,7 @@ export async function processOrderController(
   }
 
   const orderId = parseOrderId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'orders', orderId);
 
   await processOrder(orderId, Number(req.user.id));
 
@@ -180,6 +199,7 @@ export async function cancelOrderController(
   }
 
   const orderId = parseOrderId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'orders', orderId);
 
   await cancelOrder(orderId, Number(req.user.id));
 
@@ -200,6 +220,7 @@ export async function completeOrderController(
   }
 
   const orderId = parseOrderId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'orders', orderId);
 
   await completeOrder(orderId, Number(req.user.id));
 
@@ -220,6 +241,7 @@ export async function createGoodsIssueFromOrderController(
   }
 
   const orderId = parseOrderId(req.params.id);
+  await assertDocumentWarehouseInScope(req.user, 'orders', orderId);
 
   // req.body là any, đọc thẳng từng thuộc tính khiến eslint không kiểm soát được
   // kiểu. Ép về một hình dạng đã biết rồi mới bóc, phần giá trị vẫn do

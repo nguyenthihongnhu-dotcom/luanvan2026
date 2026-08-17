@@ -74,8 +74,25 @@ const errorMap: Record<string, HttpError> = {
 };
 
 function mapError(error: unknown): never {
-  if (error instanceof Error && errorMap[error.message]) {
-    throw errorMap[error.message];
+  if (error instanceof Error) {
+    if (errorMap[error.message]) {
+      throw errorMap[error.message];
+    }
+
+    // Repository ném kèm chi tiết theo dạng MA_LOI:variantId:tonConLai, so khớp
+    // nguyên chuỗi sẽ trượt và người dùng nhận 500 thay vì thông báo đúng nghiệp vụ.
+    const [code, ...details] = error.message.split(':');
+    const mapped = errorMap[code];
+
+    if (mapped) {
+      throw new HttpError(
+        mapped.statusCode,
+        details.length > 0
+          ? `${mapped.message} (${details.join(', ')})`
+          : mapped.message,
+        code,
+      );
+    }
   }
 
   throw error;

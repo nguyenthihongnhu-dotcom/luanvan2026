@@ -162,6 +162,7 @@ const DOCUMENT_WAREHOUSE_COLUMNS = {
   goods_issues: ['warehouse_id'],
   stock_adjustments: ['warehouse_id'],
   stock_counts: ['warehouse_id'],
+  orders: ['warehouse_id'],
   stock_transfers: ['source_warehouse_id', 'destination_warehouse_id'],
 } as const;
 

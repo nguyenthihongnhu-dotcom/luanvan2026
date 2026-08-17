@@ -97,7 +97,10 @@ axiosClient.interceptors.request.use((config) => {
     return config;
 });
 
-const authEndpointsExemptFromSessionExpiry = ['/auth/login', '/auth/register', '/auth/refresh'];
+// /auth/register nay yêu cầu đăng nhập (chỉ quản trị tạo được tài khoản) nên bỏ
+// khỏi danh sách miễn trừ: token hết hạn thì phải đá về màn đăng nhập như mọi
+// endpoint khác, thay vì im lặng báo lỗi tại chỗ.
+const authEndpointsExemptFromSessionExpiry = ['/auth/login', '/auth/refresh'];
 
 function isAuthEndpoint(url?: string): boolean {
     return authEndpointsExemptFromSessionExpiry.some((path) => url?.includes(path));

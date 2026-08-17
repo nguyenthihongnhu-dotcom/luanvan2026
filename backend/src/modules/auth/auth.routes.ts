@@ -57,7 +57,15 @@ authRouter.delete(
   asyncHandler(deleteUserController),
 );
 authRouter.post('/login', loginRateLimit, asyncHandler(loginController));
-authRouter.post('/register', asyncHandler(registerController));
+// Tạo tài khoản là việc của quản trị: để mở thì người ngoài tự đăng ký được và
+// tài khoản đó đi qua được mọi endpoint chỉ cần đăng nhập. Dùng lại quyền
+// users:create thay vì kiểm vai trò cứng, vì đây đúng là hành vi tạo người dùng.
+authRouter.post(
+  '/register',
+  asyncHandler(verifyToken),
+  requirePermission('users:create'),
+  asyncHandler(registerController),
+);
 authRouter.post('/refresh', asyncHandler(refreshController));
 authRouter.post('/logout', asyncHandler(logoutController));
 // Đặt lại mật khẩu về giá trị mặc định. Hai đường vào, một kết quả:

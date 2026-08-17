@@ -823,6 +823,88 @@ CREATE TABLE stock_adjustment_items (
 -- 11. ALERTS & NOTIFICATIONS
 -- ============================================================
 
+-- ============================================================
+-- ĐƠN HÀNG BÁN
+-- Module orders đã có sẵn trong mã nguồn nhưng thiếu phần lược đồ, nên mọi
+-- endpoint /orders đều lỗi. Hai bảng dưới đây dựng đúng theo các cột mà
+-- orders.repository đọc và ghi.
+-- ============================================================
+
+CREATE TABLE orders (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_code VARCHAR(50) NOT NULL UNIQUE,
+    customer_name VARCHAR(200) NOT NULL,
+    customer_phone VARCHAR(30) NULL,
+    customer_email VARCHAR(191) NULL,
+    shipping_address VARCHAR(255) NULL,
+    shipping_ward VARCHAR(100) NULL,
+    shipping_district VARCHAR(100) NULL,
+    shipping_province VARCHAR(100) NULL,
+    -- Kho chịu trách nhiệm giao đơn; cũng là cột để lọc đơn theo kho người dùng
+    -- phụ trách.
+    warehouse_id BIGINT UNSIGNED NOT NULL,
+    status ENUM(
+        'DRAFT',
+        'PENDING',
+        'CONFIRMED',
+        'PROCESSING',
+        'PARTIALLY_ISSUED',
+        'ISSUED',
+        'COMPLETED',
+        'CANCELLED'
+    ) NOT NULL DEFAULT 'DRAFT',
+    subtotal DECIMAL(18,2) NOT NULL DEFAULT 0,
+    discount_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    shipping_fee DECIMAL(18,2) NOT NULL DEFAULT 0,
+    total_amount DECIMAL(18,2) NOT NULL DEFAULT 0,
+    note TEXT NULL,
+    created_by BIGINT UNSIGNED NOT NULL,
+    updated_by BIGINT UNSIGNED NULL,
+    ordered_at DATETIME(3) NULL,
+    confirmed_at DATETIME(3) NULL,
+    completed_at DATETIME(3) NULL,
+    cancelled_at DATETIME(3) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+        ON UPDATE CURRENT_TIMESTAMP(3),
+    CONSTRAINT fk_orders_warehouse
+        FOREIGN KEY (warehouse_id) REFERENCES warehouses(id),
+    CONSTRAINT fk_orders_created_by
+        FOREIGN KEY (created_by) REFERENCES users(id),
+    CONSTRAINT fk_orders_updated_by
+        FOREIGN KEY (updated_by) REFERENCES users(id),
+    CONSTRAINT chk_orders_amounts
+        CHECK (subtotal >= 0 AND discount_amount >= 0 AND shipping_fee >= 0 AND total_amount >= 0),
+    INDEX idx_orders_warehouse_status (warehouse_id, status),
+    INDEX idx_orders_created_at (created_at)
+) ENGINE=InnoDB;
+
+CREATE TABLE order_items (
+    id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+    order_id BIGINT UNSIGNED NOT NULL,
+    product_variant_id BIGINT UNSIGNED NOT NULL,
+    -- issued_quantity tăng dần mỗi lần sinh phiếu xuất từ đơn, nên đơn có thể ở
+    -- trạng thái xuất một phần.
+    ordered_quantity DECIMAL(18,3) NOT NULL,
+    issued_quantity DECIMAL(18,3) NOT NULL DEFAULT 0,
+    unit_price DECIMAL(18,2) NOT NULL DEFAULT 0,
+    subtotal DECIMAL(18,2) NOT NULL DEFAULT 0,
+    note VARCHAR(500) NULL,
+    created_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3),
+    updated_at DATETIME(3) NOT NULL DEFAULT CURRENT_TIMESTAMP(3)
+        ON UPDATE CURRENT_TIMESTAMP(3),
+    CONSTRAINT fk_order_items_order
+        FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    CONSTRAINT fk_order_items_variant
+        FOREIGN KEY (product_variant_id) REFERENCES product_variants(id),
+    CONSTRAINT chk_order_item_quantity
+        CHECK (ordered_quantity > 0 AND issued_quantity >= 0),
+    CONSTRAINT chk_order_item_issued
+        CHECK (issued_quantity <= ordered_quantity),
+    INDEX idx_order_items_order (order_id),
+    INDEX idx_order_items_variant (product_variant_id)
+) ENGINE=InnoDB;
+
 CREATE TABLE alerts (
     id BIGINT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     alert_type ENUM(
