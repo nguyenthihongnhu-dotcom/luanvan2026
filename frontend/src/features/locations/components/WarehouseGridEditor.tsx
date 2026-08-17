@@ -91,7 +91,12 @@ interface DragState {
     y: number;
 }
 
-/** Khu hết chỗ trống: mọi vị trí đều đang có hàng hoặc đã đánh dấu FULL. */
+/**
+ * Khu không còn ô trống để xếp hàng mới vào: mọi ô đều đang có hàng hoặc đã đánh
+ * dấu FULL. Đây là "hết ô trống" chứ không phải "hết sức chứa" — một khu chỉ có
+ * một ô mà ô đó mới dùng 620/800 vẫn rơi vào trường hợp này, nên nhãn phải nói
+ * đúng như vậy thay vì gắn chữ ĐẦY.
+ */
 function isZoneFull(zone: WarehouseZone) {
     if (zone.locationCount === 0) return false;
     return zone.occupiedCount >= zone.locationCount || zone.fullCount >= zone.locationCount;
@@ -430,7 +435,7 @@ export default function WarehouseGridEditor({
                             {placed ? ` · ô H${(zone.gridRow ?? 0) + 1}-C${(zone.gridCol ?? 0) + 1}` : ""}
                         </p>
                         <p className={`text-[10px] leading-tight ${isZoneFull(zone) ? "font-bold text-red-600" : "text-gray-400"}`}>
-                            {zone.occupiedCount}/{zone.locationCount} vị trí có hàng{isZoneFull(zone) ? " · ĐẦY" : ""}
+                            {zone.occupiedCount}/{zone.locationCount} ô đã có hàng{isZoneFull(zone) ? " · hết ô trống" : ""}
                         </p>
                     </div>
                 </div>
@@ -625,7 +630,7 @@ export default function WarehouseGridEditor({
                                     }}
                                     title={
                                         zone
-                                            ? `${labelOf(zone)} (mã ${zone.code}) - ${zone.shelfCount} kệ, ${zone.occupiedCount}/${zone.locationCount} vị trí đang có hàng${isZoneFull(zone) ? " (ĐẦY, không còn ô trống)" : ""}`
+                                            ? `${labelOf(zone)} (mã ${zone.code}) - ${zone.shelfCount} kệ, ${zone.occupiedCount}/${zone.locationCount} ô đang có hàng${isZoneFull(zone) ? " (không còn ô trống để xếp hàng mới, không phải hết sức chứa)" : ""}`
                                             : `Lối đi H${row + 1}-C${col + 1}`
                                     }
                                 >
@@ -649,7 +654,7 @@ export default function WarehouseGridEditor({
                                                 {labelOf(zone)}
                                             </div>
                                             <div className="mt-0.5 text-[10px] leading-none text-gray-500">
-                                                {isZoneFull(zone) ? "ĐẦY" : `${zone.shelfCount} kệ`}
+                                                {isZoneFull(zone) ? "hết ô trống" : `${zone.shelfCount} kệ`}
                                             </div>
                                         </div>
                                     ) : (
