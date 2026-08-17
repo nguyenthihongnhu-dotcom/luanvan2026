@@ -1,4 +1,5 @@
 import { io, type Socket } from 'socket.io-client';
+import { env } from '../config/env';
 import { getAccessToken } from './httpClient';
 
 let socketInstance: Socket | null = null;
@@ -20,8 +21,10 @@ export function getNotificationSocket(): Socket | null {
   }
 
   if (!socketInstance) {
-    const rawUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
-    const serverUrl = rawUrl.replace(/\/api\/?$/, '');
+    // Cả dự án cấu hình backend bằng VITE_API_BASE_URL; đọc VITE_API_URL (biến
+    // không tồn tại) khiến socket luôn rơi về localhost:3000 và chết ngay khi
+    // backend nằm ở host hoặc cổng khác.
+    const serverUrl = env.apiBaseUrl.replace(/\/api\/?$/, '');
 
     socketToken = token;
     socketInstance = io(serverUrl, {
